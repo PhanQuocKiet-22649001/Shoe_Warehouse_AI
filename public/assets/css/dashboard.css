@@ -1,0 +1,123 @@
+/* Topbar */
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.topbar input {
+    width: 50%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ai-btn {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    background: white;
+    cursor: pointer;
+}
+
+.user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.avatar {
+    width: 32px;
+    height: 32px;
+    background: #374151;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+/* Cards */
+.cards {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.card {
+    flex: 1;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.card.highlight {
+    background: #374151;
+    color: white;
+}
+
+/* Grid */
+.grid {
+    display: flex;
+    gap: 20px;
+}
+
+.box {
+    flex: 1;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+/* Bars */
+.bar-item {
+    margin-bottom: 10px;
+}
+
+.bar {
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+}
+
+/* Chart placeholder */
+.chart-placeholder {
+    height: 150px;
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.axis {
+    font-size: 12px;
+    color: #888;
+}
+
+/* Heatmap */
+.heatmap-box {
+    margin-top: 20px;
+}
+
+.note {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.heatmap {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 5px;
+}
+
+.cell {
+    height: 40px;
+    background: #e5e7eb;
+    border-radius: 4px;
+}

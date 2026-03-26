@@ -1,0 +1,167 @@
+/* employees.css */
+
+/* Container chính */
+.employees-container {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+    /* Đẩy footer xuống đáy màn hình */
+    min-height: calc(100vh - 190px);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+/* Header */
+.employees-header h1 {
+    color: #1F2937;
+    margin: 0;
+    font-size: 1.6rem;
+    font-weight: bold;
+}
+
+.btn-add {
+    background-color: #1F2937;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-add:hover {
+    background-color: #374151;
+}
+
+/* Table */
+.employees-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.employees-table th,
+.employees-table td {
+    padding: 10px 15px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+    /* Cố định chiều cao hàng */
+    height: 48px;
+    vertical-align: middle;
+}
+
+.employees-table th {
+    background-color: #1F2937;
+    color: #fff;
+    font-weight: 600;
+}
+
+.employees-table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+/* Badge trạng thái */
+
+.badge.active {
+    color: #10b981;
+}
+
+.badge.inactive {
+    color: #6b7280;
+}
+
+/* Nút thao tác */
+.btn-action {
+    background: none;
+    border: none;
+    color: #1F2937;
+    cursor: pointer;
+    font-weight: 500;
+    margin-right: 10px;
+}
+
+.btn-action.btn-delete {
+    color: #ef4444;
+}
+
+.btn-action:hover {
+    text-decoration: underline;
+}
+
+.btn-profile:hover {
+    text-decoration: underline !important;
+}
+
+/* MODAL */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    padding: 20px;
+    width: 600px;
+    height: 500px;
+    border-radius: 4px;
+    /* Bo góc nhẹ cho nam tính */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 1001;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.modal-close {
+    cursor: pointer;
+    font-size: 1.4rem;
+    line-height: 1;
+}
+
+.modal-body input,
+.modal-body select {
+    width: 100%;
+    margin-bottom: 12px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.btn-save {
+    background-color: #1F2937;
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    cursor: pointer;
+}
+
+.btn-cancel {
+    background-color: #9ca3af;
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    cursor: pointer;
+}
