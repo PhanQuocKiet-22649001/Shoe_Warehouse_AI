@@ -78,6 +78,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $productController->toggleStatus();
         } elseif (isset($_POST['delete_product'])) {
             $productController->softDelete();
+        } elseif (isset($_POST['add_product'])) {
+            $productController->add();
         }
     }
 }

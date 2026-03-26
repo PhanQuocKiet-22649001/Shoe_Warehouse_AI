@@ -85,4 +85,36 @@ class ProductModel
         $result = pg_query_params($this->conn, $sql, [$keyword]);
         return $result ? pg_fetch_all($result) : [];
     }
+
+
+    // tạo sản phẩm mới
+    public function create($name, $category_id, $image, $user_id)
+    {
+
+        $sql = "INSERT INTO products (product_name, category_id, product_image, created_by, status, is_deleted, created_at) 
+            VALUES ($1, $2, $3, $4, 't', false, NOW()) 
+            RETURNING product_id";
+
+
+        $result = pg_query_params($this->conn, $sql, [$name, $category_id, $image, $user_id]);
+
+        if ($result) {
+            $row = pg_fetch_assoc($result);
+            return $row['product_id'];
+        }
+        return false;
+    }
+
+    // thêm thuộc tính sản phẩm mới
+    public function createVariant($product_id, $size, $color, $stock, $sku)
+    {
+        $sql = "INSERT INTO product_variants (product_id, size, color, stock, sku) 
+            VALUES ($1, $2, $3, $4, $5)";
+
+        $result = pg_query_params($this->conn, $sql, [$product_id, $size, $color, $stock, $sku]);
+
+
+
+        return $result;
+    }
 }

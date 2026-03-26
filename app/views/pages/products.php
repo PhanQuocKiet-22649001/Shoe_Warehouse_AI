@@ -3,14 +3,16 @@
 <div class="container-fluid p-0">
     <?php if (isset($_SESSION['success'])): ?>
         <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
-            <i class="fas fa-check-circle me-2"></i> <?= $_SESSION['success']; unset($_SESSION['success']); ?>
+            <i class="fas fa-check-circle me-2"></i> <?= $_SESSION['success'];
+                                                        unset($_SESSION['success']); ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     <?php endif; ?>
 
     <?php if (isset($_SESSION['error'])): ?>
         <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
-            <i class="fas fa-exclamation-triangle me-2"></i> <?= $_SESSION['error']; unset($_SESSION['error']); ?>
+            <i class="fas fa-exclamation-triangle me-2"></i> <?= $_SESSION['error'];
+                                                                unset($_SESSION['error']); ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     <?php endif; ?>
@@ -150,7 +152,9 @@
                                                     </tr>
                                                 <?php endforeach; ?>
                                             <?php else: ?>
-                                                <tr><td colspan="7" class="text-center py-5 text-muted">Chưa có biến thể!</td></tr>
+                                                <tr>
+                                                    <td colspan="7" class="text-center py-5 text-muted">Chưa có biến thể!</td>
+                                                </tr>
                                             <?php endif; ?>
                                         </tbody>
                                     </table>
@@ -172,6 +176,8 @@
     </div>
 </div>
 
+
+<!-- thông báo -->
 <?php if (isset($_SESSION['browser_alert'])): ?>
     <script>
         // Sử dụng setTimeout để đảm bảo giao diện đã hiển thị xong xuôi
@@ -181,3 +187,74 @@
     </script>
     <?php unset($_SESSION['browser_alert']); ?>
 <?php endif; ?>
+
+
+<!-- modal thêm sản phẩm -->
+<div class="modal fade" id="addProductModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <form action="index.php?page=products&category_id=<?= $_GET['category_id'] ?>"
+                method="POST"
+                enctype="multipart/form-data"
+                onsubmit="return confirm('Bồ có chắc chắn mọi thông tin (Size, Màu, Tên...) đã chuẩn chỉnh để nhập kho chưa?')">
+
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-plus-circle me-2"></i>Thêm giày mới vào kho</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <input type="hidden" name="category_id" value="<?= $_GET['category_id'] ?>">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tên sản phẩm</label>
+                        <input type="text" name="product_name" id="new_product_name" class="form-control border-2" placeholder="Ví dụ: Nike Sacai Waffle" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Màu sắc</label>
+                            <input type="text" name="color" class="form-control border-2" placeholder="Blue, Red..." required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-bold">Size</label>
+                            <input type="number" name="size" class="form-control border-2" placeholder="42" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-bold">Số lượng</label>
+                            <input type="number" name="stock" class="form-control border-2" value="1" min="1" required>
+                        </div>
+                    </div>
+
+                    <!-- thêm ảnh -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Hình ảnh</label>
+                        <input type="file" name="product_image" id="product_image_input" class="form-control border-2" accept="image/*">
+
+                        <div class="mt-3 text-center">
+                            <img id="preview_img" src="#" alt="Xem trước ảnh"
+                                style="display: none; max-height: 200px; max-width: 100%; border-radius: 8px; border: 2px dashed #ddd; padding: 5px;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light px-4 fw-bold" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" name="add_product" class="btn btn-dark px-4 fw-bold shadow">Lưu vào kho</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- xử lí hiện ảnh để xem lại -->
+ <script>
+    document.getElementById('product_image_input').onchange = evt => {
+        const [file] = document.getElementById('product_image_input').files
+        if (file) {
+            const preview = document.getElementById('preview_img');
+            preview.src = URL.createObjectURL(file);
+            preview.style.display = 'block'; // Hiện ảnh lên khi đã chọn file
+        }
+    }
+</script>

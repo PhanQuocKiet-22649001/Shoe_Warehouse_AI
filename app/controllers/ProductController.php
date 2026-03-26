@@ -104,4 +104,63 @@ class ProductController
         echo json_encode($results ? $results : []);
         exit;
     }
+
+
+    // thêm sản phẩm mới do nhân viên thực hiện
+    public function add()
+    {
+        if (isset($_POST['add_product'])) {
+            // 0. Lấy ID người dùng đang đăng nhập (Người thực hiện thêm sản phẩm)
+            $userId = $_SESSION['user_id'] ?? null;
+
+            $category_id = $_POST['category_id'];
+            $product_name = trim($_POST['product_name']);
+            $color = trim($_POST['color']);
+            $size = $_POST['size'];
+            $stock = $_POST['stock'];
+
+            // 1. Xử lý Upload Ảnh (Giữ nguyên logic của bồ)
+            $imageName = 'default_shoe.png';
+            if (!empty($_FILES['product_image']['name'])) {
+                $imageName = time() . '_' . $_FILES['product_image']['name'];
+                move_uploaded_file($_FILES['product_image']['tmp_name'], 'assets/img_product/' . $imageName);
+            }
+
+            // 2. TẠO MÃ SKU (Định dạng: HÃNG-TÊN-MÀU-SIZE)
+            $categoryModel = new CategoryModel();
+            $cat = $categoryModel->getById($category_id);
+
+            // Viết tắt hãng (2 chữ đầu): Nike -> NK
+            $brandPart = strtoupper(substr($cat['category_name'], 0, 2));
+
+            // Viết tắt tên sản phẩm (Chữ cái đầu mỗi từ): Sacai Waffle -> SW
+            $words = explode(" ", $product_name);
+            $namePart = "";
+            foreach ($words as $w) {
+                if (!empty($w)) $namePart .= strtoupper(substr($w, 0, 1));
+            }
+
+            // Viết tắt màu (3 chữ đầu): Grey -> GRE
+            $colorPart = strtoupper(substr($color, 0, 3));
+
+            // CHỐT SKU: NK-SW-GRE-42
+            $sku = $brandPart . "-" . $namePart . "-" . $colorPart . "-" . $size;
+
+            // 3. Ghi vào Database
+            // Lưu ý: Nhớ truyền thêm $userId vào hàm create ở Model nhé
+            $productId = $this->productModel->create($product_name, $category_id, $imageName, $userId);
+
+            if ($productId) {
+                // Thêm biến thể tương ứng
+                $this->productModel->createVariant($productId, $size, $color, $stock, $sku);
+
+                $_SESSION['success'] = "Nhập kho thành công!";
+            } else {
+                $_SESSION['error'] = "Không thể tạo sản phẩm mới.";
+            }
+
+            header("Location: index.php?page=products&category_id=" . $category_id);
+            exit;
+        }
+    }
 }
