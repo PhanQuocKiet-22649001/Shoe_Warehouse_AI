@@ -10,7 +10,7 @@ class CategoryModel
         $this->conn = getConnection();
     }
 
-    // lấy danh sách
+    // lấy danh sách hãng giày
     public function getAll()
     {
         $sql = "SELECT category_id, category_name, logo, created_at, status 
@@ -19,6 +19,14 @@ class CategoryModel
                 ORDER BY category_id ASC";
         $result = pg_query($this->conn, $sql);
         return $result ? pg_fetch_all($result) : [];
+    }
+
+    // lấy thông tin chi tiết 1 hãng
+    public function getById($id)
+    {
+        $sql = "SELECT * FROM categories WHERE category_id = $1";
+        $result = pg_query_params($this->conn, $sql, [$id]);
+        return $result ? pg_fetch_assoc($result) : null;
     }
 
     // thêm hãng mới

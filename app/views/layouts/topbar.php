@@ -1,6 +1,12 @@
 <div class="topbar mb-4 d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm">
-    <div class="search-box flex-grow-1 me-4">
-        <input type="text" class="form-control" placeholder="Tìm mã giày, size, màu sắc..." style="max-width: 400px;">
+
+    <!-- form tìm kiếm -->
+    <div class="search-box flex-grow-1 me-4 position-relative">
+        <input type="text" id="mainSearch" class="form-control" placeholder="Tìm tên giày, size, màu sắc..." style="max-width: 400px;" autocomplete="off">
+
+        <div id="searchResults" class="list-group position-absolute w-100 shadow-lg mt-1 d-none"
+            style="z-index: 1050; max-width: 400px; max-height: 400px; overflow-y: auto; border-radius: 8px;">
+        </div>
     </div>
 
     <div class="user-info d-flex align-items-center">
@@ -59,7 +65,7 @@
                                 <td><?= $uData['full_name'] ?></td>
                             </tr>
                             <tr>
-                                <th >Chức vụ</th>
+                                <th>Chức vụ</th>
                                 <td>
                                     <span style="color: black;">
                                         <?= $uData['role'] === 'MANAGER' ? 'Quản lý' : 'Nhân viên' ?>
@@ -129,7 +135,7 @@
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td >Địa chỉ:</td>
+                                            <td>Địa chỉ:</td>
                                             <td>
                                                 <?= !empty($uData['address']) ? htmlspecialchars($uData['address']) : '<span class="text-muted fw-normal">Chưa có</span>' ?>
                                             </td>
@@ -161,7 +167,7 @@
                                 style="background-color: #3b495e1b;  border-color: <?= isset($_SESSION['error']) ? '#1F2937' : '#1F2937' ?> !important;">
 
                                 <label class="form-label small fw-bold" style="color: #1F2937;">
-                                    <i class="fas fa-lock me-1 <?= isset($_SESSION['error']) ? : '' ?>"></i>
+                                    <i class="fas fa-lock me-1 <?= isset($_SESSION['error']) ?: '' ?>"></i>
                                     Xác nhận mật khẩu cũ để lưu
                                 </label>
 
@@ -170,7 +176,7 @@
                                     required placeholder="Nhập pass hiện tại">
 
                                 <?php if (isset($_SESSION['error'])): ?>
-                                    <div class="small fw-bold mt-2 ps-1 text-danger" >
+                                    <div class="small fw-bold mt-2 ps-1 text-danger">
                                         <i class="fas fa-exclamation-triangle me-1"></i> <?= $_SESSION['error']; ?>
                                     </div>
                                     <?php
@@ -203,3 +209,61 @@
         });
     </script>
 <?php endif; ?>
+
+
+<!-- script tìm kiếm -->
+<style>
+    /* CSS cho hộp kết quả */
+    #searchResults .list-group-item {
+        border: none;
+        border-bottom: 1px solid #f1f5f9;
+        transition: background 0.2s;
+    }
+
+    #searchResults .list-group-item:hover {
+        background-color: #f8fafc;
+        padding-left: 20px;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('mainSearch');
+        const resultsBox = document.getElementById('searchResults');
+
+        searchInput.addEventListener('input', function() {
+            let keyword = this.value.trim();
+            if (keyword.length > 0) {
+                fetch(`index.php?page=search_ajax&keyword=${encodeURIComponent(keyword)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        resultsBox.innerHTML = '';
+                        if (data.length > 0) {
+                            data.forEach(item => {
+                                resultsBox.innerHTML += `
+                                <a href="index.php?page=products&category_id=${item.category_id}#product_${item.product_id}" 
+                                   class="list-group-item list-group-item-action d-flex align-items-center">
+                                    <img src="assets/img_product/${item.product_image || 'default_shoe.png'}" 
+                                         style="width: 45px; height: 35px; object-fit: cover;" class="rounded me-3 border">
+                                    <div>
+                                        <div class="fw-bold small text-dark mb-0">${item.product_name}</div>
+                                        <span class="text-muted" style="font-size: 11px;">Nhấn để xem chi tiết</span>
+                                    </div>
+                                </a>`;
+                            });
+                            resultsBox.classList.remove('d-none');
+                        } else {
+                            resultsBox.innerHTML = '<div class="list-group-item small text-muted text-center py-3">Không tìm thấy đôi nào bồ ơi!</div>';
+                            resultsBox.classList.remove('d-none');
+                        }
+                    });
+            } else {
+                resultsBox.classList.add('d-none');
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!searchInput.contains(e.target) && !resultsBox.contains(e.target)) resultsBox.classList.add('d-none');
+        });
+    });
+</script>

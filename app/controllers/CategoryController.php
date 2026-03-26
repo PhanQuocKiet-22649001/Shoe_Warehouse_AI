@@ -20,7 +20,7 @@ class CategoryController
     private function checkManager()
     {
         if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'MANAGER') {
-            $_SESSION['error'] = "Bồ không có quyền thực hiện chức năng này!";
+            $_SESSION['error'] = "Bạn không có quyền thực hiện chức năng này!";
             header("Location: index.php?page=dashboard");
             exit;
         }
@@ -94,25 +94,26 @@ class CategoryController
     }
 
     // bật tắt trạng thái kinh doanh
-    public function toggleStatus() {
-    $this->checkManager();
+    public function toggleStatus()
+    {
+        $this->checkManager();
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $id = $_POST['category_id'];
-        // Lấy trạng thái hiện tại từ form gửi lên
-        $current = $_POST['current_status']; 
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = $_POST['category_id'];
+            $current = $_POST['current_status'];
+            $newStatus = ($current == 't' || $current == 1) ? 'f' : 't';
 
-        // Đảo ngược trạng thái: Nếu đang 't' (true) thì đổi thành 'f' (false) và ngược lại
-        $newStatus = ($current == 't' || $current == 1) ? 'f' : 't';
+            if ($this->categoryModel->updateStatus($id, $newStatus)) {
+                // Cập nhật luôn toàn bộ sản phẩm theo trạng thái mới của danh mục
+                $productModel = new ProductModel();
+                $productModel->updateStatusByCategory($id, $newStatus);
 
-        if ($this->categoryModel->updateStatus($id, $newStatus)) {
-            $_SESSION['success'] = "Đã cập nhật trạng thái hãng giày!";
-        } else {
-            $_SESSION['error'] = "Cập nhật trạng thái thất bại!";
+                $_SESSION['success'] = ($newStatus === 'f')
+                    ? "Đã tạm ngưng hãng và toàn bộ sản phẩm liên quan!"
+                    : "Hãng đã hoạt động lại, toàn bộ sản phẩm đã được bật theo!";
+            }
+            header("Location: index.php?page=categories");
+            exit;
         }
-
-        header("Location: index.php?page=categories");
-        exit;
     }
-}
 }

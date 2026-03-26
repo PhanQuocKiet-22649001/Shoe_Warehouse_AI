@@ -39,5 +39,6 @@ D:.
 + load  sản phẩm
 + sửa status sản phẩm (active/inactive)
 + xóa mềm sản phẩm
-
++ xem biến thể sản phẩm
++ tìm kiếm sản theo: tên, size, màu sắc
 

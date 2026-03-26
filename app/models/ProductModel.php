@@ -45,6 +45,13 @@ class ProductModel
         return pg_query_params($this->conn, $sql, [$new_status, $product_id]);
     }
 
+    // Hàm cập nhật trạng thái toàn bộ sản phẩm theo ID hãng
+    public function updateStatusByCategory($category_id, $new_status)
+    {
+        // Cập nhật trạng thái ('t' hoặc 'f') cho tất cả sản phẩm của hãng này
+        $sql = "UPDATE products SET status = $1 WHERE category_id = $2";
+        return pg_query_params($this->conn, $sql, [$new_status, $category_id]);
+    }
 
     // lấy các biến thể của 1 sản phẩm
     public function getVariantsByProductId($product_id)
@@ -58,6 +65,24 @@ class ProductModel
             ORDER BY v.size ASC";
 
         $result = pg_query_params($this->conn, $sql, [$product_id]);
+        return $result ? pg_fetch_all($result) : [];
+    }
+
+    // tìm kiếm sản phẩm
+    public function searchProducts($keyword)
+    {
+        $keyword = '%' . $keyword . '%';
+        $sql = "SELECT DISTINCT p.product_id, p.product_name, p.product_image, p.category_id 
+            FROM products p
+            LEFT JOIN product_variants v ON p.product_id = v.product_id
+            WHERE (p.product_name ILIKE $1 
+               OR v.sku ILIKE $1 
+               OR v.size ILIKE $1 
+               OR v.color ILIKE $1)
+               AND p.is_deleted = false
+            LIMIT 8"; // Giới hạn 8 kết quả cho đẹp khung search
+
+        $result = pg_query_params($this->conn, $sql, [$keyword]);
         return $result ? pg_fetch_all($result) : [];
     }
 }

@@ -41,6 +41,11 @@ if (isset($_POST['logout'])) {
 
 $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
 
+if ($page === 'search_ajax') {
+    $productController->ajaxSearch();
+    exit; // Dừng chương trình ngay, không cho chạy xuống phần HTML bên dưới
+}
+
 // ===== 4. XỬ LÝ CÁC YÊU CẦU POST =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -104,6 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="page-body">
                     <?php
                     switch ($page) {
+
                         case 'employees':
                             if ($_SESSION['role'] !== 'MANAGER') {
                                 header("Location: index.php?page=dashboard");
