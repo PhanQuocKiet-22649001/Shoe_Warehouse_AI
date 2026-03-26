@@ -66,7 +66,10 @@ class CategoryController
             }
 
             if (!empty($name)) {
-                if ($this->categoryModel->create($name, $logo_name)) {
+                // Lấy ID người dùng đang đăng nhập từ Session
+                $userId = $_SESSION['user_id'] ?? null;
+
+                if ($this->categoryModel->create($name, $logo_name, $userId)) {
                     $_SESSION['success'] = "Đã thêm hãng $name thành công!";
                 } else {
                     $_SESSION['error'] = "Lỗi Database rồi bồ ơi!";

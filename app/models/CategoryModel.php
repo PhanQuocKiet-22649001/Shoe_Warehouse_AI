@@ -30,11 +30,11 @@ class CategoryModel
     }
 
     // thêm hãng mới
-    public function create($category_name, $logo = null)
+    public function create($category_name, $logo, $created_by) // Thêm tham số $created_by
     {
-        $sql = "INSERT INTO categories (category_name, logo, is_deleted, created_at)
-                VALUES ($1, $2, false, NOW())";
-        return pg_query_params($this->conn, $sql, [trim($category_name), $logo]);
+        $sql = "INSERT INTO categories (category_name, logo, is_deleted, created_at, created_by)
+            VALUES ($1, $2, false, NOW(), $3)";
+        return pg_query_params($this->conn, $sql, [trim($category_name), $logo, $created_by]);
     }
 
     // cập nhật
