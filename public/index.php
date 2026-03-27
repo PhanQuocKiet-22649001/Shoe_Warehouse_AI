@@ -47,40 +47,55 @@ if ($page === 'search_ajax') {
 }
 
 // ===== 4. XỬ LÝ CÁC YÊU CẦU POST =====
+// public/index.php
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    if (isset($_POST['btn_update_profile'])) {
-        $userController->UpdateProfile();
-    }
-    // Xử lý trang Nhân viên
-    elseif ($page === 'employees') {
+    // 1. CHỈ XỬ LÝ THEO TRANG (Phân luồng chính xác)
+    if ($page === 'employees') {
         if (isset($_POST['add_user'])) {
             $userController->add();
+            exit;
         } elseif (isset($_POST['delete'])) {
             $userController->delete($_POST['user_id']);
+            exit;
         } elseif (isset($_POST['update'])) {
             $userController->update();
+            exit;
         }
-    }
-    // Xử lý trang Danh mục hãng giày
-    elseif ($page === 'categories') {
+    } elseif ($page === 'categories') {
         if (isset($_POST['add_category'])) {
             $categoryController->addBrand();
+            exit;
         } elseif (isset($_POST['delete'])) {
             $categoryController->delete($_POST['category_id']);
+            exit;
         } elseif (isset($_POST['toggle_status'])) {
             $categoryController->toggleStatus();
+            exit;
         }
-    }
-    // Thêm case xử lý cho trang Sản phẩm
-    elseif ($page === 'products') {
+    } elseif ($page === 'products') {
+        // 1. Quét AI (Xử lý trước)
+        if (isset($_GET['action']) && $_GET['action'] === 'scan-ai') {
+            $productController->scanWithAI();
+            exit;
+        }
+        // 2. Lưu sản phẩm
+        if (isset($_POST['add_product'])) {
+            $productController->add();
+            exit;
+        }
+        // 3. Trạng thái/Xóa
         if (isset($_POST['toggle_status'])) {
             $productController->toggleStatus();
-        } elseif (isset($_POST['delete_product'])) {
-            $productController->softDelete();
-        } elseif (isset($_POST['add_product'])) {
-            $productController->add();
+            exit;
         }
+    }
+
+    // 2. CÁC HÀNH ĐỘNG CHUNG (Để ở ngoài cùng khối POST)
+    if (isset($_POST['btn_update_profile'])) {
+        $userController->UpdateProfile();
+        exit;
     }
 }
 ?>

@@ -87,34 +87,103 @@ class ProductModel
     }
 
 
-    // tạo sản phẩm mới
+
+
+    // 1. Tạo sản phẩm chính
     public function create($name, $category_id, $image, $user_id)
     {
-
+        // Tuyệt đối không liệt kê product_id ở đây
         $sql = "INSERT INTO products (product_name, category_id, product_image, created_by, status, is_deleted, created_at) 
             VALUES ($1, $2, $3, $4, 't', false, NOW()) 
             RETURNING product_id";
 
-
-        $result = pg_query_params($this->conn, $sql, [$name, $category_id, $image, $user_id]);
+        $result = pg_query_params($this->conn, $sql, [
+            $name,
+            (int)$category_id,
+            $image,
+            (int)$user_id
+        ]);
 
         if ($result) {
             $row = pg_fetch_assoc($result);
-            return $row['product_id'];
+            return $row['product_id']; // Lấy ID tự tăng vừa đẻ ra để dùng cho variant
         }
         return false;
     }
 
-    // thêm thuộc tính sản phẩm mới
+    // 2. Tạo biến thể cho sản phẩm đó
     public function createVariant($product_id, $size, $color, $stock, $sku)
     {
+        // Tuyệt đối không liệt kê variant_id ở đây
         $sql = "INSERT INTO product_variants (product_id, size, color, stock, sku) 
             VALUES ($1, $2, $3, $4, $5)";
 
-        $result = pg_query_params($this->conn, $sql, [$product_id, $size, $color, $stock, $sku]);
+        return pg_query_params($this->conn, $sql, [
+            (int)$product_id,
+            (int)$size,
+            $color,
+            (int)$stock,
+            $sku
+        ]);
+    }
 
 
+    // Hàm "Đối soát" cực kỳ quan trọng
+    public function findExistingProduct($brandName, $modelName)
+    {
+        $brandName = trim($brandName);
+        $modelName = trim($modelName);
 
-        return $result;
+        // SQL này sẽ loại bỏ dấu " trong Database và trong từ khóa tìm kiếm để đối soát
+        $sql = "SELECT p.product_id, p.product_name, c.category_id, c.category_name
+            FROM products p
+            JOIN categories c ON p.category_id = c.category_id
+            WHERE (REPLACE(p.product_name, '\"', '') ILIKE $1) 
+            AND c.category_name ILIKE $2 
+            AND p.is_deleted = false 
+            LIMIT 1";
+
+        // Loại bỏ dấu " ở modelName do AI trả về trước khi truyền vào query
+        $cleanModelName = str_replace('"', '', $modelName);
+
+        $res = pg_query_params($this->conn, $sql, ["%$cleanModelName%", "%$brandName%"]);
+        return $res ? pg_fetch_assoc($res) : null;
+    }
+
+    // Kiểm tra xem biến thể màu này của sản phẩm đã có chưa
+    public function checkColorExists($product_id, $color)
+    {
+        $sql = "SELECT color FROM product_variants 
+            WHERE product_id = $1 AND color ILIKE $2 AND is_deleted = false LIMIT 1";
+        $res = pg_query_params($this->conn, $sql, [$product_id, $color]);
+        return (bool)pg_fetch_assoc($res);
+    }
+
+
+    // 1. Tìm biến thể đã có (Trùng cả màu và size)
+    public function findVariant($product_id, $size, $color)
+    {
+        $sql = "SELECT variant_id, stock FROM product_variants 
+            WHERE product_id = $1 AND size = $2 AND color ILIKE $3 AND is_deleted = false LIMIT 1";
+        $res = pg_query_params($this->conn, $sql, [(int)$product_id, (int)$size, $color]);
+        return $res ? pg_fetch_assoc($res) : null;
+    }
+
+    // 2. Cộng dồn số lượng tồn kho (Update stock)
+    public function addStock($variant_id, $quantity)
+    {
+        $sql = "UPDATE product_variants SET stock = stock + $1 WHERE variant_id = $2";
+        return pg_query_params($this->conn, $sql, [(int)$quantity, (int)$variant_id]);
+    }
+
+
+    // lấy màu sắc giày trong db
+    public function getColorsByProduct($product_id)
+    {
+        $sql = "SELECT DISTINCT color FROM product_variants 
+            WHERE product_id = $1 AND is_deleted = false 
+            ORDER BY color ASC";
+        $result = pg_query_params($this->conn, $sql, [(int)$product_id]);
+        return $result ? pg_fetch_all($result) : [];
     }
 }

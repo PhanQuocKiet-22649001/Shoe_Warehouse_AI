@@ -43,3 +43,4 @@ D:.
 14. Xem chi tiết biến thể sản phẩm
 15. Sửa trạng thái sản phẩm (Active/Inactive)
 16. Xóa mềm sản phẩm
+17. demo AI quét ảnh (chưa xong)

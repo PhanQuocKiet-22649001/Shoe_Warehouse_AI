@@ -175,14 +175,13 @@
                                     class="form-control rounded-pill border-light-subtle <?= isset($_SESSION['error']) ? '' : '' ?>"
                                     required placeholder="Nhập pass hiện tại">
 
-                                <?php if (isset($_SESSION['error'])): ?>
-                                    <div class="small fw-bold mt-2 ps-1 text-danger">
-                                        <i class="fas fa-exclamation-triangle me-1"></i> <?= $_SESSION['error']; ?>
+                                <?php if (isset($_SESSION['profile_error'])): ?>
+                                    <div class="alert alert-danger ...">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        <?= $_SESSION['profile_error'];
+                                        unset($_SESSION['profile_error']); ?>
                                     </div>
-                                    <?php
-                                    $hasUpdateError = true;
-                                    unset($_SESSION['error']);
-                                    ?>
+                                    <?php $hasUpdateError = true; ?>
                                 <?php endif; ?>
                             </div>
                         </div>
