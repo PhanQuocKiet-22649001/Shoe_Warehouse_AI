@@ -44,3 +44,17 @@ D:.
 15. Sửa trạng thái sản phẩm (Active/Inactive)
 16. Xóa mềm sản phẩm
 17. demo AI quét ảnh (chưa xong)
+
+
+
+# HƯỚNG DẪN CÀI ĐẶT AI
+
+
+### Bước 1: Cài đặt môi trường AI (Quan trọng)
+Mở CMD tại thư mục dự án và chạy 2 lệnh sau:
+
+# 1. Cài các thư viện nền:
+python -m pip install torch Pillow ftfy regex tqdm
+
+# 2. Cài đặt Model CLIP chính chủ:
+python -m pip install git+https://github.com/openai/CLIP.git

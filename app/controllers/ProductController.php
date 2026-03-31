@@ -5,12 +5,18 @@ class ProductController
 {
     private $productModel;
 
+    /**
+     * Khởi tạo Controller và gọi Model tương ứng
+     */
     public function __construct()
     {
         $this->productModel = new ProductModel();
     }
 
-    // Kiểm tra quyền MANAGER
+    /**
+     * Middleware: Kiểm tra quyền quản trị (MANAGER)
+     * Ngăn chặn nhân viên (STAFF) thực hiện các thao tác nhạy cảm
+     */
     private function checkManager()
     {
         if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'MANAGER') {
@@ -20,9 +26,12 @@ class ProductController
         }
     }
 
+    /**
+     * Hiển thị danh sách sản phẩm theo danh mục (Hãng giày)
+     * Tự động lồng ghép danh sách biến thể (size, màu) vào từng sản phẩm
+     */
     public function showByCategory()
     {
-        // 1. Lấy ID danh mục từ URL
         $category_id = isset($_GET['category_id']) ? $_GET['category_id'] : null;
 
         if (!$category_id) {
@@ -30,26 +39,25 @@ class ProductController
             exit;
         }
 
-        // 2. Lấy tên hãng và danh sách sản phẩm chính
         $categoryName = $this->productModel->getCategoryName($category_id);
         $products = $this->productModel->getByCategory($category_id);
 
-        // 3. HÀM MỚI/LOGIC MỚI: Đổ dữ liệu biến thể vào từng sản phẩm
         if (!empty($products)) {
-            // Lưu ý dấu & trước $pro để thay đổi trực tiếp giá trị trong mảng $products
             foreach ($products as &$pro) {
                 $pro['variants'] = $this->productModel->getVariantsByProductId($pro['product_id']);
             }
         }
 
-        // 4. Trả về kết quả cho Router (index.php) để render ra View
         return [
             'products' => $products,
             'categoryName' => $categoryName
         ];
     }
 
-    // Xử lý Bật/Tắt trạng thái giày
+    /**
+     * Bật/Tắt trạng thái kinh doanh của một sản phẩm
+     * Có kiểm tra ràng buộc: Không cho phép bật nếu Hãng mẹ đang bị tắt
+     */
     public function toggleStatus()
     {
         $this->checkManager();
@@ -58,13 +66,11 @@ class ProductController
         $currentStatus = $_POST['current_status'];
         $newStatus = ($currentStatus == 't' || $currentStatus == 1) ? 'f' : 't';
 
-        // KIỂM TRA: Nếu bồ muốn BẬT sản phẩm lẻ lên
         if ($newStatus === 't') {
             $categoryModel = new CategoryModel();
             $parentCat = $categoryModel->getById($category_id);
 
             if ($parentCat['status'] == 'f' || $parentCat['status'] == 0) {
-                // Đổi thành biến này để Javascript nhận diện hiện Alert trình duyệt
                 $_SESSION['browser_alert'] = "Không thể bật! Hãng giày này đang ngừng kinh doanh. Bạn phải bật hãng trước nhé!";
                 header("Location: " . $_SERVER['HTTP_REFERER']);
                 exit;
@@ -79,7 +85,10 @@ class ProductController
         exit;
     }
 
-    // Xử lý Xóa mềm
+    /**
+     * Xóa mềm sản phẩm (Chuyển trạng thái is_deleted = true)
+     * Giữ lại dữ liệu trong DB để đối soát AI và lịch sử
+     */
     public function softDelete()
     {
         $this->checkManager();
@@ -89,7 +98,9 @@ class ProductController
         exit;
     }
 
-    // tìm kiếm sản phẩm
+    /**
+     * API: Tìm kiếm sản phẩm nhanh trên thanh Topbar (AJAX)
+     */
     public function ajaxSearch()
     {
         $keyword = isset($_GET['keyword']) ? trim($_GET['keyword']) : '';
@@ -100,16 +111,10 @@ class ProductController
         }
 
         $results = $this->productModel->searchProducts($keyword);
-
-        // Trả về JSON để Javascript xử lý
         header('Content-Type: application/json');
         echo json_encode($results ? $results : []);
         exit;
     }
-
-
-    // thêm sản phẩm mới do nhân viên thực hiện
-    // app/controllers/ProductController.php
 
     public function add()
     {
@@ -120,58 +125,103 @@ class ProductController
                 exit;
             }
 
-            $category_id  = intval($_POST['category_id']);
-            $product_name = trim($_POST['product_name']);
-            $color        = trim($_POST['color']);
-            $size         = trim($_POST['size']);
-            $stock_input  = intval($_POST['stock']);
-
-            // Lấy tên hãng để đối soát
+            $db = $this->productModel->getConnection();
             $categoryModel = new CategoryModel();
-            $cat = $categoryModel->getById($category_id);
-            $brandName = $cat['category_name'];
 
-            // --- BƯỚC 1: ĐỐI SOÁT SẢN PHẨM (CHA) ---
-            $existingProduct = $this->productModel->findExistingProduct($brandName, $product_name);
+            pg_query($db, "BEGIN");
 
-            if ($existingProduct) {
-                $productId = $existingProduct['product_id'];
+            try {
+                // --- BƯỚC 1: XỬ LÝ HÃNG (ĐÃ CẬP NHẬT) ---
+                // Ưu tiên lấy brand_name từ ô input văn bản vì bồ đã mở khóa cho phép sửa
+                $brandName = isset($_POST['brand_name']) ? trim($_POST['brand_name']) : '';
 
-                // --- BƯỚC 2: ĐỐI SOÁT BIẾN THỂ (SIZE + MÀU) ---
-                $existingVariant = $this->productModel->findVariant($productId, $size, $color);
+                // Nếu người dùng không nhập tên hãng mới, thử lấy từ category_id ẩn (nếu có)
+                if (empty($brandName) && isset($_POST['category_id']) && intval($_POST['category_id']) > 0) {
+                    $cat = $categoryModel->getById(intval($_POST['category_id']));
+                    $brandName = $cat ? $cat['category_name'] : '';
+                }
 
-                if ($existingVariant) {
-                    // TRƯỜNG HỢP 1: Trùng sạch -> Cập nhật cộng dồn số lượng
-                    $this->productModel->addStock($existingVariant['variant_id'], $stock_input);
-                    $_SESSION['success'] = "✨ Sản phẩm đã có! Đã cộng dồn {$stock_input} đôi vào kho.";
+                if (empty($brandName)) {
+                    throw new Exception("Vui lòng nhập tên Hãng sản xuất!");
+                }
+
+                // Dùng tên hãng để lấy ID (Hàm này sẽ tự tạo hãng mới nếu chưa tồn tại)
+                $category_id = $categoryModel->getCategoryIdByName($brandName, $userId);
+
+                if (!$category_id) {
+                    throw new Exception("Không thể xác định hoặc tạo mới Hãng: " . $brandName);
+                }
+                // ------------------------------------------
+
+                // 2. LẤY THÔNG TIN CÒN LẠI
+                $product_name = trim($_POST['product_name']);
+                if (empty($product_name)) throw new Exception("Vui lòng nhập tên sản phẩm!");
+
+                $raw_color    = (isset($_POST['color']) && $_POST['color'] === 'new' && !empty($_POST['new_color'])) ? $_POST['new_color'] : $_POST['color'];
+                $color        = trim($this->normalizeColor($raw_color));
+                $size         = trim($_POST['size']);
+                $stock_input  = intval($_POST['stock']);
+                $vector_json  = isset($_POST['vector']) ? $_POST['vector'] : null;
+
+                $existingProduct = $this->productModel->findExistingProduct($brandName, $product_name);
+
+                if ($existingProduct) {
+                    // --- TRƯỜNG HỢP SẢN PHẨM ĐÃ TỒN TẠI ---
+                    $productId = $existingProduct['product_id'];
+                    $existingVariant = $this->productModel->findVariant($productId, $size, $color);
+
+                    if ($existingVariant) {
+                        $res = $this->productModel->addStock($existingVariant['variant_id'], $stock_input);
+                        if (!$res) throw new Exception("Lỗi cộng dồn kho!");
+                        $msg = "Sản phẩm đã có. Đã cập nhật số lượng cho hãng $brandName.";
+                    } else {
+                        $cleanName = $this->removeAccents($product_name);
+                        $sku = strtoupper(substr($brandName, 0, 2)) . "-" . strtoupper(substr($cleanName, 0, 3)) . "-" . $size;
+                        $res = $this->productModel->createVariant($productId, $size, $color, $stock_input, $sku);
+                        if (!$res) throw new Exception("Lỗi tạo biến thể mới!");
+                        $msg = "Đã thêm biến thể mới cho $product_name ($brandName).";
+                    }
                 } else {
-                    // TRƯỜNG HỢP 2: Giày đã có nhưng khác Size/Màu -> Tạo biến thể mới
+                    // --- TRƯỜNG HỢP TẠO MỚI HOÀN TOÀN ---
+                    $imageName = (!empty($_POST['temp_image_name']) && $_POST['temp_image_name'] !== 'undefined')
+                        ? $_POST['temp_image_name']
+                        : 'default_shoe.png';
+
+                    $productId = $this->productModel->create($product_name, $category_id, $imageName, $userId);
+                    if (!$productId) throw new Exception("Lỗi tạo sản phẩm mẫu!");
+
+                    // LƯU VECTOR VÀO DATABASE
+                    if ($vector_json && $vector_json !== 'undefined' && $vector_json !== 'null') {
+                        $vectorArray = json_decode($vector_json, true);
+                        if (is_array($vectorArray)) {
+                            $resVec = $this->productModel->updateImageEmbedding($productId, $vectorArray);
+                            if (!$resVec) throw new Exception("Lỗi lưu định danh AI vào DB!");
+                        }
+                    }
+
                     $cleanName = $this->removeAccents($product_name);
                     $sku = strtoupper(substr($brandName, 0, 2)) . "-" . strtoupper(substr($cleanName, 0, 3)) . "-" . $size;
+                    $resVar = $this->productModel->createVariant($productId, $size, $color, $stock_input, $sku);
+                    if (!$resVar) throw new Exception("Lỗi tạo biến thể mẫu!");
 
-                    $this->productModel->createVariant($productId, $size, $color, $stock_input, $sku);
-                    $_SESSION['success'] = "👟 Đã thêm biến thể mới (Size $size - $color) cho đôi $product_name.";
+                    $msg = "Khởi tạo sản phẩm mẫu AI thành công cho hãng $brandName ($imageName).";
                 }
-            } else {
-                // --- BƯỚC 3: SẢN PHẨM MỚI HOÀN TOÀN ---
-                $imageName = !empty($_POST['temp_image_name']) ? $_POST['temp_image_name'] : 'default_shoe.png';
-                $productId = $this->productModel->create($product_name, $category_id, $imageName, $userId);
 
-                if ($productId) {
-                    $cleanName = $this->removeAccents($product_name);
-                    $sku = strtoupper(substr($brandName, 0, 2)) . "-" . strtoupper(substr($cleanName, 0, 3)) . "-" . $size;
-
-                    $this->productModel->createVariant($productId, $size, $color, $stock_input, $sku);
-                    $_SESSION['success'] = "🆕 Đã nhập kho sản phẩm mới thành công!";
-                }
+                pg_query($db, "COMMIT");
+                $_SESSION['success'] = $msg;
+            } catch (Exception $e) {
+                pg_query($db, "ROLLBACK");
+                $_SESSION['error'] = "Nhập kho thất bại: " . $e->getMessage();
             }
 
             header("Location: index.php?page=products&category_id=" . $category_id);
             exit;
         }
     }
-
-    // Hàm chuẩn hóa màu sắc Đỏ -> Red để DB không bị loạn
+    /**
+     * Hàm phụ trợ: Chuẩn hóa dữ liệu màu sắc (Anh -> Việt)
+     * Tránh tình trạng rác dữ liệu DB do nhập liệu không nhất quán
+     */
     private function normalizeColor($color)
     {
         $color = strtolower(trim($color));
@@ -188,11 +238,12 @@ class ProductController
             'brown' => 'Nâu',
             'orange' => 'Cam'
         ];
-
-        // Nếu tìm thấy trong từ điển thì dịch, không thì viết hoa chữ cái đầu
         return $map[$color] ?? ucfirst($color);
     }
-    // Hàm phụ để khử dấu - Bồ dán cái này xuống DƯỚI hàm add() nhưng vẫn TRONG class nhé
+
+    /**
+     * Hàm phụ trợ: Loại bỏ dấu tiếng Việt để tạo mã SKU chuẩn
+     */
     private function removeAccents($str)
     {
         $accents = array(
@@ -209,113 +260,105 @@ class ProductController
         }
         return $str;
     }
-    // quét ảnh AI
-    // app/controllers/ProductController.php
 
+    /**
+     * API: Quét Batch Nhận diện hình ảnh bằng Local AI (Tối đa 3 ảnh)
+     * Trích xuất Vector -> Đo khoảng cách Cosine -> Trả về kết quả phân loại (Match/Confirm/New)
+     */
     public function scanWithAI()
     {
-        // 1. Chặn mọi output lạ lọt vào JSON (Fix triệt để lỗi Code 200)
         ob_start();
         header('Content-Type: application/json');
 
         try {
-            if (!isset($_FILES['image'])) {
-                throw new Exception("Không tìm thấy file ảnh gửi lên.");
+            if (!isset($_FILES['images']) || empty($_FILES['images']['name'][0])) {
+                throw new Exception("Không tìm thấy tệp tin hình ảnh.");
             }
 
             $vision = new VisionService();
             $dir = 'assets/img_product/';
             if (!is_dir($dir)) mkdir($dir, 0777, true);
 
-            $tempImageName = time() . '_' . uniqid() . '.jpg';
-            $tempPath = $dir . $tempImageName;
+            $results = [];
+            $files = $_FILES['images'];
+            $fileCount = count($files['name']);
+            $limit = min($fileCount, 3);
 
-            if (!move_uploaded_file($_FILES['image']['tmp_name'], $tempPath)) {
-                throw new Exception("Lỗi lưu file vào thư mục assets.");
-            }
+            for ($i = 0; $i < $limit; $i++) {
+                $tmpName = $files['tmp_name'][$i];
+                $tempImageName = time() . '_' . uniqid() . '.jpg';
+                $tempPath = $dir . $tempImageName;
 
-            // 2. Gọi AI lấy kết quả
-            $aiResponse = $vision->analyzeProductImage($tempPath);
+                if (!move_uploaded_file($tmpName, $tempPath)) {
+                    $results[] = ["status" => "error", "message" => "Lỗi lưu file cục bộ."];
+                    continue;
+                }
 
-            // --- BƯỚC QUAN TRỌNG: BÓC TÁCH JSON SẠCH SẼ ---
-            $ai = null;
-            if (is_array($aiResponse)) {
-                $ai = $aiResponse;
-            } else {
-                // Nếu AI trả về chuỗi, tìm và chỉ lấy phần nằm trong ngoặc nhọn { ... }
-                // Xóa bỏ mọi Markdown (```json) hoặc câu chữ thừa
-                if (preg_match('/\{.*\}/s', $aiResponse, $matches)) {
-                    $ai = json_decode($matches[0], true);
+                // 1. Gọi AI để lấy Vector
+                $aiResponse = $vision->generateVector($tempPath);
+
+                if ($aiResponse['status'] === 'success') {
+                    $vectorArray = $aiResponse['vector'];
+
+                    // 2. Gọi hàm mới: Lấy top 3 sản phẩm có độ tương đồng >= 80%
+                    $matches = $this->productModel->findTopMatchesByAI($vectorArray, 3);
+
+                    $itemData = [
+                        "temp_image" => $tempImageName,
+                        "vector"     => $vectorArray,
+                        "matches"    => $matches, // Trả về mảng để JS xử lý gợi ý
+                        "similarity" => 0,
+                        "status"     => "new"
+                    ];
+
+                    // 3. Phân loại kịch bản đối soát
+                    if (!empty($matches)) {
+                        $topMatch = $matches[0];
+                        $topScore = (float)$topMatch['similarity_score'];
+                        $itemData["similarity"] = round($topScore * 100, 2);
+
+                        if ($topScore >= 0.95) {
+                            // KỊCH BẢN 1: TỰ ĐIỀN (>= 95%)
+                            $itemData["status"] = "match";
+                            // Lấy thêm màu sắc của thằng giống nhất để hiện select
+                            $itemData["colors"] = $this->productModel->getColorsByProduct($topMatch['product_id']);
+                            // Gán thêm thông tin product để JS tự fill vào form ngay lập tức
+                            $itemData["product"] = $topMatch;
+                        } else {
+                            // KỊCH BẢN 2: HIỆN GỢI Ý (80% - 94%)
+                            $itemData["status"] = "confirm";
+                        }
+                    }
+                    // KỊCH BẢN 3: MỚI HOÀN TOÀN (< 80%) -> status mặc định là "new"
+
+                    $results[] = $itemData;
                 } else {
-                    $ai = json_decode($aiResponse, true);
+                    $results[] = [
+                        "status" => "error",
+                        "message" => "AI Error: " . substr($aiResponse['message'], 0, 100)
+                    ];
                 }
             }
 
-            // 3. Xử lý dữ liệu
-            if ($ai && ($ai['status'] ?? '') === 'success') {
-
-                // Làm sạch Brand & Model (Xóa sạch mọi dấu ngoặc kép, ký tự lạ)
-                $cleanBrand = preg_replace('/[^\p{L}0-9\s]/u', '', $ai['brand'] ?? 'Unknown');
-                $cleanModel = preg_replace('/[^\p{L}0-9\s]/u', '', $ai['model'] ?? 'Shoe');
-
-                // Xóa khoảng trắng thừa
-                $detectedBrand = trim(preg_replace('/\s+/', ' ', $cleanBrand));
-                $detectedModel = trim(preg_replace('/\s+/', ' ', $cleanModel));
-
-                // NHẬN DIỆN MÀU: Lấy từ AI và đưa qua hàm chuẩn hóa
-                $rawColor = $ai['color'] ?? 'Trắng'; // Nếu AI quên màu, mặc định là Trắng
-                $color = $this->normalizeColor($rawColor);
-
-                // Đối soát DB
-                $match = $this->productModel->findExistingProduct($detectedBrand, $detectedModel);
-
-                // Xóa bộ đệm ngay trước khi xuất JSON để đảm bảo 100% sạch
-                ob_clean();
-
-                if ($match) {
-                    echo json_encode([
-                        "status" => "exists",
-                        "product" => $match,
-                        "detected_color" => $color,
-                        "temp_image" => $tempImageName
-                    ]);
-                } else {
-                    echo json_encode([
-                        "status" => "new",
-                        "suggestion" => [
-                            "brand" => $detectedBrand,
-                            "model" => $detectedModel,
-                            "color" => $color
-                        ],
-                        "temp_image" => $tempImageName
-                    ]);
-                }
-            } else {
-                throw new Exception($ai['message'] ?? "AI trả về dữ liệu không hợp lệ: " . json_encode($aiResponse));
-            }
-        } catch (Exception $e) {
             ob_clean();
-            echo json_encode(["error" => $e->getMessage()]);
+            echo json_encode(["status" => "success", "data" => $results]);
+        } catch (Exception $e) {
+            if (ob_get_length()) ob_clean();
+            echo json_encode(["status" => "error", "message" => $e->getMessage()]);
         }
         exit;
     }
-
-
-    // trả về danh sách màu
+    /**
+     * API: Lấy danh sách màu sắc của một sản phẩm (AJAX)
+     */
     public function getColorsAjax()
     {
-        ob_start(); // Bắt đầu gom rác
+        ob_start();
         header('Content-Type: application/json');
 
         try {
             $product_id = isset($_GET['product_id']) ? intval($_GET['product_id']) : 0;
-
-            if ($product_id > 0) {
-                $colors = $this->productModel->getColorsByProduct($product_id);
-            } else {
-                $colors = [];
-            }
-
+            $colors = ($product_id > 0) ? $this->productModel->getColorsByProduct($product_id) : [];
             ob_clean();
             echo json_encode($colors);
         } catch (Exception $e) {
