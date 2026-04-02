@@ -242,7 +242,7 @@
 </style>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // --- LOGIC TÌM KIẾM ---
+        // --- GIỮ NGUYÊN LOGIC TÌM KIẾM ---
         const searchInput = document.getElementById('mainSearch');
         const resultsBox = document.getElementById('searchResults');
 
@@ -273,157 +273,145 @@
         });
     });
 
-    /* =====================================================================
-       CÁC HÀM CŨ (ĐÃ THAY THẾ) - LƯU TRỮ ĐỂ BÁO CÁO KHÓA LUẬN
-       =====================================================================
-    async function compressImageAI(file) { ... }
-    async function handleScanAIFromTopbar() { ... }
-    function handleBatchScan() { ... (phiên bản render HTML đồng loạt) }
-    ===================================================================== */
-
-    // --- LOGIC GIAO DIỆN MASTER-DETAIL KÈM TÍNH NĂNG XÓA ẢNH TẠM ---
-
+    // --- BIẾN TOÀN CỤC ---
     let globalScannedData = [];
     let currentSelectedIndex = 0;
-
-    // MẢNG ẢO: Lưu trữ các file đang được chọn để dễ dàng thêm/xóa
     let selectedFilesArray = [];
 
-    /**
-     * Bắt sự kiện người dùng chọn ảnh: Đưa vào mảng ảo (Tối đa 3)
-     */
     function previewSelectedImages(input) {
         const newFiles = Array.from(input.files);
-
         for (let file of newFiles) {
             if (selectedFilesArray.length < 3) {
                 selectedFilesArray.push(file);
             } else {
                 alert("Hệ thống chỉ hỗ trợ xử lý tối đa 3 chứng từ/hình ảnh cùng lúc.");
-                break; // Ngừng vòng lặp nếu đã đủ 3 ảnh
+                break;
             }
         }
-
-        // Reset thẻ input để có thể chọn lại file vừa xóa nếu muốn
         input.value = '';
-
-        // Vẽ danh sách ảnh lên màn hình
         renderPreScanThumbnails();
     }
 
-    /**
-     * Hiển thị ảnh thu nhỏ KÈM NÚT XÓA ở Cột Trái trước khi Quét
-     */
     function renderPreScanThumbnails() {
         const container = document.getElementById('pre_scan_preview');
         container.innerHTML = '';
-
         selectedFilesArray.forEach((file, index) => {
             const fileUrl = URL.createObjectURL(file);
             container.innerHTML += `
                 <div class="position-relative border border-secondary rounded-1 bg-white" style="width: 120px; height: 120px;">
                     <img src="${fileUrl}" style="width: 100%; height: 100%; object-fit: contain; background-color: #f8f9fa;">
-                    
                     <button type="button" class="btn btn-danger p-0 position-absolute border border-white" 
                             style="top: 4px; right: 4px; width: 22px; height: 22px; font-size: 12px; font-weight: bold; border-radius: 2px;"
-                            onclick="removeSelectedFile(${index})" title="Loại bỏ ảnh này">
-                        X
-                    </button>
-                </div>
-            `;
+                            onclick="removeSelectedFile(${index})" title="Loại bỏ ảnh này">X</button>
+                </div>`;
         });
     }
 
-    /**
-     * Xóa 1 ảnh khỏi mảng ảo dựa vào vị trí Index
-     */
     function removeSelectedFile(index) {
         selectedFilesArray.splice(index, 1);
         renderPreScanThumbnails();
     }
 
-    /**
-     * Đóng gói ảnh từ mảng ảo gửi lên Server và lấy kết quả
-     */
     async function executeBatchScan() {
         if (selectedFilesArray.length === 0) return alert("Vui lòng đính kèm tệp hình ảnh để xử lý.");
-
         const btn = document.getElementById('btn-scan-batch');
         const formContainer = document.getElementById('active_form_container');
         const preScanArea = document.getElementById('pre_scan_preview');
 
-        // Khóa giao diện trong lúc chờ
         btn.disabled = true;
         btn.innerHTML = 'ĐANG XỬ LÝ...';
-
-        // Xóa phần preview có nút X đi, chuyển sang trạng thái đã quét
         preScanArea.innerHTML = '';
         document.getElementById('post_scan_area').classList.add('d-none');
-
         formContainer.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-secondary mb-3"></div><p class="fw-bold text-dark">Hệ thống đang truy xuất dữ liệu kho...</p></div>';
 
         const fd = new FormData();
-        // Lấy ảnh từ mảng ảo (selectedFilesArray) chứ không lấy từ input.files nữa
         selectedFilesArray.forEach(f => fd.append('images[]', f));
 
         try {
-            const response = await fetch('index.php?page=products&action=scan-ai', {
-                method: 'POST',
-                body: fd
-            });
+            const response = await fetch('index.php?page=products&action=scan-ai', { method: 'POST', body: fd });
             const res = await response.json();
-
             if (res.status === 'success') {
                 globalScannedData = res.data;
                 renderThumbnails();
-                if (globalScannedData.length > 0) {
-                    loadFormForIndex(0);
-                }
+                if (globalScannedData.length > 0) loadFormForIndex(0);
             } else {
                 alert("Lỗi xử lý: " + res.message);
                 formContainer.innerHTML = '<div class="text-center py-5 fw-bold text-danger">Tiến trình thất bại.</div>';
             }
         } catch (e) {
             alert("Mất kết nối máy chủ.");
-            formContainer.innerHTML = '<div class="text-center py-5 fw-bold text-danger">Mất kết nối máy chủ.</div>';
         } finally {
             btn.disabled = false;
             btn.innerHTML = 'BẮT ĐẦU XỬ LÝ';
         }
     }
 
-    /**
-     * Vẽ danh sách ảnh thu nhỏ bên cột Trái SAU KHI ĐÃ QUÉT
-     */
     function renderThumbnails() {
-        document.getElementById('post_scan_area').classList.remove('d-none');
+        const postScanArea = document.getElementById('post_scan_area');
         const container = document.getElementById('scanned_thumbnails');
-        container.innerHTML = '';
+        
+        // NẾU HẾT DỮ LIỆU THÌ HIỆN THÔNG BÁO HOÀN TẤT
+        if (globalScannedData.length === 0) {
+            postScanArea.classList.add('d-none');
+            document.getElementById('active_form_container').innerHTML = `
+                <div class="text-center py-5">
+                    <h4 class="text-success fw-bold">HOÀN TẤT!</h4>
+                    <p>Đã nhập kho xong toàn bộ sản phẩm.</p>
+                    <button class="btn btn-dark btn-sm rounded-1" onclick="window.location.reload()">CẬP NHẬT DANH SÁCH KHO</button>
+                </div>`;
+            return;
+        }
 
+        postScanArea.classList.remove('d-none');
+        container.innerHTML = '';
         globalScannedData.forEach((item, index) => {
             let borderClass = (index === currentSelectedIndex) ? 'border-dark border-3 opacity-100 shadow' : 'border-secondary opacity-50';
-
-            // Sinh URL tạm từ file đang giữ trong mảng ảo
             let localUrl = URL.createObjectURL(selectedFilesArray[index]);
-
-            container.innerHTML += `
-                <img src="${localUrl}" 
-                     onclick="loadFormForIndex(${index})" 
-                     class="rounded-1 border ${borderClass}" 
-                     style="width: 100px; height: 100px; object-fit:contain; background-color:#f8f9fa; cursor:pointer; transition: 0.2s;">
-            `;
+            container.innerHTML += `<img src="${localUrl}" onclick="loadFormForIndex(${index})" class="rounded-1 border ${borderClass}" style="width: 100px; height: 100px; object-fit:contain; background-color:#f8f9fa; cursor:pointer; transition: 0.2s;">`;
         });
     }
 
-    /**
-     * Tải Biểu mẫu (Form) nhập liệu cho Ảnh được Click
-     */
-    /**
-     * Tải Biểu mẫu (Form) nhập liệu cho Ảnh được Click
-     */
-    /**
-     * Tải Biểu mẫu (Form) nhập liệu cho Ảnh được Click
-     */
+    // --- HÀM LƯU AJAX (GIẢI QUYẾT VẤN ĐỀ CỦA BẠN) ---
+    async function saveProductByAJAX(event, form) {
+        event.preventDefault(); // CHẶN LOAD TRANG
+        
+        const btn = form.querySelector('button[type="submit"]');
+        const formData = new FormData(form);
+        formData.append('add_product', '1');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> ĐANG LƯU...';
+
+        try {
+            const response = await fetch('index.php?page=products&action=add', { method: 'POST', body: formData });
+            const res = await response.json();
+
+            if (res.status === 'success') {
+                // 1. Xóa dữ liệu của ảnh vừa lưu thành công
+                globalScannedData.splice(currentSelectedIndex, 1);
+                selectedFilesArray.splice(currentSelectedIndex, 1);
+
+                alert("Lưu thành công!");
+
+                // 2. Load ảnh kế tiếp (nếu còn)
+                if (globalScannedData.length > 0) {
+                    currentSelectedIndex = 0; // Quay về index đầu tiên của mảng mới
+                    loadFormForIndex(0);
+                } else {
+                    renderThumbnails(); // Sẽ hiện màn hình Hoàn tất
+                }
+            } else {
+                alert("Lỗi: " + res.message);
+                btn.disabled = false;
+                btn.innerHTML = 'XÁC NHẬN LƯU DỮ LIỆU';
+            }
+        } catch (e) {
+            alert("Lỗi hệ thống, vui lòng thử lại.");
+            btn.disabled = false;
+        }
+    }
+
+    // --- GIỮ NGUYÊN TOÀN BỘ LOGIC FORM CŨ CỦA BẠN ---
     function loadFormForIndex(index) {
         currentSelectedIndex = index;
         renderThumbnails();
@@ -435,7 +423,6 @@
         const vectorStr = (item.vector && Array.isArray(item.vector)) ? JSON.stringify(item.vector) : "";
         const imageName = item.temp_image || selectedFilesArray[index].name;
 
-        // Lấy danh sách matches từ AI trả về (Phần này bồ cần update ở PHP trả về mảng matches)
         const matches = item.matches || [];
         const topMatch = matches.length > 0 ? matches[0] : null;
         const topScore = topMatch ? Math.round(topMatch.similarity_score * 100) : 0;
@@ -445,117 +432,51 @@
         let alertMessage = "";
         let suggestionHtml = "";
 
-        // --- CHIA KỊCH BẢN XỬ LÝ AI ---
-
+        // GIỮ NGUYÊN LOGIC PHÂN LOẠI AI CỦA BẠN
         if (topScore >= 95) {
-            // KỊCH BẢN 1: TRÊN 95% -> TỰ ĐIỀN
-            alertMessage = `<div class="alert alert-success py-2 border-success rounded-1 mb-3">
-                                <i class="fas fa-check-circle me-2"></i><strong>AI XÁC THỰC:</strong> Khớp tuyệt đối (${topScore}%).
-                            </div>`;
+            alertMessage = `<div class="alert alert-success py-2 border-success rounded-1 mb-3"><i class="fas fa-check-circle me-2"></i><strong>AI XÁC THỰC:</strong> Khớp tuyệt đối (${topScore}%).</div>`;
             defaultBrand = topMatch.brand;
             defaultName = topMatch.product_name;
         } else if (topScore >= 80) {
-            // KỊCH BẢN 2: 80% - 94% -> HIỆN DANH SÁCH GỢI Ý
-            alertMessage = `<div class="alert alert-info py-2 border-info rounded-1 mb-3">
-                                <i class="fas fa-lightbulb me-2"></i><strong>AI GỢI Ý:</strong> Tìm thấy các mẫu gần giống (${topScore}%). Click để chọn:
-                            </div>`;
-
+            alertMessage = `<div class="alert alert-info py-2 border-info rounded-1 mb-3"><i class="fas fa-lightbulb me-2"></i><strong>AI GỢI Ý:</strong> Tìm thấy các mẫu gần giống (${topScore}%). Click để chọn:</div>`;
             suggestionHtml = `<div class="suggestion-list mb-3 p-2 border rounded bg-white" style="max-height: 150px; overflow-y: auto;">`;
-            matches.forEach((m, i) => {
-                suggestionHtml += `
-                    <div class="d-flex align-items-center p-2 border-bottom hover-bg-light" style="cursor:pointer;" 
-                         onclick="fillFormFromSuggestion('${m.brand}', '${m.product_name}')">
-                        <img src="assets/img_product/${m.product_image}" style="width:40px; height:40px; object-fit:cover;" class="me-2 rounded">
-                        <div style="font-size: 11px;">
-                            <span class="fw-bold d-block">${m.product_name}</span>
-                            <span class="text-muted">${m.brand} - Khớp ${Math.round(m.similarity_score * 100)}%</span>
-                        </div>
-                    </div>`;
+            matches.forEach((m) => {
+                suggestionHtml += `<div class="d-flex align-items-center p-2 border-bottom hover-bg-light" style="cursor:pointer;" onclick="fillFormFromSuggestion('${m.brand}', '${m.product_name}')"><img src="assets/img_product/${m.product_image}" style="width:40px; height:40px; object-fit:cover;" class="me-2 rounded"><div style="font-size: 11px;"><span class="fw-bold d-block">${m.product_name}</span><span class="text-muted">${m.brand} - Khớp ${Math.round(m.similarity_score * 100)}%</span></div></div>`;
             });
             suggestionHtml += `</div>`;
         } else {
-            // KỊCH BẢN 3: DƯỚI 80% -> TRỐNG
-            alertMessage = `<div class="alert alert-warning py-2 border-warning rounded-1 mb-3">
-                                <i class="fas fa-plus-circle me-2"></i><strong>MẪU MỚI:</strong> Không tìm thấy dữ liệu cũ tương đồng.
-                            </div>`;
+            alertMessage = `<div class="alert alert-warning py-2 border-warning rounded-1 mb-3"><i class="fas fa-plus-circle me-2"></i><strong>MẪU MỚI:</strong> Không tìm thấy dữ liệu cũ tương đồng.</div>`;
         }
 
-        // Render Form (Luôn cho phép sửa)
+        // CHỈ THAY ĐỔI FORM ONSUBMIT
         container.innerHTML = `
-            <form action="index.php?page=products&action=add" method="POST">
+            <form onsubmit="saveProductByAJAX(event, this)">
                 ${alertMessage}
                 ${suggestionHtml}
-                
                 <input type="hidden" name="vector" value='${vectorStr}'>
                 <input type="hidden" name="temp_image_name" value="${imageName}">
-                
                 <div class="row mb-3 align-items-center">
                     <div class="col-md-3"><label class="fw-bold text-secondary small">ẢNH GỐC:</label></div>
-                    <div class="col-md-9">
-                        <img src="${localUrl}" class="border border-secondary rounded-1" style="width: 80px; height: 80px; object-fit:contain; background-color: #f8f9fa;">
-                    </div>
+                    <div class="col-md-9"><img src="${localUrl}" class="border border-secondary rounded-1" style="width: 80px; height: 80px; object-fit:contain; background-color: #f8f9fa;"></div>
                 </div>
-
-                <div class="mb-3">
-                    <label class="fw-bold text-secondary small mb-1">HÃNG SẢN XUẤT:</label>
-                    <input type="text" id="input_brand" name="brand_name" class="form-control border-dark rounded-1 shadow-sm" 
-                           value="${defaultBrand}" placeholder="Nhập hãng (VD: Nike)" required>
-                </div>
-
-                <div class="mb-3">
-                    <label class="fw-bold text-secondary small mb-1">TÊN DÒNG SẢN PHẨM:</label>
-                    <input type="text" id="input_product_name" name="product_name" class="form-control fw-bold border-dark rounded-1 shadow-sm" 
-                           value="${defaultName}" placeholder="Nhập tên giày" required>
-                </div>
-
+                <div class="mb-3"><label class="fw-bold text-secondary small mb-1">HÃNG SẢN XUẤT:</label><input type="text" id="input_brand" name="brand_name" class="form-control border-dark rounded-1 shadow-sm" value="${defaultBrand}" placeholder="Nhập hãng (VD: Nike)" required></div>
+                <div class="mb-3"><label class="fw-bold text-secondary small mb-1">TÊN DÒNG SẢN PHẨM:</label><input type="text" id="input_product_name" name="product_name" class="form-control fw-bold border-dark rounded-1 shadow-sm" value="${defaultName}" placeholder="Nhập tên giày" required></div>
                 <div class="row mb-3">
-                    <div class="col-md-6">
-                         <label class="fw-bold text-secondary small mb-1">MÀU SẮC:</label>
-                         <input type="text" name="color" class="form-control border-dark fw-bold rounded-1" placeholder="Màu sắc" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="fw-bold text-secondary small mb-1">SIZE:</label>
-                        <input type="number" name="size" class="form-control fw-bold text-center border-secondary rounded-1" required>
-                    </div>
+                    <div class="col-md-6"><label class="fw-bold text-secondary small mb-1">MÀU SẮC:</label><input type="text" name="color" class="form-control border-dark fw-bold rounded-1" placeholder="Màu sắc" required></div>
+                    <div class="col-md-6"><label class="fw-bold text-secondary small mb-1">SIZE:</label><input type="number" name="size" class="form-control fw-bold text-center border-secondary rounded-1" required></div>
                 </div>
-
-                <div class="mb-4">
-                    <label class="fw-bold text-secondary small mb-1">SỐ LƯỢNG NHẬP KHO:</label>
-                    <input type="number" name="stock" class="form-control fw-bold text-center border-secondary rounded-1" value="1" min="1" required>
-                </div>
-
-                <button type="submit" name="add_product" class="btn btn-dark w-100 fw-bold rounded-1 py-2 shadow-sm">
-                    XÁC NHẬN LƯU DỮ LIỆU
-                </button>
-            </form>
-        `;
+                <div class="mb-4"><label class="fw-bold text-secondary small mb-1">SỐ LƯỢNG NHẬP KHO:</label><input type="number" name="stock" class="form-control fw-bold text-center border-secondary rounded-1" value="1" min="1" required></div>
+                <button type="submit" class="btn btn-dark w-100 fw-bold rounded-1 py-2 shadow-sm">XÁC NHẬN LƯU DỮ LIỆU</button>
+            </form>`;
     }
 
-    /**
-     * Hàm điền dữ liệu khi người dùng chọn từ danh sách gợi ý
-     */
     function fillFormFromSuggestion(brand, name) {
         document.getElementById('input_brand').value = brand;
         document.getElementById('input_product_name').value = name;
-        // Hiệu ứng nháy nhẹ để người dùng biết đã điền
         const inputs = [document.getElementById('input_brand'), document.getElementById('input_product_name')];
         inputs.forEach(el => {
             el.style.backgroundColor = '#e8f0fe';
             setTimeout(() => el.style.backgroundColor = '', 500);
         });
-    }
-    /**
-     * Bật/tắt ô nhập tay khi người dùng chọn "Khai báo màu mới"
-     */
-    function toggleNewColor(selectObj) {
-        const input = selectObj.nextElementSibling;
-        if (selectObj.value === 'new') {
-            input.classList.remove('d-none');
-            input.required = true;
-            input.focus();
-        } else {
-            input.classList.add('d-none');
-            input.required = false;
-        }
     }
 </script>

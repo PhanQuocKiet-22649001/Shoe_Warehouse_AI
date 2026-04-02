@@ -4,53 +4,42 @@
     </div>
 
     <div class="menu">
-        <p class="menu-title">MENU CHÍNH (QUẢN LÝ)</p>
+        <p class="menu-title">MENU CHÍNH</p>
 
         <ul>
-            <ul>
+            <?php if (isset($_SESSION['role']) && strtoupper($_SESSION['role']) === 'MANAGER'): ?>
                 <li class="<?= $page === 'dashboard' ? 'active' : '' ?>" style="margin-bottom: 15px;">
-                    <a href="index.php?page=dashboard">
-                        Tổng quan
-                    </a>
+                    <a href="index.php?page=dashboard">Tổng quan</a>
                 </li>
+            <?php endif; ?>
 
-                <li class="<?= $page === 'categories' ? 'active' : '' ?>" style="margin-bottom: 15px;">
-                    <a href="index.php?page=categories">
-                        Quản lý danh mục
-                    </a>
+            <li class="<?= $page === 'categories' ? 'active' : '' ?>" style="margin-bottom: 15px;">
+                <a href="index.php?page=categories">Quản lý danh mục</a>
+            </li>
+
+            <li style="margin-bottom: 15px;">
+                <a href="#" class="<?= $page === 'requests' ? 'active' : '' ?>">Yêu cầu xuất kho</a>
+            </li>
+
+            <li style="margin-bottom: 15px;">
+                <a href="#" class="<?= $page === 'inventory' ? 'active' : '' ?>">Tìm kiếm & Tồn kho</a>
+            </li>
+
+            <?php if (isset($_SESSION['role']) && strtoupper($_SESSION['role']) === 'MANAGER'): ?>
+                
+                <li class="<?= $page === 'employees' ? 'active' : '' ?>" style="margin-bottom: 15px;">
+                    <a href="index.php?page=employees">Quản lí Nhân viên</a>
                 </li>
-
-                <?php if (isset($_SESSION['role']) && strtoupper($_SESSION['role']) === 'MANAGER'): ?>
-                    <li class="<?= $page === 'employees' ? 'active' : '' ?>" style="margin-bottom: 15px;">
-                        <a href="index.php?page=employees">
-                            Quản lí Nhân viên
-                        </a>
-                    </li>
-                <?php endif; ?>
-
-                <li style="margin-bottom: 15px;">
-                    <a href="#" class="<?= $page === '' ? 'active' : '' ?>">
-                        Yêu cầu xuất kho
-                    </a>
-                </li>
-
 
                 <li style="margin-bottom: 15px;">
-                    <a href="#" class="<?= $page === '' ? 'active' : '' ?>">
-                        Tìm kiếm & Tồn kho
-                    </a>
+                    <a href="index.php?page=report" class="<?= $page === 'report' ? 'active' : '' ?>">Thống kê báo cáo</a>
                 </li>
+
                 <li style="margin-bottom: 15px;">
-                    <a href="#" class="<?= $page === '' ? 'active' : '' ?>">
-                        Báo cáo Nhập-Xuất
-                    </a>
+                    <a href="#" class="<?= $page === 'ai-prediction' ? 'active' : '' ?>">AI Dự báo & Gợi ý</a>
                 </li>
-                <li style="margin-bottom: 15px;">
-                    <a href="#" class="<?= $page === '' ? 'active' : '' ?>">
-                        AI Dự báo & Gợi ý
-                    </a>
-                </li>
-            </ul>
+
+            <?php endif; ?>
         </ul>
     </div>
 

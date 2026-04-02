@@ -1,35 +1,39 @@
 <?php
 session_start();
 
-// 1. Gọi Database & Models trước (Sửa lỗi "Class not found")
+// 1. Gọi Database & Models trước
 require_once '../config/database.php';
 require_once '../app/models/UserModel.php';
 require_once '../app/models/CategoryModel.php';
 require_once '../app/models/ProductModel.php';
+require_once '../app/models/ReportModel.php';
 
 // 2. Gọi Controllers
 require_once '../app/controllers/AuthController.php';
 require_once '../app/controllers/UserController.php';
 require_once '../app/controllers/CategoryController.php';
 require_once '../app/controllers/ProductController.php';
+require_once '../app/controllers/ReportController.php';
 
-// 3. Khởi tạo Controllers
-$authController = new AuthController();
-$userController = new UserController();
-$categoryController = new CategoryController();
-$productController = new ProductController();
-
-// ===== XỬ LÝ LOGIN =====
+// ===== XỬ LÝ LOGIN (Phải xử lý trước khi kiểm tra Session) =====
+$authController = new AuthController(); // Chỉ khởi tạo Auth trước
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_SESSION['user_id'])) {
     $error = $authController->handleLogin();
 }
 
 // ===== KIỂM TRA ĐĂNG NHẬP =====
+// Nếu chưa có session, chỉ hiện trang login rồi dừng luôn tại đây
 if (!isset($_SESSION['user_id'])) {
     require_once __DIR__ . '/../app/views/pages/login.php';
     exit;
 }
+
+// ===== KHỞI TẠO CÁC CONTROLLER CÒN LẠI (Chỉ khi đã đăng nhập thành công) =====
+$userController = new UserController();
+$categoryController = new CategoryController();
+$productController = new ProductController();
+$reportController = new ReportController();
 
 // ===== XỬ LÝ LOGOUT =====
 if (isset($_POST['logout'])) {
@@ -41,17 +45,14 @@ if (isset($_POST['logout'])) {
 
 $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
 
+// ===== XỬ LÝ AJAX =====
 if ($page === 'search_ajax') {
     $productController->ajaxSearch();
-    exit; // Dừng chương trình ngay, không cho chạy xuống phần HTML bên dưới
+    exit;
 }
 
 // ===== 4. XỬ LÝ CÁC YÊU CẦU POST =====
-// public/index.php
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    // 1. CHỈ XỬ LÝ THEO TRANG (Phân luồng chính xác)
     if ($page === 'employees') {
         if (isset($_POST['add_user'])) {
             $userController->add();
@@ -75,24 +76,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
     } elseif ($page === 'products') {
-        // 1. Quét AI (Xử lý trước)
         if (isset($_GET['action']) && $_GET['action'] === 'scan-ai') {
             $productController->scanWithAI();
             exit;
         }
-        // 2. Lưu sản phẩm
         if (isset($_POST['add_product'])) {
             $productController->add();
             exit;
         }
-        // 3. Trạng thái/Xóa
         if (isset($_POST['toggle_status'])) {
             $productController->toggleStatus();
             exit;
         }
+        if (isset($_POST['export_stock'])) {
+            $productController->exportStock();
+            exit;
+        }
+        if (isset($_GET['action']) && $_GET['action'] === 'toggle_variant_status') {
+            $productController->toggleVariantStatus();
+            exit;
+        }
+        if (isset($_GET['action']) && $_GET['action'] === 'delete_variant') {
+            $productController->deleteVariant();
+            exit;
+        }
+    } elseif ($page === 'report') {
+        if (isset($_POST['btn_filter_date'])) {
+            $reportController->filterByDate($_POST['start_date'], $_POST['end_date']);
+            exit;
+        }
     }
 
-    // 2. CÁC HÀNH ĐỘNG CHUNG (Để ở ngoài cùng khối POST)
     if (isset($_POST['btn_update_profile'])) {
         $userController->UpdateProfile();
         exit;
@@ -115,18 +129,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 
 <body class="m-0 p-0">
-
     <div class="app">
         <?php require_once __DIR__ . '/../app/views/layouts/sidebar.php'; ?>
-
         <div class="main">
             <?php include __DIR__ . '/../app/views/layouts/header.php'; ?>
-
             <div class="content">
                 <div class="page-body">
                     <?php
                     switch ($page) {
-
                         case 'employees':
                             if ($_SESSION['role'] !== 'MANAGER') {
                                 header("Location: index.php?page=dashboard");
@@ -137,14 +147,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             break;
 
                         case 'categories':
-                            // Lấy danh sách hãng giày để hiển thị
                             $categories = $categoryController->loadCategories();
                             require_once __DIR__ . '/../app/views/pages/categories.php';
-                            break;
-
-                        case 'dashboard':
-                        default:
-                            require_once __DIR__ . '/../app/views/pages/dashboard.php';
                             break;
 
                         case 'products':
@@ -153,6 +157,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $categoryName = $data['categoryName'];
                             require_once __DIR__ . '/../app/views/pages/products.php';
                             break;
+
+                        case 'report':
+                            $data = $reportController->statistics();
+                            extract($data);
+                            require_once __DIR__ . '/../app/views/pages/report.php';
+                            break;
+
+                        case 'dashboard':
+                        default:
+                            // Đổ dữ liệu thống kê vào dashboard
+                            $data = $reportController->index();
+                            extract($data);
+                            require_once __DIR__ . '/../app/views/pages/dashboard.php';
+                            break;
                     }
                     ?>
                 </div>
@@ -160,7 +178,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php include __DIR__ . '/../app/views/layouts/footer.php'; ?>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 

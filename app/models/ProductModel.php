@@ -232,4 +232,56 @@ class ProductModel
 
         return $result ? pg_fetch_all($result) : [];
     }
+
+
+    /**
+     * Trừ số lượng tồn kho (Xuất kho)
+     */
+    public function removeStock($variant_id, $quantity)
+    {
+        // Chỉ trừ nếu số lượng xuất <= số lượng tồn
+        $sql = "UPDATE product_variants SET stock = stock - $1 
+            WHERE variant_id = $2 AND stock >= $1";
+        return pg_query_params($this->conn, $sql, [(int)$quantity, (int)$variant_id]);
+    }
+
+
+    /**
+     * Ghi lại lịch sử giao dịch (Nhập/Xuất)
+     */
+    public function logTransaction($type, $variant_id, $quantity, $user_id)
+    {
+        $sql = "INSERT INTO transactions (transaction_type, variant_id, quantity, user_id) 
+            VALUES ($1, $2, $3, $4)";
+        return pg_query_params($this->conn, $sql, [$type, (int)$variant_id, (int)$quantity, (int)$user_id]);
+    }
+
+
+    /**
+     * Cập nhật trạng thái Bật/Tắt của biến thể (Status)
+     */
+    public function updateVariantStatus($variantId, $status)
+    {
+        // PostgreSQL hiểu chuỗi 'true' hoặc 'false' cho kiểu boolean
+        $sql = "UPDATE product_variants 
+                SET status = $1 
+                WHERE variant_id = $2";
+        
+        $result = pg_query_params($this->conn, $sql, [$status, (int)$variantId]);
+        return $result ? true : false;
+    }
+
+    /**
+     * Xóa mềm biến thể (Đưa vào thùng rác)
+     */
+    public function softDeleteVariant($variantId)
+    {
+        // Xóa mềm: is_deleted = true và tắt luôn status = false
+        $sql = "UPDATE product_variants 
+                SET is_deleted = true, status = false 
+                WHERE variant_id = $1";
+                
+        $result = pg_query_params($this->conn, $sql, [(int)$variantId]);
+        return $result ? true : false;
+    }
 }

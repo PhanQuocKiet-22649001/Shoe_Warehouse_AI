@@ -27,6 +27,18 @@ class ProductController
     }
 
     /**
+     * Middleware: Kiểm tra quyền Nhân viên (STAFF)
+     */
+    private function checkStaff()
+    {
+        if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'STAFF') {
+            $_SESSION['error'] = "Chỉ nhân viên (STAFF) mới có quyền xuất kho!";
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+    }
+
+    /**
      * Hiển thị danh sách sản phẩm theo danh mục (Hãng giày)
      * Tự động lồng ghép danh sách biến thể (size, màu) vào từng sản phẩm
      */
@@ -118,10 +130,15 @@ class ProductController
 
     public function add()
     {
+        $this->checkStaff();
         if (isset($_POST['add_product'])) {
+            // --- BẮT ĐẦU: Dọn rác để trả về JSON sạch ---
+            if (ob_get_length()) ob_clean();
+            header('Content-Type: application/json');
+
             $userId = $_SESSION['user_id'] ?? null;
             if (!$userId) {
-                header("Location: index.php?page=login");
+                echo json_encode(["status" => "error", "message" => "Hết phiên đăng nhập!"]);
                 exit;
             }
 
@@ -131,11 +148,9 @@ class ProductController
             pg_query($db, "BEGIN");
 
             try {
-                // --- BƯỚC 1: XỬ LÝ HÃNG (ĐÃ CẬP NHẬT) ---
-                // Ưu tiên lấy brand_name từ ô input văn bản vì bồ đã mở khóa cho phép sửa
+                // --- BƯỚC 1: XỬ LÝ HÃNG (GIỮ NGUYÊN LOGIC CŨ) ---
                 $brandName = isset($_POST['brand_name']) ? trim($_POST['brand_name']) : '';
 
-                // Nếu người dùng không nhập tên hãng mới, thử lấy từ category_id ẩn (nếu có)
                 if (empty($brandName) && isset($_POST['category_id']) && intval($_POST['category_id']) > 0) {
                     $cat = $categoryModel->getById(intval($_POST['category_id']));
                     $brandName = $cat ? $cat['category_name'] : '';
@@ -145,78 +160,127 @@ class ProductController
                     throw new Exception("Vui lòng nhập tên Hãng sản xuất!");
                 }
 
-                // Dùng tên hãng để lấy ID (Hàm này sẽ tự tạo hãng mới nếu chưa tồn tại)
                 $category_id = $categoryModel->getCategoryIdByName($brandName, $userId);
 
                 if (!$category_id) {
                     throw new Exception("Không thể xác định hoặc tạo mới Hãng: " . $brandName);
                 }
-                // ------------------------------------------
 
-                // 2. LẤY THÔNG TIN CÒN LẠI
+                // --- BƯỚC 2: LẤY THÔNG TIN CÒN LẠI (GIỮ NGUYÊN LOGIC CŨ) ---
                 $product_name = trim($_POST['product_name']);
                 if (empty($product_name)) throw new Exception("Vui lòng nhập tên sản phẩm!");
 
                 $raw_color    = (isset($_POST['color']) && $_POST['color'] === 'new' && !empty($_POST['new_color'])) ? $_POST['new_color'] : $_POST['color'];
-                $color        = trim($this->normalizeColor($raw_color));
+                $color        = trim($this->normalizeColor($raw_color));;
                 $size         = trim($_POST['size']);
                 $stock_input  = intval($_POST['stock']);
                 $vector_json  = isset($_POST['vector']) ? $_POST['vector'] : null;
 
+                // --- ĐOẠN THAY ĐỔI CÔNG THỨC SKU THEO YÊU CẦU MỚI ---
+                $colorCode = $this->getColorCode($color);
+                $cleanBrand = $this->removeAccents($brandName);
+                $cleanName = $this->removeAccents($product_name);
+
+                // Lấy chữ cái đầu của từng từ (Ví dụ: Nike Blazer Phantom Low -> NBPL)
+                $fullName = $cleanBrand . ' ' . $cleanName;
+                $words = explode(' ', $fullName);
+                $initials = '';
+                foreach ($words as $w) {
+                    if (!empty($w)) $initials .= strtoupper(substr($w, 0, 1));
+                }
+
+                // Kết quả: 2 chữ đầu Brand - Initials - Màu - Size (Ví dụ: NI-NBPL-WHI-40)
+                $sku = strtoupper(substr($brandName, 0, 2)) . "-" . $initials . "-" . $colorCode . "-" . $size;
+                // --- KẾT THÚC ĐOẠN THAY ĐỔI SKU ---
+
                 $existingProduct = $this->productModel->findExistingProduct($brandName, $product_name);
 
                 if ($existingProduct) {
-                    // --- TRƯỜNG HỢP SẢN PHẨM ĐÃ TỒN TẠI ---
                     $productId = $existingProduct['product_id'];
                     $existingVariant = $this->productModel->findVariant($productId, $size, $color);
 
                     if ($existingVariant) {
+                        // NHÁNH 1: CỘNG DỒN TỒN KHO
                         $res = $this->productModel->addStock($existingVariant['variant_id'], $stock_input);
                         if (!$res) throw new Exception("Lỗi cộng dồn kho!");
+
+                        $this->productModel->logTransaction('IMPORT', $existingVariant['variant_id'], $stock_input, $userId);
                         $msg = "Sản phẩm đã có. Đã cập nhật số lượng cho hãng $brandName.";
                     } else {
-                        $cleanName = $this->removeAccents($product_name);
-                        $sku = strtoupper(substr($brandName, 0, 2)) . "-" . strtoupper(substr($cleanName, 0, 3)) . "-" . $size;
+                        // NHÁNH 2: TẠO BIẾN THỂ MỚI
                         $res = $this->productModel->createVariant($productId, $size, $color, $stock_input, $sku);
-                        if (!$res) throw new Exception("Lỗi tạo biến thể mới!");
+                        if (!$res) throw new Exception("Lỗi tạo biến thể mới! Có thể SKU $sku bị trùng.");
+
+                        $justCreated = $this->productModel->findVariant($productId, $size, $color);
+                        if ($justCreated) {
+                            $this->productModel->logTransaction('IMPORT', $justCreated['variant_id'], $stock_input, $userId);
+                        }
                         $msg = "Đã thêm biến thể mới cho $product_name ($brandName).";
                     }
                 } else {
-                    // --- TRƯỜNG HỢP TẠO MỚI HOÀN TOÀN ---
+                    // NHÁNH 3: TẠO MỚI HOÀN TOÀN
                     $imageName = (!empty($_POST['temp_image_name']) && $_POST['temp_image_name'] !== 'undefined')
                         ? $_POST['temp_image_name']
                         : 'default_shoe.png';
 
-                    $productId = $this->productModel->create($product_name, $category_id, $imageName, $userId);
-                    if (!$productId) throw new Exception("Lỗi tạo sản phẩm mẫu!");
-
-                    // LƯU VECTOR VÀO DATABASE
-                    if ($vector_json && $vector_json !== 'undefined' && $vector_json !== 'null') {
-                        $vectorArray = json_decode($vector_json, true);
-                        if (is_array($vectorArray)) {
-                            $resVec = $this->productModel->updateImageEmbedding($productId, $vectorArray);
-                            if (!$resVec) throw new Exception("Lỗi lưu định danh AI vào DB!");
+                    if ($imageName !== 'default_shoe.png') {
+                        $sourcePath = "assets/img_temp/" . $imageName;
+                        $destinationPath = "assets/img_product/" . $imageName;
+                        if (file_exists($sourcePath)) {
+                            if (!rename($sourcePath, $destinationPath)) {
+                                throw new Exception("Lỗi hệ thống: Không thể lưu file ảnh chính thức.");
+                            }
                         }
                     }
 
-                    $cleanName = $this->removeAccents($product_name);
-                    $sku = strtoupper(substr($brandName, 0, 2)) . "-" . strtoupper(substr($cleanName, 0, 3)) . "-" . $size;
+                    $productId = $this->productModel->create($product_name, $category_id, $imageName, $userId);
+                    if (!$productId) throw new Exception("Lỗi tạo sản phẩm mẫu!");
+
+                    if ($vector_json && $vector_json !== 'undefined' && $vector_json !== 'null') {
+                        $vectorArray = json_decode($vector_json, true);
+                        if (is_array($vectorArray)) {
+                            $this->productModel->updateImageEmbedding($productId, $vectorArray);
+                        }
+                    }
+
                     $resVar = $this->productModel->createVariant($productId, $size, $color, $stock_input, $sku);
                     if (!$resVar) throw new Exception("Lỗi tạo biến thể mẫu!");
 
-                    $msg = "Khởi tạo sản phẩm mẫu AI thành công cho hãng $brandName ($imageName).";
+                    $justCreated = $this->productModel->findVariant($productId, $size, $color);
+                    if ($justCreated) {
+                        $this->productModel->logTransaction('IMPORT', $justCreated['variant_id'], $stock_input, $userId);
+                    }
+
+                    $msg = "Khởi tạo sản phẩm mẫu AI thành công cho hãng $brandName.";
                 }
 
                 pg_query($db, "COMMIT");
-                $_SESSION['success'] = $msg;
+                echo json_encode(["status" => "success", "message" => $msg]);
+                exit;
             } catch (Exception $e) {
                 pg_query($db, "ROLLBACK");
-                $_SESSION['error'] = "Nhập kho thất bại: " . $e->getMessage();
+                echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+                exit;
             }
-
-            header("Location: index.php?page=products&category_id=" . $category_id);
-            exit;
         }
+    }
+
+    // Bổ sung hàm dịch màu để làm SKU chuyên nghiệp hơn
+    private function getColorCode($vnColor)
+    {
+        $map = [
+            'Trắng' => 'WHI',
+            'Đen' => 'BLA',
+            'Đỏ' => 'RED',
+            'Xanh dương' => 'BLU',
+            'Xám' => 'GRE',
+            'Xanh lá' => 'GRN',
+            'Vàng' => 'YEL',
+            'Hồng' => 'PIN',
+            'Nâu' => 'BRO',
+            'Cam' => 'ORA'
+        ];
+        return $map[$vnColor] ?? strtoupper(substr($this->removeAccents($vnColor), 0, 3));
     }
     /**
      * Hàm phụ trợ: Chuẩn hóa dữ liệu màu sắc (Anh -> Việt)
@@ -276,7 +340,7 @@ class ProductController
             }
 
             $vision = new VisionService();
-            $dir = 'assets/img_product/';
+            $dir = 'assets/img_temp/';
             if (!is_dir($dir)) mkdir($dir, 0777, true);
 
             $results = [];
@@ -365,6 +429,91 @@ class ProductController
             ob_clean();
             echo json_encode([]);
         }
+        exit;
+    }
+
+
+    /**
+     * Xử lý xuất kho sản phẩm (Trừ số lượng)
+     */
+    public function exportStock()
+    {
+        $this->checkStaff();
+        if (isset($_POST['export_stock'])) {
+            $variant_id = $_POST['variant_id'];
+            $quantity = intval($_POST['quantity']);
+            $user_id = $_SESSION['user_id']; // Lấy ID của nhân viên đang đăng nhập
+            $category_id = $_POST['category_id'];
+
+            $db = $this->productModel->getConnection();
+            pg_query($db, "BEGIN"); // Bắt đầu giao dịch
+
+            try {
+                // 1. Trừ số lượng tồn kho
+                $res1 = $this->productModel->removeStock($variant_id, $quantity);
+                if (!$res1 || pg_affected_rows($res1) == 0) throw new Exception("Không đủ tồn kho!");
+
+                // 2. Ghi nhật ký xuất kho
+                $res2 = $this->productModel->logTransaction('EXPORT', $variant_id, $quantity, $user_id);
+                if (!$res2) throw new Exception("Lỗi ghi nhật ký giao dịch!");
+
+                pg_query($db, "COMMIT"); // Thành công hết thì lưu lại
+                $_SESSION['success'] = "Xuất kho thành công và đã lưu nhật ký!";
+            } catch (Exception $e) {
+                pg_query($db, "ROLLBACK"); // Có lỗi thì hủy hết các lệnh trên
+                $_SESSION['error'] = "Lỗi: " . $e->getMessage();
+            }
+
+            header("Location: index.php?page=products&category_id=" . $category_id);
+            exit;
+        }
+    }
+
+
+    /**
+     * Bật/Tắt trạng thái biến thể (Chỉ dành cho MANAGER)
+     */
+    public function toggleVariantStatus()
+    {
+        $this->checkManager(); // Chặn STAFF bằng middleware có sẵn của bạn
+
+        if (isset($_POST['variant_id']) && isset($_POST['current_status'])) {
+            $variant_id = $_POST['variant_id'];
+
+            // Lấy status hiện tại và đảo ngược lại
+            $currentStatus = $_POST['current_status'];
+            $newStatus = ($currentStatus == 1 || $currentStatus == 't') ? 'false' : 'true';
+
+            if ($this->productModel->updateVariantStatus($variant_id, $newStatus)) {
+                $_SESSION['success'] = "Đã thay đổi trạng thái biến thể!";
+            } else {
+                $_SESSION['error'] = "Lỗi khi cập nhật trạng thái!";
+            }
+        }
+
+        // Quay lại trang trước đó (để giữ nguyên modal hoặc trang hiện tại)
+        header("Location: " . $_SERVER['HTTP_REFERER']);
+        exit;
+    }
+
+    /**
+     * Xóa mềm biến thể (Chỉ dành cho MANAGER)
+     */
+    public function deleteVariant()
+    {
+        $this->checkManager(); // Chặn STAFF
+
+        if (isset($_POST['variant_id'])) {
+            $variant_id = $_POST['variant_id'];
+
+            if ($this->productModel->softDeleteVariant($variant_id)) {
+                $_SESSION['success'] = "Đã xóa biến thể thành công!";
+            } else {
+                $_SESSION['error'] = "Lỗi khi xóa biến thể!";
+            }
+        }
+
+        header("Location: " . $_SERVER['HTTP_REFERER']);
         exit;
     }
 }

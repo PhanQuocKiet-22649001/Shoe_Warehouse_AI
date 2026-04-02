@@ -102,6 +102,7 @@
                     </div>
                 </div>
 
+                <!-- modal chi tiết -->
                 <div class="modal fade" id="detailModal<?= $pro['product_id'] ?>" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog modal-xl modal-dialog-centered">
                         <div class="modal-content border-0 shadow-lg">
@@ -139,9 +140,48 @@
                                                         <td class="text-center"><span><?= $var['size'] ?></span></td>
                                                         <td class="text-center"><?= $var['stock'] ?></td>
                                                         <td class="text-center pe-4">
-                                                            <div class="d-flex justify-content-center gap-2">
-                                                                <button class="btn btn-sm btn-light border shadow-sm"><i class="fas fa-toggle-on"></i></button>
-                                                                <button class="btn btn-sm btn-light border shadow-sm"><i class="fas fa-trash-alt"></i></button>
+                                                            <div class="d-flex justify-content-center gap-2 align-items-center">
+                                                                <?php if ($_SESSION['role'] === 'STAFF'): ?>
+                                                                    <form action="index.php?page=products&action=export" method="POST" class="d-flex align-items-center gap-1" onsubmit="return confirmExport(this);">
+                                                                        <input type="hidden" name="variant_id" value="<?= $var['variant_id'] ?>">
+                                                                        <input type="hidden" name="current_stock" value="<?= $var['stock'] ?>">
+                                                                        <input type="hidden" name="category_id" value="<?= $pro['category_id'] ?>">
+
+                                                                        <input type="number" name="quantity" class="form-control form-control-sm text-center"
+                                                                            style="width: 55px; border-color: #61839D;" value="1" min="1" max="<?= $var['stock'] ?>" required>
+
+                                                                        <button type="submit" name="export_stock" class="btn btn-sm shadow-sm fw-bold btn-outline-dark">
+                                                                            Xuất
+                                                                        </button>
+                                                                    </form>
+
+                                                                <?php elseif ($_SESSION['role'] === 'MANAGER'): ?>
+                                                                    <?php
+                                                                    // Chuyển đổi dữ liệu boolean của PostgreSQL ('t' / 'f') sang true/false
+                                                                    $is_active = ($var['variant_status'] === 't' || $var['variant_status'] === true || $var['variant_status'] === '1');
+                                                                    ?>
+
+                                                                    <form action="index.php?page=products&action=toggle_variant_status" method="POST" class="m-0"
+                                                                        onsubmit="return confirm('<?= $is_active ? 'Bạn có chắc chắn muốn TẠM NGƯNG biến thể này?' : 'Bạn muốn KÍCH HOẠT LẠI biến thể này để kinh doanh?' ?>');">
+                                                                        <input type="hidden" name="variant_id" value="<?= $var['variant_id'] ?>">
+                                                                        <input type="hidden" name="current_status" value="<?= $is_active ? 1 : 0 ?>">
+                                                                        <button type="submit" class="btn btn-sm <?= $is_active ? 'btn-success' : 'btn-secondary' ?>"
+                                                                            title="<?= $is_active ? 'Đang hoạt động - Nhấn để tắt' : 'Đã tắt - Nhấn để bật' ?>">
+                                                                            <i class="fas <?= $is_active ? 'fa-toggle-on' : 'fa-toggle-off' ?>"></i>
+                                                                        </button>
+                                                                    </form>
+
+                                                                    <form action="index.php?page=products&action=delete_variant" method="POST" class="m-0"
+                                                                        onsubmit="return confirm('⚠️ CẢNH BÁO: Bạn có chắc chắn muốn XÓA biến thể này không? (Dữ liệu sẽ được đưa vào thùng rác)');">
+                                                                        <input type="hidden" name="variant_id" value="<?= $var['variant_id'] ?>">
+                                                                        <button type="submit" class="btn btn-sm btn-danger" title="Xóa biến thể">
+                                                                            <i class="fas fa-trash-alt"></i>
+                                                                        </button>
+                                                                    </form>
+
+                                                                <?php else: ?>
+                                                                    <span class="badge bg-light text-dark border"><i class="fas fa-lock me-1"></i> Chỉ xem</span>
+                                                                <?php endif; ?>
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -181,3 +221,23 @@
     </script>
     <?php unset($_SESSION['browser_alert']); ?>
 <?php endif; ?>
+
+
+<script>
+    function confirmExport(form) {
+        const qty = parseInt(form.quantity.value);
+        const stock = parseInt(form.current_stock.value);
+
+        if (qty > stock) {
+            alert("Số lượng xuất (" + qty + ") không được lớn hơn tồn kho (" + stock + ")!");
+            return false;
+        }
+
+        if (qty <= 0) {
+            alert("Số lượng xuất phải lớn hơn 0 nhé!");
+            return false;
+        }
+
+        return confirm("Xác nhận xuất " + qty + " đôi này khỏi kho?");
+    }
+</script>
