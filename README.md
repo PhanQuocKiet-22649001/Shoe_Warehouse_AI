@@ -19,22 +19,34 @@ Hệ thống quản lý kho giày tích hợp trí tuệ nhân tạo (AI) chạy
 
 ## 📂 2. Cấu trúc thư mục dự án
 ```text
-D:.
+D:\Application\xampp\htdocs\Shoe_Warehouse
 │   .env                # Cấu hình biến môi trường
+│   .gitignore          # Các file loại trừ khi git
 │   README.md           # Hướng dẫn dự án
+│   testapi.php         # File test API
+│   testhash.php        # File test mã hóa mật khẩu
 │
 ├───ai_services         # Dịch vụ AI (Python)
-│   │   ai_bridge.py        # API Chatbot (Sử dụng LangChain & Ollama - Cổng 8000)
-│   │   api_vector.py       # API Quét ảnh (Sử dụng CLIP - Cổng 5000)
-│   │   generate_vector.py  # Script khởi tạo và tải Model CLIP về máy
-│   │   VisionService.php   # Cầu nối trung gian gọi Python từ Backend PHP
-│   └───models/             # Nơi lưu trữ "bộ não" CLIP Model (Để chạy Offline)
+│   │   ai_bridge.py        # API Chatbot (Cổng 8000)
+│   │   api_vector.py       # API Quét ảnh (Cổng 5000)
+│   │   generate_vector.py  # Script khởi tạo/Tải model lần đầu
+│   │   VisionService.php   # Cầu nối gọi Python từ PHP
+│   └───models/             # Lưu trữ bộ não AI (CLIP Model)
 │
-├───app                 # Mã nguồn Backend PHP (MVC)
-├───config              # Cấu hình kết nối Database
-├───csdl                # File backup.sql chứa dữ liệu mẫu và cấu trúc bảng
-└───public              # Thư mục thực thi chính (index.php)
-    └───assets          # CSS, JS, Hình ảnh sản phẩm thực tế
+├───app                 # Source code PHP chính (MVC)
+│   ├───controllers/    # Auth, Category, Product, Report, User Controllers
+│   ├───models/         # Category, Product, Report, User Models
+│   └───views/          # layouts (footer, header, sidebar...) & pages
+│
+├───config              # database.php (Cấu hình kết nối)
+├───csdl                # backup.sql (File sao lưu dữ liệu)
+└───public              # Thư mục thực thi chính
+    │   index.php
+    └───assets/         # Tài nguyên hệ thống
+        ├───css/        # Các file định dạng giao diện (.css)
+        ├───img_logo/   # Logo các thương hiệu giày
+        ├───img_product/# Hình ảnh sản phẩm trong kho
+        ├───img_temp/   # Ảnh tạm thời khi xử lý AI
 
 
 🚀 3. Các bước cài đặt và chạy dự án
