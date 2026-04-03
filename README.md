@@ -1,75 +1,78 @@
+# 👟 Hệ Thống Quản Lý Kho Giày Thông Minh (Smart Warehouse)
+**Đồ án Khóa luận tốt nghiệp - Đại học Công nghiệp TP.HCM (IUH)**
+
+Hệ thống quản lý kho giày tích hợp trí tuệ nhân tạo (AI) chạy **Offline 100%**, hỗ trợ nhận diện sản phẩm qua hình ảnh và trợ lý ảo Chatbot truy vấn dữ liệu tồn kho thông minh bằng ngôn ngữ tự nhiên.
+
+---
+
+## 🛠 1. Công nghệ & Thư viện sử dụng
+* **Frontend:** Bootstrap 5, CSS3, JavaScript.
+* **Backend:** PHP (Kiến trúc MVC).
+* **Database:** PostgreSQL + Extension `pgvector`.
+* **AI Engine:** Python (Chạy Local API).
+* **AI Frameworks:** * **LangChain:** Quản lý luồng truy vấn dữ liệu (Text-to-SQL).
+    * **Ollama:** Môi trường chạy mô hình AI Offline.
+    * **Qwen2.5-Coder:7b:** Mô hình ngôn ngữ lớn chuyên biệt cho lập trình và SQL.
+    * **CLIP (ViT-B-32):** Nhận diện hình ảnh không gian Vector.
+
+---
+
+## 📂 2. Cấu trúc thư mục dự án
+```text
 D:.
-│   README.md
+│   .env                # Cấu hình biến môi trường
+│   README.md           # Hướng dẫn dự án
 │
-├───ai_services
-├───app
-│   ├───controllers
-│   ├───models
-│   └───views
-│       ├───layouts
-│       │       sidebar.php
-│       │
-│       └───pages
-│               dashboard.php
+├───ai_services         # Dịch vụ AI (Python)
+│   │   ai_bridge.py        # API Chatbot (Sử dụng LangChain & Ollama - Cổng 8000)
+│   │   api_vector.py       # API Quét ảnh (Sử dụng CLIP - Cổng 5000)
+│   │   generate_vector.py  # Script khởi tạo và tải Model CLIP về máy
+│   │   VisionService.php   # Cầu nối trung gian gọi Python từ Backend PHP
+│   └───models/             # Nơi lưu trữ "bộ não" CLIP Model (Để chạy Offline)
 │
-├───config
-└───public
-    │   index.php
-    │
-    ├───assets
-    │   └───css
-    │           dashboard.css
-    │           footer.css
-    │           header.css
-    │           main.css
-    │           sidebar.css
-    │
-    └───uploads
+├───app                 # Mã nguồn Backend PHP (MVC)
+├───config              # Cấu hình kết nối Database
+├───csdl                # File backup.sql chứa dữ liệu mẫu và cấu trúc bảng
+└───public              # Thư mục thực thi chính (index.php)
+    └───assets          # CSS, JS, Hình ảnh sản phẩm thực tế
 
-- xong
-1. Đăng nhập (Login)
-2. Đăng xuất (Logout)
-3. Xem thông tin cá nhân
-4. Cập nhật thông tin cá nhân
-5. Thêm nhân viên
-6. Sửa trạng thái nhân viên (Active/Inactive)
-7. Xóa mềm nhân viên
-8. Tải danh mục sản phẩm (Load categories)
-9. Sửa trạng thái danh mục (Active/Inactive)
-10. Xóa mềm danh mục
-11. Tải danh sách sản phẩm (Load products)
-12. Thêm sản phẩm mới
-13. Tìm kiếm sản phẩm (theo Tên, Size, Màu sắc)
-14. Xem chi tiết biến thể sản phẩm
-15. Sửa trạng thái sản phẩm (Active/Inactive)
-16. Xóa mềm sản phẩm
-17. demo AI quét ảnh (chưa tích hợp yolov8)
-18. xuất kho
-19. xem thống kê báo cáo
+
+🚀 3. Các bước cài đặt và chạy dự án
+🔹 Bước 1: Cài đặt thư viện Python
+- Mở Terminal dự án và cài đặt các thư viện cần thiết để chạy LangChain và Model CLIP:
+python -m pip install -U torch Pillow ftfy regex tqdm langchain langchain-community langchain-ollama langgraph sqlalchemy psycopg2-binary pgvector fastapi uvicorn flask sentence-transformers python-dotenv
+
+- Cài đặt thư viện CLIP trực tiếp từ source OpenAI:
+python -m pip install git+https://github.com/openai/CLIP.git
 
 
 
-# 📦 Hệ Thống Quản Lý Kho Giày Thông Minh (Smart Warehouse)
+🔹 Bước 2: Thiết lập mô hình AI Offline
+Đối với Chatbot: - Tải và cài đặt Ollama tại ollama.com.
 
-Dự án tích hợp AI để nhận diện và đối soát hình ảnh sản phẩm.
+- Mở Terminal gõ lệnh để tải model (4.7GB): ollama pull qwen2.5-coder:7b
 
-## 🛠 1. Yêu cầu hệ thống
-- XAMPP (PHP 7.4 trở lên, MySQL)
-- Python 3.8+ (Đã thêm vào biến môi trường PATH)
+- Đối với Quét ảnh:
+Chạy file generate_vector.py để AI tự động tải bộ não CLIP về thư mục models (Chỉ chạy 1 lần duy nhất):
+cd ai_services
+python generate_vector.py
 
-## 🚀 2. Cài đặt môi trường AI (Bắt buộc)
-Mở CMD tại thư mục dự án và chạy các lệnh sau để cài đặt cho hệ thống:
 
-1. Cài đặt thư viện nền:
-   python -m pip install torch Pillow ftfy regex tqdm
+🔹 Bước 3: Cấu hình Database
+Mở PostgreSQL, tạo database tên là shoe_warehouse_ai.
 
-2. Cài đặt Model CLIP từ OpenAI:
-   python -m pip install git+https://github.com/openai/CLIP.git
+Import file csdl/backup.sql vào database vừa tạo.
 
-## 💻 3. Cách sử dụng
-1. Import cơ sở dữ liệu từ thư mục `/csdl` vào phpMyAdmin.
-2. Cấu hình kết nối database trong `config/database.php`.
-3. Bật Apache và MySQL trên XAMPP.
-4. Truy cập `localhost/Shoe_Warehouse/public`.
-5. **Tính năng AI:** Khi bạn tải ảnh lên để quét, hệ thống sẽ tự động gọi Python để xử lý. 
-   *(Lưu ý: Trong lần chạy đầu tiên, hệ thống sẽ tự động tải Model AI khoảng 350MB, vui lòng đảm bảo có kết nối mạng).*
+Kích hoạt extension vector: CREATE EXTENSION IF NOT EXISTS vector;
+
+Cấu hình User/Password database trong config/database.php.
+
+
+4. Cách vận hành khi Demo (Bắt buộc)
+Để hệ thống hoạt động đầy đủ tính năng, bồ cần mở cửa sổ Terminal để chạy các dịch vụ sau:
+
+- Dịch vụ Chatbot (LangChain + Ollama):
+cd ai_services
+python ai_bridge.py
+
+- Phần mềm Ollama: Đảm bảo phần mềm Ollama đã được bật
