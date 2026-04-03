@@ -95,3 +95,26 @@ python ai_bridge.py
 
 
 ollama pull qwen2.5-coder:7b-instruct-q4_K_M
+
+## ĐÃ LÀM (16/19)
+1. login
+2. logout
+3. thêm danh mục sản phẩm
+4. xóa danh mục sản phẩm (xóa mềm)
+5. cập nhật trạng thái danh mục (active/inactive)
+6. nhập kho (Quét AI)
+7. cập nhật trạng thái sản phẩm/biến thể (active/inactive)
+8. Thêm user
+9. xóa mềm user
+10. cập nhật trạng thái user (active/inactive)
+11. xem thống kê báo cáo
+12. tìm kiếm (tên, size, màu sắc)
+13. xem thông tin cá nhân
+14. cập nhật thông tin cá nhân
+15. chatbot AI
+16. xuất kho
+
+## CHƯA LÀM
+1. Xem lịch sử xuất nhập kho
+2. Quản lí vị trí kệ (heatmap)
+3. Dự xu hướng tiêu thụ (AI)

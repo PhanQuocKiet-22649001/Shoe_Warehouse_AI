@@ -60,10 +60,10 @@ class ReportController
     public function statistics()
     {
         // Bảo vệ route: Chỉ Manager mới được truy cập vào trang thống kê chi tiết
-        if (strtoupper($_SESSION['role'] ?? '') !== 'MANAGER') {
-            header("Location: index.php?page=dashboard");
-            exit;
-        }
+        // if (strtoupper($_SESSION['role'] ?? '') !== 'MANAGER') {
+        //     header("Location: index.php?page=dashboard");
+        //     exit;
+        // }
 
         // Lấy tham số lọc từ URL (nếu có)
         $start_date = $_GET['start_date'] ?? null;
