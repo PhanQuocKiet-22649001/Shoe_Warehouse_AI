@@ -88,3 +88,10 @@ cd ai_services
 python ai_bridge.py
 
 - Phần mềm Ollama: Đảm bảo phần mềm Ollama đã được bật
+
+
+
+
+
+
+ollama pull qwen2.5-coder:7b-instruct-q4_K_M

@@ -1,3 +1,13 @@
+<?php
+$cModel = new CategoryModel();
+// Lấy tất cả các hãng đang kinh doanh (status = true)
+$allCategories = $cModel->getAll();
+?>
+<script>
+    // Chuyển mảng PHP sang JSON để JavaScript sử dụng
+    const categoriesList = <?= json_encode($allCategories) ?>;
+</script>
+
 <div class="topbar mb-4 d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm border">
 
     <div class="search-box flex-grow-1 me-4 position-relative">
@@ -328,7 +338,10 @@
         selectedFilesArray.forEach(f => fd.append('images[]', f));
 
         try {
-            const response = await fetch('index.php?page=products&action=scan-ai', { method: 'POST', body: fd });
+            const response = await fetch('index.php?page=products&action=scan-ai', {
+                method: 'POST',
+                body: fd
+            });
             const res = await response.json();
             if (res.status === 'success') {
                 globalScannedData = res.data;
@@ -349,7 +362,7 @@
     function renderThumbnails() {
         const postScanArea = document.getElementById('post_scan_area');
         const container = document.getElementById('scanned_thumbnails');
-        
+
         // NẾU HẾT DỮ LIỆU THÌ HIỆN THÔNG BÁO HOÀN TẤT
         if (globalScannedData.length === 0) {
             postScanArea.classList.add('d-none');
@@ -374,7 +387,7 @@
     // --- HÀM LƯU AJAX (GIẢI QUYẾT VẤN ĐỀ CỦA BẠN) ---
     async function saveProductByAJAX(event, form) {
         event.preventDefault(); // CHẶN LOAD TRANG
-        
+
         const btn = form.querySelector('button[type="submit"]');
         const formData = new FormData(form);
         formData.append('add_product', '1');
@@ -383,7 +396,10 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> ĐANG LƯU...';
 
         try {
-            const response = await fetch('index.php?page=products&action=add', { method: 'POST', body: formData });
+            const response = await fetch('index.php?page=products&action=add', {
+                method: 'POST',
+                body: formData
+            });
             const res = await response.json();
 
             if (res.status === 'success') {
@@ -448,32 +464,77 @@
             alertMessage = `<div class="alert alert-warning py-2 border-warning rounded-1 mb-3"><i class="fas fa-plus-circle me-2"></i><strong>MẪU MỚI:</strong> Không tìm thấy dữ liệu cũ tương đồng.</div>`;
         }
 
-        // CHỈ THAY ĐỔI FORM ONSUBMIT
+        // Tạo danh sách các <option> cho Combobox
+        let categoryOptions = `<option value="">-- Chọn thương hiệu --</option>`;
+        categoriesList.forEach(cat => {
+            // Nếu AI nhận diện đúng tên thương hiệu, chúng ta sẽ đánh dấu selected
+            let isSelected = (cat.category_name.toLowerCase() === defaultBrand.toLowerCase()) ? 'selected' : '';
+            categoryOptions += `<option value="${cat.category_id}" ${isSelected}>${cat.category_name.toUpperCase()}</option>`;
+        });
+
         container.innerHTML = `
-            <form onsubmit="saveProductByAJAX(event, this)">
-                ${alertMessage}
-                ${suggestionHtml}
-                <input type="hidden" name="vector" value='${vectorStr}'>
-                <input type="hidden" name="temp_image_name" value="${imageName}">
-                <div class="row mb-3 align-items-center">
-                    <div class="col-md-3"><label class="fw-bold text-secondary small">ẢNH GỐC:</label></div>
-                    <div class="col-md-9"><img src="${localUrl}" class="border border-secondary rounded-1" style="width: 80px; height: 80px; object-fit:contain; background-color: #f8f9fa;"></div>
+        <form onsubmit="saveProductByAJAX(event, this)">
+            ${alertMessage}
+            ${suggestionHtml}
+            <input type="hidden" name="vector" value='${vectorStr}'>
+            <input type="hidden" name="temp_image_name" value="${imageName}">
+            
+            <div class="row mb-3 align-items-center">
+                <div class="col-md-3"><label class="fw-bold text-secondary small">ẢNH GỐC:</label></div>
+                <div class="col-md-9">
+                    <img src="${localUrl}" class="border border-secondary rounded-1" style="width: 80px; height: 80px; object-fit:contain; background-color: #f8f9fa;">
                 </div>
-                <div class="mb-3"><label class="fw-bold text-secondary small mb-1">HÃNG SẢN XUẤT:</label><input type="text" id="input_brand" name="brand_name" class="form-control border-dark rounded-1 shadow-sm" value="${defaultBrand}" placeholder="Nhập hãng (VD: Nike)" required></div>
-                <div class="mb-3"><label class="fw-bold text-secondary small mb-1">TÊN DÒNG SẢN PHẨM:</label><input type="text" id="input_product_name" name="product_name" class="form-control fw-bold border-dark rounded-1 shadow-sm" value="${defaultName}" placeholder="Nhập tên giày" required></div>
-                <div class="row mb-3">
-                    <div class="col-md-6"><label class="fw-bold text-secondary small mb-1">MÀU SẮC:</label><input type="text" name="color" class="form-control border-dark fw-bold rounded-1" placeholder="Màu sắc" required></div>
-                    <div class="col-md-6"><label class="fw-bold text-secondary small mb-1">SIZE:</label><input type="number" name="size" class="form-control fw-bold text-center border-secondary rounded-1" required></div>
+            </div>
+
+            <div class="mb-3">
+                <label class="fw-bold text-secondary small mb-1">HÃNG SẢN XUẤT (CHỌN TRONG DANH SÁCH):</label>
+                <select id="input_brand" name="category_id" class="form-select border-dark rounded-1 shadow-sm fw-bold" required>
+                    ${categoryOptions}
+                </select>
+                <small class="text-muted" style="font-size: 11px;">
+                    * Nếu không thấy hãng, vui lòng liên hệ <b>Manager</b> để thêm vào danh mục.
+                </small>
+            </div>
+
+            <div class="mb-3">
+                <label class="fw-bold text-secondary small mb-1">TÊN DÒNG SẢN PHẨM:</label>
+                <input type="text" id="input_product_name" name="product_name" class="form-control fw-bold border-dark rounded-1 shadow-sm" value="${defaultName}" placeholder="Nhập tên giày" required>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="fw-bold text-secondary small mb-1">MÀU SẮC:</label>
+                    <input type="text" name="color" class="form-control border-dark fw-bold rounded-1" placeholder="Màu sắc" required>
                 </div>
-                <div class="mb-4"><label class="fw-bold text-secondary small mb-1">SỐ LƯỢNG NHẬP KHO:</label><input type="number" name="stock" class="form-control fw-bold text-center border-secondary rounded-1" value="1" min="1" required></div>
-                <button type="submit" class="btn btn-dark w-100 fw-bold rounded-1 py-2 shadow-sm">XÁC NHẬN LƯU DỮ LIỆU</button>
-            </form>`;
+                <div class="col-md-6">
+                    <label class="fw-bold text-secondary small mb-1">SIZE:</label>
+                    <input type="number" name="size" class="form-control fw-bold text-center border-secondary rounded-1" required>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="fw-bold text-secondary small mb-1">SỐ LƯỢNG NHẬP KHO:</label>
+                <input type="number" name="stock" class="form-control fw-bold text-center border-secondary rounded-1" value="1" min="1" required>
+            </div>
+
+            <button type="submit" class="btn btn-dark w-100 fw-bold rounded-1 py-2 shadow-sm">XÁC NHẬN LƯU DỮ LIỆU</button>
+        </form>`;
     }
 
-    function fillFormFromSuggestion(brand, name) {
-        document.getElementById('input_brand').value = brand;
-        document.getElementById('input_product_name').value = name;
-        const inputs = [document.getElementById('input_brand'), document.getElementById('input_product_name')];
+    function fillFormFromSuggestion(brandName, productName) {
+        const selectBrand = document.getElementById('input_brand');
+        document.getElementById('input_product_name').value = productName;
+
+        // Tìm option có text khớp với brandName và chọn nó
+        for (let i = 0; i < selectBrand.options.length; i++) {
+            if (selectBrand.options[i].text.toLowerCase() === brandName.toLowerCase()) {
+                selectBrand.selectedIndex = i;
+                break;
+            }
+        }
+
+        // Hiệu ứng highlight để người dùng biết đã điền dữ liệu
+        const inputs = [selectBrand, document.getElementById('input_product_name')];
         inputs.forEach(el => {
             el.style.backgroundColor = '#e8f0fe';
             setTimeout(() => el.style.backgroundColor = '', 500);

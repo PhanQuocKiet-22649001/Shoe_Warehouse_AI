@@ -6,11 +6,19 @@ from langchain_ollama import ChatOllama
 from langchain_community.utilities import SQLDatabase
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # Cho phép tất cả các nguồn gọi tới
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # 1. KẾT NỐI DATABASE
-# Thay đổi thông tin nếu bồ đổi user/pass database
+# Thay đổi thông tin nếu đổi user/pass database
 DB_URL = "postgresql://ai_user:12345@localhost:5432/shoe_warehouse_ai"
 db = SQLDatabase.from_uri(DB_URL)
 
@@ -63,6 +71,14 @@ Hệ thống Quản lý Kho Giày (Smart Warehouse) có cấu trúc PostgreSQL c
 
 7. Bảng 'users' (Nhân viên):
    - role: 'MANAGER' hoặc 'STAFF'.
+   - status (boolean): lưu trạng thái của nhận viên. True là tài khoản này đang hoạt động. False là tài khoản này đang tạm ngưng.
+
+8. LỌC TỔNG (SUM, COUNT): Nếu câu hỏi có từ "dưới X đôi", "hơn X đôi", KHÔNG ĐƯỢC dùng SUM trong WHERE. Phải dùng GROUP BY (theo tên sản phẩm) và dùng HAVING SUM(...) < X.
+
+9. LUÔN GROUP BY: Khi sử dụng SUM() để tính tổng cho từng mẫu giày, phải GROUP BY product_name hoặc product_id.
+
+10. VIỆT HÓA TÊN CỘT: Khi dùng SELECT lấy nhiều cột, HÃY SỬ DỤNG ALIAS BẰNG TIẾNG VIỆT (không dấu) cho dễ đọc. 
+            Ví dụ: SELECT pv.size AS Kich_Co, pv.color AS Mau_Sac, pv.stock AS Ton_Kho ...
 """
 
 @app.get("/ask")
@@ -82,12 +98,18 @@ async def ask_ai(question: str = Query(...)):
 
         QUY TẮC BẮT BUỘC KHI VIẾT SQL:
         1. LUÔN SỬ DỤNG ALIAS khi JOIN (VD: products p, product_variants pv, categories c).
-        2. TRÁNH LỖI AmbiguousColumn: Các cột chung như 'is_deleted', 'product_id', 'variant_id' PHẢI đi kèm Alias (VD: p.is_deleted, pv.product_id).
-        3. LUÔN LỌC 'is_deleted = false' cho tất cả các bảng tham gia truy vấn.
+        2. NGHIÊM CẤM LỖI AmbiguousColumn: Tuyệt đối KHÔNG viết trống không tên cột nếu nó có ở nhiều bảng (như 'is_deleted', 'product_id'). BẮT BUỘC phải gắn Alias ở trước (VD: p.is_deleted, pv.product_id).
+        3. QUY TẮC XÓA MỀM (SOFT DELETE): Khi truy vấn lấy dữ liệu từ bảng nào, BẮT BUỘC phải có điều kiện lọc "alias.is_deleted = false" tương ứng cho bảng đó trong mệnh đề WHERE (VD: Nếu dùng bảng products thì phải có p.is_deleted = false; nếu dùng cả products và categories thì phải có p.is_deleted = false AND c.is_deleted = false).
         4. TÌM KIẾM VĂN BẢN: Sử dụng ILIKE và dấu % (VD: p.product_name ILIKE '%nike%').
-        5. TỒN KHO: Câu hỏi về "số lượng còn lại", "trong kho có bao nhiêu" -> SUM(pv.stock) từ bảng 'product_variants' pv.
+        5. PHÂN BIỆT RÕ 2 LOẠI KIỂM TRA TỒN KHO:
+           - LOẠI 1 (Tính tổng): Nếu khách hỏi "Tổng số lượng giày Nike là bao nhiêu?" -> BẮT BUỘC dùng SUM(pv.stock) kết hợp GROUP BY.
+           - LOẠI 2 (Cảnh báo hàng sắp hết/Lọc chi tiết): Nếu khách hỏi tìm giày "dưới X đôi", "ít hơn X", "trên X đôi" -> TUYỆT ĐỐI KHÔNG DÙNG SUM() VÀ GROUP BY. Bắt buộc dùng mệnh đề WHERE trực tiếp: "pv.stock < X" hoặc "pv.stock > X" để lấy ra chính xác biến thể đang thỏa mãn.
         6. CHỈ TRẢ VỀ SQL DUY NHẤT, KHÔNG GIẢI THÍCH, KHÔNG DÙNG NHÁY NGƯỢC.
 
+        7. TỐI ƯU HÓA CỘT TRẢ VỀ (MINIMAL SELECT): 
+           - Phân tích NGỮ NGHĨA câu hỏi để tự suy luận ra những cột CẦN THIẾT NHẤT. Tuyệt đối KHÔNG SELECT thừa dữ liệu không được yêu cầu.
+           - Nếu câu hỏi mang tính chất "tổng quát" (VD: liệt kê mẫu, đếm số lượng, tìm cái nào sắp hết): Chỉ SELECT cột định danh chính (VD: tên) và cột giá trị gộp (VD: SUM).
+           - Nếu câu hỏi có chứa các từ khóa yêu cầu "chi tiết", "thuộc tính", "phân loại" (VD: size nào, màu gì, mã bao nhiêu): Mới SELECT thêm các cột chi tiết tương ứng.
         CÂU HỎI: "{{input}}"
         SQL Query:
         """)
@@ -104,28 +126,69 @@ async def ask_ai(question: str = Query(...)):
 
         # Thực thi lấy dữ liệu thật
         result_data = db.run(sql_query)
-        print(f"--- 📊 DỮ LIỆU LẤY ĐƯỢC: {result_data}")
+      # print(f"--- 🛠 SQL THỰC THI: {sql_query}")
 
-        # BƯỚC 4: AI TỔNG HỢP CÂU TRẢ LỜI
+        # ====================================================
+        # ĐOẠN SỬA MỚI: LẤY ĐỘNG TÊN CỘT VÀ DỮ LIỆU TỪ DATABASE
+        # ====================================================
+        cleaned_items = []
+        
+        # Kết nối thẳng vào Engine của SQLAlchemy để lấy cả Header (Tên cột)
+        with db._engine.connect() as conn:
+            result = conn.execute(text(sql_query))
+            columns = result.keys()  # Lấy tên cột (VD: 'fullname', 'phone', 'size'...)
+            rows = result.fetchall() # Lấy danh sách các dòng dữ liệu
+            
+            for row in rows:
+                if len(columns) == 1:
+                    # Nếu truy vấn chỉ có 1 cột (VD: chỉ lấy tên giày)
+                    cleaned_items.append(f"• {row[0]}")
+                else:
+                    # Nếu có nhiều cột, tự động ghép động: Tên cột: Giá trị
+                    # zip(columns, row) sẽ bắt cặp: ('size', '42'), ('color', 'Black')...
+                    row_details = " | ".join([f"{col}: <b>{val}</b>" for col, val in zip(columns, row)])
+                    cleaned_items.append(f"• {row_details}")
+
+        # Lọc trùng lặp nhưng vẫn giữ đúng thứ tự
+        unique_items = list(dict.fromkeys(cleaned_items))
+        
+        # Nối bằng thẻ <br> để xuống dòng trên giao diện Web
+        clean_data = "<br>" + "<br>".join(unique_items)
+        
+        print(f"--- ✨ DỮ LIỆU ĐÃ LÀM SẠCH:\n{clean_data}")
+
+        # ====================================================
+        # BƯỚC 4 MỚI: CHẶN LOGIC BẰNG PYTHON & PROMPT TỐI GIẢN
+        # ====================================================
+        if not clean_data or clean_data == "[]" or clean_data.strip() == "":
+            return {"status": "success", "answer": "Dạ, hiện tại mình kiểm tra thì hệ thống không có dữ liệu khớp với yêu cầu của bạn nhé!"}
+        
+
+        # 2. ĐƯA CHO AI PROMPT ÉP KHUÔN (KHÔNG CHO TỰ NGHĨ)
         answer_prompt = ChatPromptTemplate.from_template("""
-        BẠN LÀ TRỢ LÝ KHO THÔNG MINH. 
-        Dựa trên kết quả truy vấn từ Database: {result}
-        Hãy trả lời câu hỏi của người dùng: "{input}" một cách tự nhiên và chính xác.
+        THÔNG TIN TỪ KHO: {result}
+        CÂU HỎI CỦA KHÁCH: "{input}"
 
-        Yêu cầu:
-        - Trả lời bằng tiếng Việt lịch sự.
-        - Nếu kết quả là [], báo là hiện không có thông tin này trong hệ thống.
-        - Nếu kết quả có số, hãy nói rõ con số đó lấy từ hệ thống quản lý kho.
+        LUẬT TỐI THƯỢNG (BẮT BUỘC TUÂN THỦ):
+        1. [THÔNG TIN TỪ KHO] ở trên ĐÃ ĐƯỢC LỌC CHÍNH XÁC 100% cho câu hỏi của khách. Bạn KHÔNG CẦN tìm con số để chứng minh.
+        2. Bạn BẮT BUỘC phải bê nguyên [THÔNG TIN TỪ KHO] vào câu trả lời của mình.
+        3. Hãy trả lời theo ĐÚNG MẪU SAU (chỉ việc thay thế chữ):
+        
+        "Dạ, theo hệ thống ghi nhận, thông tin bạn cần tìm bao gồm: {result}.  Bạn có cần mình hỗ trợ gì thêm không ạ?"
+
+        4. TUYỆT ĐỐI KHÔNG ĐƯỢC xin lỗi. TUYỆT ĐỐI KHÔNG ĐƯỢC bảo là không biết hay không tìm thấy số lượng.
         """)
         
+        # Bồ chú ý dòng này giữ nguyên nhé, biến truyền vào là 'result'
         answer_chain = answer_prompt | llm | StrOutputParser()
-        final_answer = answer_chain.invoke({"result": result_data, "input": question})
+        final_answer = answer_chain.invoke({"result": clean_data, "input": question})
 
-        return {"status": "success", "answer": final_answer}
-
+        final_answer_beauty = final_answer.replace(" Bạn có cần", "<br><br>Bạn có cần")
+        
+        return {"status": "success", "answer": final_answer_beauty}
     except Exception as e:
         print(f"[ERROR]: {str(e)}")
-        return {"status": "error", "message": "Dạ, em không tìm thấy dữ liệu liên quan. Bồ vui lòng hỏi rõ hơn tên sản phẩm hoặc thương hiệu nhé!"}
+        return {"status": "error", "message": "Dạ, mình không tìm thấy dữ liệu liên quan. Bạn vui lòng hỏi rõ hơn tên sản phẩm hoặc thương hiệu nhé!"}
 
 if __name__ == "__main__":
     print("--- 🚀 SMART WAREHOUSE OFFLINE AI IS READY ---")

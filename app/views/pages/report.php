@@ -1,3 +1,5 @@
+<?php include __DIR__ . '/../layouts/topbar.php'; ?>
+
 <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
