@@ -96,7 +96,7 @@ python ai_bridge.py
 
 ollama pull qwen2.5-coder:7b-instruct-q4_K_M
 
-## ĐÃ LÀM (16/19)
+## ĐÃ LÀM (17/19)
 1. login
 2. logout
 3. thêm danh mục sản phẩm
@@ -113,8 +113,8 @@ ollama pull qwen2.5-coder:7b-instruct-q4_K_M
 14. cập nhật thông tin cá nhân
 15. chatbot AI
 16. xuất kho
+17. xem lịch sử xuất nhập kho
 
 ## CHƯA LÀM
-1. Xem lịch sử xuất nhập kho
-2. Quản lí vị trí kệ (heatmap)
-3. Dự xu hướng tiêu thụ (AI)
+1. Quản lí vị trí kệ (heatmap)
+2. Dự đoán xu hướng tiêu thụ (AI)

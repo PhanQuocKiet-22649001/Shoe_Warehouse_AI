@@ -1,6 +1,25 @@
 <?php
 session_start();
 
+// 1. XỬ LÝ AJAX TẠI ĐÂY (TRƯỚC KHI HIỆN GIAO DIỆN)
+
+if (isset($_GET['page'])) {
+    if ($_GET['page'] === 'history-detail') {
+        require_once __DIR__ . '/../app/controllers/TransactionController.php';
+        $controller = new TransactionController();
+        $controller->getDetailsAjax(); 
+        exit;
+    } 
+    
+    // THÊM ĐOẠN NÀY CHO BÁO CÁO
+    if ($_GET['page'] === 'report-detail') {
+        require_once __DIR__ . '/../app/controllers/ReportController.php';
+        $controller = new ReportController();
+        $controller->getReportDetailsAjax(); 
+        exit; 
+    }
+}
+
 // 1. Gọi Database & Models trước
 require_once '../config/database.php';
 require_once '../app/models/UserModel.php';
@@ -170,6 +189,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $data = $reportController->index();
                             extract($data);
                             require_once __DIR__ . '/../app/views/pages/dashboard.php';
+                            break;
+
+                        case 'history':
+         
+                            require_once __DIR__ . '/../app/controllers/TransactionController.php';
+                            $controller = new TransactionController();
+                            $data = $controller->index();
+                            extract($data);
+                            require_once __DIR__ . '/../app/views/pages/history.php';
                             break;
                     }
                     ?>

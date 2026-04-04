@@ -12,11 +12,10 @@ class ReportController
     private $reportModel;
 
     /**
-     * Hàm khởi tạo: Kiểm tra quyền truy cập cơ bản và khởi tạo Model
+     * Hàm khởi tạo: Kiểm tra quyền truy cập và khởi tạo Model
      */
     public function __construct()
     {
-        // Kiểm tra nếu người dùng chưa đăng nhập thì đẩy về trang login
         if (!isset($_SESSION['user_id'])) {
             header("Location: index.php?page=login");
             exit;
@@ -26,26 +25,24 @@ class ReportController
 
     /**
      * Chức năng: Xử lý dữ liệu cho trang Dashboard chính
-     * Phân quyền: 
-     * - Staff: Chỉ xem được các con số thống kê cơ bản.
-     * - Manager: Xem được thêm xu hướng tháng, sản phẩm bán chạy và heatmap.
+     * Phân quyền: Manager xem được phân tích sâu, Staff xem số liệu tổng quát
      */
     public function index()
     {
         $role = strtoupper($_SESSION['role'] ?? '');
 
-        // Dữ liệu tối thiểu cho cả Staff và Manager (KPIs tổng quát)
+        // Dữ liệu KPIs tổng quát cho mọi đối tượng
         $data = [
             'stats' => $this->reportModel->getGeneralStats(),
         ];
 
         // Nếu là Manager, lấy thêm dữ liệu phân tích chuyên sâu cho Dashboard
         if ($role === 'MANAGER') {
-            // Lấy top 4 sản phẩm bán chạy (Top Selling)
+            // Top 4 sản phẩm bán chạy
             $data['top_selling']   = $this->reportModel->getTopSelling(4);
-            // Lấy dữ liệu hoạt động biến thể (Heatmap)
+            // Dữ liệu mật độ hoạt động (Heatmap)
             $data['heatmap']       = $this->reportModel->getHeatmapData();
-            // Lấy xu hướng nhập xuất theo tháng (Monthly Trend)
+            // Xu hướng nhập xuất 6 tháng gần nhất
             $data['monthly_trend'] = $this->reportModel->getMonthlyTrend();
         }
 
@@ -54,52 +51,53 @@ class ReportController
 
     /**
      * Chức năng: Xử lý dữ liệu cho trang "Báo Cáo Chi Tiết"
-     * Phân quyền: Chỉ dành cho MANAGER.
-     * Dữ liệu bao gồm: Biểu đồ ngày, biểu đồ sản phẩm, biểu đồ nhân viên và bảng kê tồn kho chi tiết.
+     * Bao gồm: Lọc theo Ngày/Tuần/Tháng và các bảng biểu phân tích
      */
     public function statistics()
     {
-        // Bảo vệ route: Chỉ Manager mới được truy cập vào trang thống kê chi tiết
-        // if (strtoupper($_SESSION['role'] ?? '') !== 'MANAGER') {
-        //     header("Location: index.php?page=dashboard");
-        //     exit;
-        // }
-
-        // Lấy tham số lọc từ URL (nếu có)
+        // Ưu tiên lấy period từ URL
+        $period = $_GET['period'] ?? 'day';
         $start_date = $_GET['start_date'] ?? null;
-        $end_date = $_GET['end_date'] ?? null;
+        $end_date = $_GET['end_date'] ?? date('Y-m-d');
 
-        // Tập hợp toàn bộ dữ liệu cần thiết cho trang View Report
+        // Nếu không bấm nút Lọc thủ công mà chỉ chọn Combobox
+        if (!isset($_GET['start_date'])) {
+            if ($period == 'week') {
+                $start_date = date('Y-m-d', strtotime('-7 days'));
+            } elseif ($period == 'month') {
+                $start_date = date('Y-m-d', strtotime('-30 days'));
+            } else {
+                $start_date = date('Y-m-d');
+            }
+        }
+
         return [
-            // Thống kê tổng hợp (có thể lọc theo ngày)
             'all_stats'     => $this->reportModel->getGeneralStats($start_date, $end_date),
-            
-            // Top 5 ngày có lưu lượng giao dịch lớn nhất (vẽ biểu đồ cột đôi)
             'top_5_days'    => $this->reportModel->getTop5BusiestDays(),
-            
-            // Top 5 sản phẩm có biến động nhập/xuất cao nhất (vẽ biểu đồ cột ngang)
             'product_flow'  => $this->reportModel->getTop5ProductFlow(),
-            
-            // Chi tiết hoạt động của từng biến thể (Size/Màu) - hiển thị dạng bảng
             'variant_flow'  => $this->reportModel->getVariantFlowDetail(),
-            
-            // Bảng kê tồn kho chi tiết từng mẫu giày và biến thể hiện tại
             'inventory'     => $this->reportModel->getDetailedInventory(),
-            
-            // Tỉ lệ phân bổ hàng trong kho theo thương hiệu (vẽ biểu đồ tròn)
             'brand_dist'    => $this->reportModel->getBrandDistribution(),
-            
-            // Hiệu suất làm việc của Top 3 nhân viên (vẽ biểu đồ cột)
             'staff_perf'    => $this->reportModel->getStaffPerformance(),
-            
-            // Lưu lại giá trị filter để hiển thị trên form tìm kiếm
-            'filter'        => ['start' => $start_date, 'end' => $end_date]
+            'summary_data'  => $this->reportModel->getActivitySummaryByRange($start_date, $end_date),
+            'filter'        => ['start' => $start_date, 'end' => $end_date, 'period' => $period]
         ];
     }
 
+    public function getReportDetailsAjax()
+    {
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/json; charset=utf-8');
+        $date = $_GET['date'] ?? null;
+        // Nếu bồ muốn xem toàn bộ ngày, productId sẽ null
+        $productId = $_GET['product_id'] ?? null;
+        $details = $this->reportModel->getDetailsByDate($date, $productId);
+        echo json_encode($details ?: []);
+        exit;
+    }
+
     /**
-     * Chức năng: Xử lý yêu cầu lọc dữ liệu theo ngày
-     * Nhận ngày bắt đầu/kết thúc và chuyển hướng về trang báo cáo kèm tham số URL
+     * Chức năng: Điều hướng bộ lọc ngày
      */
     public function filterByDate($start, $end)
     {

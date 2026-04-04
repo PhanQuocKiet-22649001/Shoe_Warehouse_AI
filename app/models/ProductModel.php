@@ -249,11 +249,19 @@ class ProductModel
     /**
      * Ghi lại lịch sử giao dịch (Nhập/Xuất)
      */
-    public function logTransaction($type, $variant_id, $quantity, $user_id)
+    // Chú ý tham số thứ 5 là $createdAt
+    public function logTransaction($type, $variant_id, $quantity, $user_id, $createdAt = null)
     {
-        $sql = "INSERT INTO transactions (transaction_type, variant_id, quantity, user_id) 
-            VALUES ($1, $2, $3, $4)";
-        return pg_query_params($this->conn, $sql, [$type, (int)$variant_id, (int)$quantity, (int)$user_id]);
+        // Nếu có truyền $createdAt từ Google sang thì dùng $1, không thì dùng NOW()
+        $sql = "INSERT INTO transactions (transaction_type, variant_id, quantity, user_id, created_at)
+            VALUES ($1, $2, $3, $4, " . ($createdAt ? "$5" : "NOW()") . ")";
+
+        $params = [$type, $variant_id, $quantity, $user_id];
+        if ($createdAt) {
+            $params[] = $createdAt;
+        }
+
+        return pg_query_params($this->conn, $sql, $params);
     }
 
 
@@ -266,7 +274,7 @@ class ProductModel
         $sql = "UPDATE product_variants 
                 SET status = $1 
                 WHERE variant_id = $2";
-        
+
         $result = pg_query_params($this->conn, $sql, [$status, (int)$variantId]);
         return $result ? true : false;
     }
@@ -280,7 +288,7 @@ class ProductModel
         $sql = "UPDATE product_variants 
                 SET is_deleted = true, status = false 
                 WHERE variant_id = $1";
-                
+
         $result = pg_query_params($this->conn, $sql, [(int)$variantId]);
         return $result ? true : false;
     }

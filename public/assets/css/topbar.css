@@ -1,0 +1,211 @@
+/* --- 1. THANH TOPBAR (STICKY LIQUID GLASS) --- */
+.topbar {
+    /* Kích hoạt Sticky */
+    position: -webkit-sticky !important;
+    /* Hỗ trợ Safari */
+    position: sticky !important;
+    top: 0;
+    z-index: 1020 !important;
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    backdrop-filter: blur(15px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(15px) saturate(180%) !important;
+
+    border: 1px solid rgba(0, 0, 0, 0.8) !important;
+
+    /* Đổ bóng nhẹ để tách biệt khi cuộn trang */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+    padding: 15px 25px !important;
+    border-radius:  15px !important;
+    transition: background-color 0.3s ease;
+}
+
+/* --- 2. GIA CỐ Ô SEARCH TRONG TOPBAR --- */
+.search-box {
+    position: relative;
+    overflow: visible !important;
+    /* Phải cao hơn chính cái Topbar để danh sách kết quả không bị lấp */
+    z-index: 1021 !important;
+}
+
+/* --- 2. Ô TÌM KIẾM & Ô USER (KÍNH TRONG VIỀN ĐEN) --- */
+.search-box {
+    position: relative;
+    /* Phải có cái này để con nó (searchResults) không bị cắt cụt */
+    overflow: visible !important;
+    z-index: 1060 !important;
+}
+
+/* --- 2. Ô TÌM KIẾM & Ô USER (GIỮ NGUYÊN STYLE CỦA BỒ) --- */
+#mainSearch,
+.user-info .dropdown .cursor-pointer {
+    background-color: rgba(255, 255, 255, 0.3) !important;
+    /* Giảm nhẹ để thấy blur rõ hơn */
+    border: 1px solid rgba(0, 0, 0, 0.8) !important;
+    color: #000000 !important;
+    backdrop-filter: blur(10px);
+    /* Tăng blur lên 10px cho mướt */
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 10px !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#mainSearch:focus {
+    background-color: rgba(255, 255, 255, 0.8) !important;
+    border-color: #000000 !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    /* Đổ bóng nhẹ khi focus */
+    outline: none;
+}
+
+/* --- 3. BẢNG KẾT QUẢ TÌM KIẾM (TRẮNG ĐẶC - CHỮ ĐEN) --- */
+#searchResults {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    margin-top: 8px;
+
+    /* Ép Z-index cao nhất để không bị đè */
+    z-index: 9999 !important;
+
+    /* Nền trắng 100% không xuyên thấu */
+    background-color: #ffffff !important;
+
+    /* Viền đen rõ nét theo phong cách bồ chọn */
+    border: 1px solid rgba(0, 0, 0, 0.8) !important;
+    border-radius: 12px !important;
+
+    /* Đổ bóng đậm để bảng "tách" hẳn khỏi nền web */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+}
+
+/* --- 4. ITEM BÊN TRONG (CHỮ ĐEN) --- */
+#searchResults .list-group-item {
+    background-color: #ffffff !important;
+    border: none;
+    border-bottom: 1px solid #f0f0f0;
+    /* Đường kẻ mờ giữa các kết quả */
+    color: #000000 !important;
+    /* Chữ đen tuyền */
+    padding: 12px 15px;
+    transition: all 0.2s ease;
+}
+
+/* Hiệu ứng khi di chuột vào */
+#searchResults .list-group-item:hover {
+    background-color: #f8f9fa !important;
+    /* Xám cực nhẹ */
+    padding-left: 25px !important;
+    color: #000000 !important;
+}
+
+/* Chỉnh màu cho các thông tin phụ như mã SKU, Size... */
+#searchResults .list-group-item .text-secondary {
+    color: #666666 !important;
+}
+
+/* Đảm bảo ảnh sản phẩm nhỏ hiển thị đẹp */
+#searchResults img {
+    border-radius: 4px;
+    border: 1px solid #eee;
+}
+
+/* --- 4. HIỆU ỨNG LÀM MỜ NỀN (FIX LỖI TRẮNG XÓA) --- */
+.modal-backdrop.show {
+    opacity: 1 !important;
+    /* Chìa khóa: Phải có màu đen đậm để khi blur không bị ra màu trắng sương mù */
+    background-color: rgba(0, 0, 0, 0.6) !important;
+    backdrop-filter: blur(12px) brightness(0.7) !important;
+    /* Thêm brightness để dìm nền xuống */
+    -webkit-backdrop-filter: blur(12px) brightness(0.7) !important;
+}
+
+/* --- 5. MODAL LIQUID GLASS (KÍNH TỐI VIỀN TRẮNG) --- */
+.modal-content {
+    background: rgba(20, 20, 20, 0.6) !important;
+    /* Kính tối để nổi bật trên nền mờ */
+    backdrop-filter: blur(25px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(25px) saturate(150%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    /* Viền trắng mờ phát sáng */
+    border-radius: 20px !important;
+    color: #ffffff !important;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header,
+.modal-footer {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    background: transparent !important;
+}
+
+/* --- 6. NÚT BẤM & INPUT TRONG MODAL --- */
+.modal .form-control,
+.modal .form-select,
+.modal .btn-outline-dark,
+.modal .upload-zone {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    /* Viền trắng sáng nhẹ */
+    color: #ffffff !important;
+    backdrop-filter: blur(5px);
+    border-radius: 10px !important;
+}
+
+.modal .btn-dark {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    color: #ffffff !important;
+}
+
+/* --- 7. PHÂN CHIA CỘT MODAL --- */
+.border-end-glass {
+    border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+
+
+/* Vạch kẻ dọc chia đôi modal - Phong cách kính lỏng */
+.border-end-glass {
+    border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Các tiêu đề nhỏ bên trong cũng có gạch chân mờ ảo */
+.border-bottom-glass {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Khung phụ bên trong cột 2 cho nổi bật trên nền kính */
+.glass-inner-box {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Nút xử lý chính rực rỡ một tí */
+.btn-glass-confirm {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    color: white !important;
+}
+
+.btn-glass-confirm:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+}
+
+/* --- HIỆU ỨNG LÀM MỜ NỀN KHI MỞ MODAL --- */
+.modal-backdrop.show {
+    /* Ép độ hiển thị 100% để thấy được hiệu ứng filter */
+    opacity: 1 !important;
+
+    /* Màu nền tối trong suốt (70% đen) */
+    background-color: rgba(0, 0, 0, 0.7) !important;
+
+    /* Độ mờ của nền phía sau */
+    backdrop-filter: blur(10px) saturate(150%) !important;
+
+
+    transition: opacity 0.3s ease;
+}

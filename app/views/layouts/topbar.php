@@ -1,3 +1,5 @@
+<link rel="stylesheet" href="assets/css/topbar.css">
+
 <?php
 $cModel = new CategoryModel();
 // Lấy tất cả các hãng đang kinh doanh (status = true)
@@ -8,10 +10,10 @@ $allCategories = $cModel->getAll();
     const categoriesList = <?= json_encode($allCategories) ?>;
 </script>
 
-<div class="topbar mb-4 d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm border">
+<div class="topbar mb-4 d-flex justify-content-between align-items-center p-3 rounded shadow-sm ">
 
     <div class="search-box flex-grow-1 me-4 position-relative">
-        <input type="text" id="mainSearch" class="form-control border-secondary" placeholder="Tìm tên giày, size, mã SKU, màu sắc..." style="max-width: 400px;" autocomplete="off">
+        <input type="text" id="mainSearch" class="form-control " placeholder="Tìm tên giày, size, mã SKU, màu sắc..." style="max-width: 400px;" autocomplete="off">
 
         <div id="searchResults" class="list-group position-absolute w-100 shadow mt-1 d-none"
             style="z-index: 1050; max-width: 400px; max-height: 400px; overflow-y: auto; border-radius: 4px;">
@@ -20,27 +22,27 @@ $allCategories = $cModel->getAll();
 
     <div class="user-info d-flex align-items-center">
         <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'STAFF'): ?>
-            <button class="btn btn-outline-secondary me-3 fw-bold"
+            <button class="btn me-3 fw-bold"
                 data-bs-toggle="modal" data-bs-target="#addProductModal"
                 style="border-radius: 4px; ">
-                Quét Mã & Nhập Kho
+                Quét Ảnh & Nhập Kho
             </button>
         <?php endif; ?>
 
         <div class="dropdown">
-            <div class="d-flex align-items-center bg-light px-3 py-2 border rounded cursor-pointer dropdown-toggle"
+            <div class="d-flex align-items-center  px-3 py-2  rounded cursor-pointer dropdown-toggle"
                 id="userMenu" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
-                <span class="fw-bold text-dark"><?= $_SESSION['full_name'] ?? 'Người dùng hệ thống' ?></span>
+                <span class="fw-bold "><?= $_SESSION['full_name'] ?? 'Người dùng hệ thống' ?></span>
             </div>
 
-            <ul class="dropdown-menu dropdown-menu-end shadow-sm border mt-1" aria-labelledby="userMenu" style="border-radius: 4px;">
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm boder mt-1" aria-labelledby="userMenu" style="border-radius: 4px;">
                 <li>
-                    <a class="dropdown-item py-2 text-dark" href="#" data-bs-toggle="modal" data-bs-target="#profileModal">
+                    <a class="dropdown-item py-2 " href="#" data-bs-toggle="modal" data-bs-target="#profileModal">
                         Thông tin tài khoản
                     </a>
                 </li>
                 <li>
-                    <a class="dropdown-item py-2 text-dark" href="#" data-bs-toggle="modal" data-bs-target="#updateProfileModal">
+                    <a class="dropdown-item py-2 " href="#" data-bs-toggle="modal" data-bs-target="#updateProfileModal">
                         Cập nhật bảo mật
                     </a>
                 </li>
@@ -51,53 +53,52 @@ $allCategories = $cModel->getAll();
 
 <div class="modal fade" id="addProductModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content border shadow rounded-1">
-            <div class="modal-header bg-light border-bottom">
-                <h5 class="modal-title fw-bold text-dark text-uppercase">Phân Hệ Đối Soát Chứng Từ Kho</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-content shadow rounded-1">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold text-white text-uppercase">Phân Hệ Đối Soát Chứng Từ Kho</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
 
             <div class="modal-body p-0">
-                <div class="row g-0">
-                    <div class="col-md-6 border-end bg-white p-4">
+                <div class="row g-0 d-flex">
+
+                    <div class="col-md-6 p-4 border-end-glass">
                         <div class="text-start mb-4">
-                            <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">1. TẢI DỮ LIỆU ĐẦU VÀO</h6>
-                            <div class="upload-zone p-3 border border-secondary rounded-1 bg-light mb-2" style="border-style: dashed !important;">
+                            <h6 class="fw-bold text-white pb-2 mb-3 border-bottom-glass">1. TẢI DỮ LIỆU ĐẦU VÀO</h6>
+                            <div class="upload-zone p-3 rounded-1 mb-2">
                                 <input type="file" id="ai_multi_files" class="d-none" multiple accept="image/*" onchange="previewSelectedImages(this)">
 
-                                <button type="button" class="btn btn-outline-dark fw-bold w-100 mb-2 rounded-1" onclick="document.getElementById('ai_multi_files').click()">
+                                <button type="button" class="btn btn-outline-light fw-bold w-100 mb-2 rounded-1" onclick="document.getElementById('ai_multi_files').click()">
                                     CHỌN TỆP HÌNH ẢNH (TỐI ĐA 3)
                                 </button>
-                                <p class="text-muted mb-3" style="font-size: 12px; line-height: 1.4;">
-                                    *Lưu ý: Để chọn nhiều ảnh, vui lòng giữ phím Ctrl và click chọn các ảnh cùng lúc trong hộp thoại.
+                                <p class="text-white-50 mb-3" style="font-size: 12px; line-height: 1.4;">
+                                    *Lưu ý: Để chọn nhiều ảnh, vui lòng giữ phím Ctrl và click chọn các ảnh cùng lúc.
                                 </p>
 
-                                <button type="button" class="btn btn-dark w-100 fw-bold shadow-sm rounded-1" id="btn-scan-batch" onclick="executeBatchScan()">
+                                <button type="button" class="btn btn-glass-confirm w-100 fw-bold shadow-sm rounded-1" id="btn-scan-batch" onclick="executeBatchScan()">
                                     BẮT ĐẦU XỬ LÝ
                                 </button>
                             </div>
-
                             <div id="pre_scan_preview" class="d-flex flex-wrap gap-2 mt-2"></div>
                         </div>
 
                         <div id="post_scan_area" class="text-start d-none">
-                            <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">2. DANH SÁCH ĐÃ XỬ LÝ</h6>
-                            <p class="text-secondary small fw-bold mb-2">Vui lòng click vào từng ảnh dưới đây để thao tác:</p>
-                            <div id="scanned_thumbnails" class="d-flex flex-wrap gap-3 p-3 bg-light border rounded-1">
-                            </div>
+                            <h6 class="fw-bold text-white pb-2 mb-3 border-bottom-glass">2. DANH SÁCH ĐÃ XỬ LÝ</h6>
+                            <p class="text-white-50 small fw-bold mb-2">Vui lòng click vào từng ảnh để thao tác:</p>
+                            <div id="scanned_thumbnails" class="d-flex flex-wrap gap-3 p-3 rounded-1"></div>
                         </div>
                     </div>
 
-                    <div class="col-md-6 p-4 bg-light">
-                        <h6 class="fw-bold text-dark border-bottom pb-2 mb-3 text-uppercase">3. Khai Báo Biểu Mẫu Nhập Kho</h6>
-
-                        <div id="active_form_container" class="bg-white border rounded-1 p-4 shadow-sm" style="min-height: 400px;">
-                            <div class="text-center text-secondary py-5 mt-4">
+                    <div class="col-md-6 p-4">
+                        <h6 class="fw-bold text-white pb-2 mb-3 text-uppercase border-bottom-glass">3. Khai Báo Biểu Mẫu Nhập Kho</h6>
+                        <div id="active_form_container" class="rounded-1 p-4 shadow-sm glass-inner-box" style="min-height: 400px;">
+                            <div class="text-center text-white-50 py-5 mt-4">
                                 <h4 class="mb-3 opacity-50 fw-bold">CHƯA CÓ DỮ LIỆU</h4>
-                                <p class="mb-0">Hệ thống đang chờ lệnh. Vui lòng tải tệp và xử lý để tiếp tục.</p>
+                                <p class="mb-0">Hệ thống đang chờ lệnh. Vui lòng tải tệp để tiếp tục.</p>
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>
@@ -106,17 +107,17 @@ $allCategories = $cModel->getAll();
 
 <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border shadow">
-            <div class="modal-header bg-light border-bottom">
+        <div class="modal-content shadow">
+            <div class="modal-header ">
                 <h5 class="modal-title fw-bold text-dark" id="profileModalLabel">Thông Tin Tài Khoản</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4 bg-white">
+            <div class="modal-body p-4">
                 <?php
                 $uModel = new UserModel();
                 $uData = $uModel->getUserById($_SESSION['user_id']);
                 ?>
-                <div class="table-responsive border rounded">
+                <div class="table-responsive  rounded">
                     <table class="table table-striped table-hover align-middle mb-0">
                         <tbody>
                             <tr>
@@ -129,7 +130,7 @@ $allCategories = $cModel->getAll();
                             </tr>
                             <tr>
                                 <th class="ps-3">Quyền hạn</th>
-                                <td><span class="badge bg-secondary"><?= $uData['role'] === 'MANAGER' ? 'QUẢN LÝ KHU VỰC' : 'NHÂN VIÊN KHO' ?></span></td>
+                                <td><span class="badge "><?= $uData['role'] === 'MANAGER' ? 'QUẢN LÝ KHU VỰC' : 'NHÂN VIÊN KHO' ?></span></td>
                             </tr>
                             <tr>
                                 <th class="ps-3">Số điện thoại liên hệ</th>
@@ -143,7 +144,7 @@ $allCategories = $cModel->getAll();
                     </table>
                 </div>
             </div>
-            <div class="modal-footer border-top bg-light">
+            <div class="modal-footer  ">
                 <button type="button" class="btn btn-outline-secondary fw-bold rounded-1 px-4" data-bs-dismiss="modal">Đóng</button>
             </div>
         </div>
@@ -151,7 +152,7 @@ $allCategories = $cModel->getAll();
 </div>
 
 <?php if (isset($_SESSION['success'])): ?>
-    <div class="alert alert-success alert-dismissible fade show border shadow-sm mb-4 mx-3 mt-2 rounded-1" role="alert">
+    <div class="alert alert-success alert-dismissible fade show  shadow-sm mb-4 mx-3 mt-2 rounded-1" role="alert">
         <div class="d-flex align-items-center">
             <div><strong>Thành công:</strong> <?= $_SESSION['success'];
                                                 unset($_SESSION['success']); ?></div>
@@ -161,7 +162,7 @@ $allCategories = $cModel->getAll();
 <?php endif; ?>
 
 <?php if (isset($_SESSION['error'])): ?>
-    <div class="alert alert-danger alert-dismissible fade show border shadow-sm mb-4 mx-3 mt-2 rounded-1" role="alert">
+    <div class="alert alert-danger alert-dismissible fade show  shadow-sm mb-4 mx-3 mt-2 rounded-1" role="alert">
         <div class="d-flex align-items-center">
             <div><strong>Cảnh báo hệ thống:</strong> <?= $_SESSION['error'];
                                                         unset($_SESSION['error']); ?></div>
@@ -172,18 +173,18 @@ $allCategories = $cModel->getAll();
 
 <div class="modal fade" id="updateProfileModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border shadow">
+        <div class="modal-content  shadow">
             <form action="index.php?page=<?= $_GET['page'] ?? 'dashboard' ?>" method="POST" onsubmit="return confirm('Xác nhận lưu các thay đổi này vào hệ thống?')">
-                <div class="modal-header bg-light border-bottom">
+                <div class="modal-header  ">
                     <h5 class="modal-title fw-bold text-dark">Cập Nhật Thông Tin Bảo Mật</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body p-4 bg-white">
+                <div class="modal-body p-4">
                     <div class="row">
-                        <div class="col-md-5 border-end">
-                            <h6 class="mb-3 fw-bold text-dark border-bottom pb-2">Thông tin lưu trữ hiện tại</h6>
-                            <div class="bg-light p-3 rounded border">
-                                <table class="table table-sm table-borderless mb-0">
+                        <div class="col-md-5">
+                            <h6 class="mb-3 fw-bold text-dark  pb-2">Thông tin lưu trữ hiện tại</h6>
+                            <div class="t p-3 rounded ">
+                                <table class="table table-sm  mb-0">
                                     <tbody>
                                         <tr>
                                             <td class="text-secondary fw-bold">SĐT:</td>
@@ -198,29 +199,29 @@ $allCategories = $cModel->getAll();
                             </div>
                         </div>
                         <div class="col-md-7 ps-4">
-                            <h6 class="fw-bold mb-3 text-dark border-bottom pb-2">Biểu mẫu thay đổi dữ liệu</h6>
+                            <h6 class="fw-bold mb-3 text-dark pb-2">Biểu mẫu thay đổi dữ liệu</h6>
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-secondary">Số điện thoại mới</label>
-                                <input type="text" name="phone_number" class="form-control rounded-1 border-secondary">
+                                <input type="text" name="phone_number" class="form-control rounded-1 ">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-secondary">Địa chỉ mới</label>
-                                <textarea name="address" class="form-control rounded-1 border-secondary" rows="2"></textarea>
+                                <textarea name="address" class="form-control rounded-1" rows="2"></textarea>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-secondary">Mật khẩu mới (Bỏ trống nếu không đổi)</label>
-                                <input type="password" name="new_password" class="form-control rounded-1 border-secondary">
+                                <input type="password" name="new_password" class="form-control rounded-1 ">
                             </div>
 
-                            <div class="p-3 mt-4 rounded bg-light border border-danger">
+                            <div class="p-3 mt-4 rounded">
                                 <label class="form-label fw-bold text-danger mb-2">XÁC THỰC QUYỀN TRUY CẬP</label>
-                                <input type="password" name="old_password" class="form-control rounded-1 border-secondary" required placeholder="Nhập mật khẩu hiện tại của bạn để lưu">
+                                <input type="password" name="old_password" class="form-control rounded-1 " required placeholder="Nhập mật khẩu hiện tại của bạn để lưu">
                                 <small class="text-muted mt-1 d-block">Đây là bước bắt buộc để đảm bảo an toàn dữ liệu kho.</small>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-top bg-light">
+                <div class="modal-footer  ">
                     <button type="button" class="btn btn-outline-secondary fw-bold rounded-1 px-4" data-bs-dismiss="modal">Hủy bỏ</button>
                     <button type="submit" name="btn_update_profile" class="btn btn-success fw-bold rounded-1 px-4 shadow-sm">Lưu Dữ Liệu</button>
                 </div>
@@ -265,7 +266,7 @@ $allCategories = $cModel->getAll();
                         resultsBox.innerHTML = '';
                         if (data.length > 0) {
                             data.forEach(item => {
-                                resultsBox.innerHTML += `<a href="index.php?page=products&category_id=${item.category_id}#product_${item.product_id}" class="list-group-item list-group-item-action d-flex align-items-center"><img src="assets/img_product/${item.product_image || 'default_shoe.png'}" style="width: 50px; height: 40px; object-fit: contain;" class="rounded-1 border me-3"><div><div class="fw-bold text-dark mb-0">${item.product_name}</div><span class="text-secondary small">Xem chi tiết tồn kho</span></div></a>`;
+                                resultsBox.innerHTML += `<a href="index.php?page=products&category_id=${item.category_id}#product_${item.product_id}" class="list-group-item list-group-item-action d-flex align-items-center"><img src="assets/img_product/${item.product_image || 'default_shoe.png'}" style="width: 50px; height: 40px; object-fit: contain;" class="rounded-1  me-3"><div><div class="fw-bold text-dark mb-0">${item.product_name}</div><span class="text-secondary small">Xem chi tiết tồn kho</span></div></a>`;
                             });
                             resultsBox.classList.remove('d-none');
                         } else {
@@ -308,9 +309,9 @@ $allCategories = $cModel->getAll();
         selectedFilesArray.forEach((file, index) => {
             const fileUrl = URL.createObjectURL(file);
             container.innerHTML += `
-                <div class="position-relative border border-secondary rounded-1 bg-white" style="width: 120px; height: 120px;">
+                <div class="position-relative  rounded-1 " style="width: 120px; height: 120px;">
                     <img src="${fileUrl}" style="width: 100%; height: 100%; object-fit: contain; background-color: #f8f9fa;">
-                    <button type="button" class="btn btn-danger p-0 position-absolute border border-white" 
+                    <button type="button" class="btn btn-danger p-0 position-absolute " 
                             style="top: 4px; right: 4px; width: 22px; height: 22px; font-size: 12px; font-weight: bold; border-radius: 2px;"
                             onclick="removeSelectedFile(${index})" title="Loại bỏ ảnh này">X</button>
                 </div>`;
@@ -332,7 +333,7 @@ $allCategories = $cModel->getAll();
         btn.innerHTML = 'ĐANG XỬ LÝ...';
         preScanArea.innerHTML = '';
         document.getElementById('post_scan_area').classList.add('d-none');
-        formContainer.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-secondary mb-3"></div><p class="fw-bold text-dark">Hệ thống đang truy xuất dữ liệu kho...</p></div>';
+        formContainer.innerHTML = '<div class="text-center py-5"><div class=" text-secondary mb-3"></div><p class="fw-bold text-dark">Hệ thống đang truy xuất dữ liệu kho...</p></div>';
 
         const fd = new FormData();
         selectedFilesArray.forEach(f => fd.append('images[]', f));
@@ -378,9 +379,9 @@ $allCategories = $cModel->getAll();
         postScanArea.classList.remove('d-none');
         container.innerHTML = '';
         globalScannedData.forEach((item, index) => {
-            let borderClass = (index === currentSelectedIndex) ? 'border-dark border-3 opacity-100 shadow' : 'border-secondary opacity-50';
+            let borderClass = (index === currentSelectedIndex) ? '  opacity-100 shadow' : ' opacity-50';
             let localUrl = URL.createObjectURL(selectedFilesArray[index]);
-            container.innerHTML += `<img src="${localUrl}" onclick="loadFormForIndex(${index})" class="rounded-1 border ${borderClass}" style="width: 100px; height: 100px; object-fit:contain; background-color:#f8f9fa; cursor:pointer; transition: 0.2s;">`;
+            container.innerHTML += `<img src="${localUrl}" onclick="loadFormForIndex(${index})" class="rounded-1  ${borderClass}" style="width: 100px; height: 100px; object-fit:contain; background-color:#f8f9fa; cursor:pointer; transition: 0.2s;">`;
         });
     }
 
@@ -450,18 +451,18 @@ $allCategories = $cModel->getAll();
 
         // GIỮ NGUYÊN LOGIC PHÂN LOẠI AI CỦA BẠN
         if (topScore >= 95) {
-            alertMessage = `<div class="alert alert-success py-2 border-success rounded-1 mb-3"><i class="fas fa-check-circle me-2"></i><strong>AI XÁC THỰC:</strong> Khớp tuyệt đối (${topScore}%).</div>`;
+            alertMessage = `<div class="alert alert-success py-2 rounded-1 mb-3"><i class="fas fa-check-circle me-2"></i><strong>AI XÁC THỰC:</strong> Khớp tuyệt đối (${topScore}%).</div>`;
             defaultBrand = topMatch.brand;
             defaultName = topMatch.product_name;
         } else if (topScore >= 80) {
-            alertMessage = `<div class="alert alert-info py-2 border-info rounded-1 mb-3"><i class="fas fa-lightbulb me-2"></i><strong>AI GỢI Ý:</strong> Tìm thấy các mẫu gần giống (${topScore}%). Click để chọn:</div>`;
-            suggestionHtml = `<div class="suggestion-list mb-3 p-2 border rounded bg-white" style="max-height: 150px; overflow-y: auto;">`;
+            alertMessage = `<div class="alert alert-info py-2  rounded-1 mb-3"><i class="fas fa-lightbulb me-2"></i><strong>AI GỢI Ý:</strong> Tìm thấy các mẫu gần giống (${topScore}%). Click để chọn:</div>`;
+            suggestionHtml = `<div class="suggestion-list mb-3 p-2  rounded " style="max-height: 150px; overflow-y: auto;">`;
             matches.forEach((m) => {
-                suggestionHtml += `<div class="d-flex align-items-center p-2 border-bottom hover-bg-light" style="cursor:pointer;" onclick="fillFormFromSuggestion('${m.brand}', '${m.product_name}')"><img src="assets/img_product/${m.product_image}" style="width:40px; height:40px; object-fit:cover;" class="me-2 rounded"><div style="font-size: 11px;"><span class="fw-bold d-block">${m.product_name}</span><span class="text-muted">${m.brand} - Khớp ${Math.round(m.similarity_score * 100)}%</span></div></div>`;
+                suggestionHtml += `<div class="d-flex align-items-center p-2 style="cursor:pointer;" onclick="fillFormFromSuggestion('${m.brand}', '${m.product_name}')"><img src="assets/img_product/${m.product_image}" style="width:40px; height:40px; object-fit:cover;" class="me-2 rounded"><div style="font-size: 11px;"><span class="fw-bold d-block">${m.product_name}</span><span class="text-muted">${m.brand} - Khớp ${Math.round(m.similarity_score * 100)}%</span></div></div>`;
             });
             suggestionHtml += `</div>`;
         } else {
-            alertMessage = `<div class="alert alert-warning py-2 border-warning rounded-1 mb-3"><i class="fas fa-plus-circle me-2"></i><strong>MẪU MỚI:</strong> Không tìm thấy dữ liệu cũ tương đồng.</div>`;
+            alertMessage = `<div class="alert alert-warning py-2  rounded-1 mb-3"><i class="fas fa-plus-circle me-2"></i><strong>MẪU MỚI:</strong> Không tìm thấy dữ liệu cũ tương đồng.</div>`;
         }
 
         // Tạo danh sách các <option> cho Combobox
@@ -482,13 +483,13 @@ $allCategories = $cModel->getAll();
             <div class="row mb-3 align-items-center">
                 <div class="col-md-3"><label class="fw-bold text-secondary small">ẢNH GỐC:</label></div>
                 <div class="col-md-9">
-                    <img src="${localUrl}" class="border border-secondary rounded-1" style="width: 80px; height: 80px; object-fit:contain; background-color: #f8f9fa;">
+                    <img src="${localUrl}" class=" rounded-1" style="width: 80px; height: 80px; object-fit:contain; background-color: #f8f9fa;">
                 </div>
             </div>
 
             <div class="mb-3">
                 <label class="fw-bold text-secondary small mb-1">HÃNG SẢN XUẤT (CHỌN TRONG DANH SÁCH):</label>
-                <select id="input_brand" name="category_id" class="form-select border-dark rounded-1 shadow-sm fw-bold" required>
+                <select id="input_brand" name="category_id" class="form-select  rounded-1 shadow-sm fw-bold" required>
                     ${categoryOptions}
                 </select>
                 <small class="text-muted" style="font-size: 11px;">
@@ -498,23 +499,23 @@ $allCategories = $cModel->getAll();
 
             <div class="mb-3">
                 <label class="fw-bold text-secondary small mb-1">TÊN DÒNG SẢN PHẨM:</label>
-                <input type="text" id="input_product_name" name="product_name" class="form-control fw-bold border-dark rounded-1 shadow-sm" value="${defaultName}" placeholder="Nhập tên giày" required>
+                <input type="text" id="input_product_name" name="product_name" class="form-control fw-bold  rounded-1 shadow-sm" value="${defaultName}" placeholder="Nhập tên giày" required>
             </div>
 
             <div class="row mb-3">
                 <div class="col-md-6">
                     <label class="fw-bold text-secondary small mb-1">MÀU SẮC:</label>
-                    <input type="text" name="color" class="form-control border-dark fw-bold rounded-1" placeholder="Màu sắc" required>
+                    <input type="text" name="color" class="form-control fw-bold rounded-1" placeholder="Màu sắc" required>
                 </div>
                 <div class="col-md-6">
                     <label class="fw-bold text-secondary small mb-1">SIZE:</label>
-                    <input type="number" name="size" class="form-control fw-bold text-center border-secondary rounded-1" required>
+                    <input type="number" name="size" class="form-control fw-bold text-center rounded-1" required>
                 </div>
             </div>
 
             <div class="mb-4">
                 <label class="fw-bold text-secondary small mb-1">SỐ LƯỢNG NHẬP KHO:</label>
-                <input type="number" name="stock" class="form-control fw-bold text-center border-secondary rounded-1" value="1" min="1" required>
+                <input type="number" name="stock" class="form-control fw-bold text-center  rounded-1" value="1" min="1" required>
             </div>
 
             <button type="submit" class="btn btn-dark w-100 fw-bold rounded-1 py-2 shadow-sm">XÁC NHẬN LƯU DỮ LIỆU</button>

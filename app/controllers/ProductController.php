@@ -195,6 +195,7 @@ class ProductController
 
                 $existingProduct = $this->productModel->findExistingProduct($brandName, $product_name);
 
+                $hanoiTime = $this->getHanoiTime();
                 if ($existingProduct) {
                     $productId = $existingProduct['product_id'];
                     $existingVariant = $this->productModel->findVariant($productId, $size, $color);
@@ -204,7 +205,8 @@ class ProductController
                         $res = $this->productModel->addStock($existingVariant['variant_id'], $stock_input);
                         if (!$res) throw new Exception("Lỗi cộng dồn kho!");
 
-                        $this->productModel->logTransaction('IMPORT', $existingVariant['variant_id'], $stock_input, $userId);
+                        
+                        $this->productModel->logTransaction('IMPORT', $existingVariant['variant_id'], $stock_input, $userId, $hanoiTime);
                         $msg = "Sản phẩm đã có. Đã cập nhật số lượng cho hãng $brandName.";
                     } else {
                         // NHÁNH 2: TẠO BIẾN THỂ MỚI
@@ -213,7 +215,7 @@ class ProductController
 
                         $justCreated = $this->productModel->findVariant($productId, $size, $color);
                         if ($justCreated) {
-                            $this->productModel->logTransaction('IMPORT', $justCreated['variant_id'], $stock_input, $userId);
+                            $this->productModel->logTransaction('IMPORT', $justCreated['variant_id'], $stock_input, $userId, $hanoiTime);
                         }
                         $msg = "Đã thêm biến thể mới cho $product_name ($brandName).";
                     }
@@ -248,7 +250,7 @@ class ProductController
 
                     $justCreated = $this->productModel->findVariant($productId, $size, $color);
                     if ($justCreated) {
-                        $this->productModel->logTransaction('IMPORT', $justCreated['variant_id'], $stock_input, $userId);
+                        $this->productModel->logTransaction('IMPORT', $justCreated['variant_id'], $stock_input, $userId, $hanoiTime);
                     }
 
                     $msg = "Khởi tạo sản phẩm mẫu AI thành công cho hãng $brandName.";
@@ -454,7 +456,8 @@ class ProductController
                 if (!$res1 || pg_affected_rows($res1) == 0) throw new Exception("Không đủ tồn kho!");
 
                 // 2. Ghi nhật ký xuất kho
-                $res2 = $this->productModel->logTransaction('EXPORT', $variant_id, $quantity, $user_id);
+                $hanoiTime = $this->getHanoiTime();
+                $res2 = $this->productModel->logTransaction('EXPORT', $variant_id, $quantity, $user_id, $hanoiTime);
                 if (!$res2) throw new Exception("Lỗi ghi nhật ký giao dịch!");
 
                 pg_query($db, "COMMIT"); // Thành công hết thì lưu lại
@@ -515,5 +518,29 @@ class ProductController
 
         header("Location: " . $_SERVER['HTTP_REFERER']);
         exit;
+    }
+
+
+    private function getHanoiTime()
+    {
+        $url = "https://www.google.com";
+        $headers = @get_headers($url, 1);
+
+        if (isset($headers['Date'])) {
+            $dateStr = is_array($headers['Date']) ? $headers['Date'][0] : $headers['Date'];
+
+            // Tạo đối tượng thời gian từ GMT
+            $date = new DateTime($dateStr, new DateTimeZone('GMT'));
+
+            // Chuyển sang múi giờ Việt Nam (Hà Nội)
+            $date->setTimezone(new DateTimeZone('Asia/Ho_Chi_Minh'));
+
+            // Trả về định dạng Y-m-d H:i:s để lưu vào Postgres
+            return $date->format('Y-m-d H:i:s');
+        }
+
+        // Nếu mất mạng thì lấy giờ máy (đành chịu), nhưng ép múi giờ VN
+        date_default_timezone_set('Asia/Ho_Chi_Minh');
+        return date('Y-m-d H:i:s');
     }
 }

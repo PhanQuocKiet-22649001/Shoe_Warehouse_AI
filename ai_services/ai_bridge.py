@@ -68,6 +68,10 @@ Hệ thống Quản lý Kho Giày (Smart Warehouse) có cấu trúc PostgreSQL c
 6. Bảng 'transactions' (Lịch sử Nhập/Xuất):
    - transaction_type: 'IMPORT' (Nhập), 'EXPORT' (Xuất/Bán).
    - quantity: Số lượng giao dịch.
+   - variant_id: khóa ngoại liên kết đến bảng product_variants
+   - user_id: khóa ngoại liên kết đến bảng users
+   - created_at: thời gian thực hiện
+   - lưu lịch sử nhập kho, xuất kho của sản phẩm 
 
 7. Bảng 'users' (Nhân viên):
    - role: 'MANAGER' hoặc 'STAFF'.
@@ -110,6 +114,8 @@ async def ask_ai(question: str = Query(...)):
            - Phân tích NGỮ NGHĨA câu hỏi để tự suy luận ra những cột CẦN THIẾT NHẤT. Tuyệt đối KHÔNG SELECT thừa dữ liệu không được yêu cầu.
            - Nếu câu hỏi mang tính chất "tổng quát" (VD: liệt kê mẫu, đếm số lượng, tìm cái nào sắp hết): Chỉ SELECT cột định danh chính (VD: tên) và cột giá trị gộp (VD: SUM).
            - Nếu câu hỏi có chứa các từ khóa yêu cầu "chi tiết", "thuộc tính", "phân loại" (VD: size nào, màu gì, mã bao nhiêu): Mới SELECT thêm các cột chi tiết tương ứng.
+         
+         
         CÂU HỎI: "{{input}}"
         SQL Query:
         """)

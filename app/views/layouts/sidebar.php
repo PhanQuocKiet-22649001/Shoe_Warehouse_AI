@@ -24,9 +24,15 @@
                     <a href="index.php?page=employees">Quản lí Nhân viên</a>
                 </li>
             <?php endif; ?>
-            <li style="margin-bottom: 15px;">
-                <a href="index.php?page=report" class="<?= $page === 'report' ? 'active' : '' ?>">Thống kê báo cáo</a>
+            <li class="<?= $page === 'report' ? 'active' : '' ?>" style="margin-bottom: 15px;">
+                <a href="index.php?page=report">Thống kê báo cáo</a>
             </li>
+
+            <?php if (isset($_SESSION['role']) && strtoupper($_SESSION['role']) === 'MANAGER'): ?>
+                <li class="<?= $page === 'history' ? 'active' : '' ?>" style="margin-bottom: 15px;">
+                    <a href="index.php?page=history">Lịch sử xuất nhập</a>
+                </li>
+            <?php endif; ?>
 
             <li style="margin-bottom: 15px;">
                 <a href="#" id="btn-open-ai" class="<?= $page === 'ai-prediction' ? 'active' : '' ?>">Trợ lý AI</a>
