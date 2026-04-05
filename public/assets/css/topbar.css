@@ -119,16 +119,14 @@
     background-color: rgba(0, 0, 0, 0.6) !important;
     backdrop-filter: blur(12px) brightness(0.7) !important;
     /* Thêm brightness để dìm nền xuống */
-    -webkit-backdrop-filter: blur(12px) brightness(0.7) !important;
+ 
 }
 
 /* --- 5. MODAL LIQUID GLASS (KÍNH TỐI VIỀN TRẮNG) --- */
 .modal-content {
-    background: rgba(20, 20, 20, 0.6) !important;
-    /* Kính tối để nổi bật trên nền mờ */
-    backdrop-filter: blur(25px) saturate(150%) !important;
-    -webkit-backdrop-filter: blur(25px) saturate(150%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    background: rgba(81, 81, 81, 0.418) !important;
+   
+    border: 1px solid rgba(255, 255, 255, 0.464) !important;
     /* Viền trắng mờ phát sáng */
     border-radius: 20px !important;
     color: #ffffff !important;
@@ -137,7 +135,7 @@
 
 .modal-header,
 .modal-footer {
-    border-color: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.249) !important;
     background: transparent !important;
 }
 
@@ -208,4 +206,67 @@
 
 
     transition: opacity 0.3s ease;
+}
+
+
+/* 1. Nhuộm trắng các nhãn (Label) */
+.modal label {
+    color: #ffffff !important;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.2); /* Tạo hiệu ứng phát sáng nhẹ cho chữ */
+}
+
+
+
+/* 3. Nhuộm trắng Placeholder (Cực kỳ quan trọng) */
+/* Cần dùng pseudo-element để can thiệp vào placeholder */
+.modal .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.4) !important; /* Trắng mờ để phân biệt với chữ đã nhập */
+}
+
+/* Hỗ trợ cho các trình duyệt cũ hơn */
+.modal .form-control::-webkit-input-placeholder { color: rgba(255, 255, 255, 0.4) !important; }
+.modal .form-control::-moz-placeholder { color: rgba(255, 255, 255, 0.4) !important; }
+
+
+
+/* 5. Ép cái con trỏ chuột (Caret) cũng màu trắng cho dễ nhìn */
+.modal .form-control {
+    caret-color: #ffffff !important;
+}
+
+/* --- HIỆU ỨNG CHUNG CHO CÁC PHẦN TỬ TRONG TOPBAR --- */
+
+/* 1. Ô Tìm Kiếm */
+#mainSearch {
+    border: 1px solid rgba(0, 0, 0, 0.1); /* Viền mặc định mờ */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#mainSearch:hover, 
+#mainSearch:focus {
+     border-color: #000000 !important;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3) !important;
+
+}
+
+
+.topbar .btn:hover {
+    border-color: #000000 !important;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 3. Ô Thông tin User (Dropdown Toggle) */
+#userMenu {
+    border: 1px solid transparent; /* Tạo viền ẩn để không bị giật khi hover */
+}
+
+#userMenu:hover {
+   border-color: #000000 !important;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3) !important;
+
+}
+
+/* Hiệu ứng mượt cho các icon/chữ bên trong khi hover */
+#userMenu:hover span {
+    color: #000000 !important;
 }

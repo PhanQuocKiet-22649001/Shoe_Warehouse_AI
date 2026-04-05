@@ -24,7 +24,7 @@ $allCategories = $cModel->getAll();
         <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'STAFF'): ?>
             <button class="btn me-3 fw-bold"
                 data-bs-toggle="modal" data-bs-target="#addProductModal"
-                style="border-radius: 4px; ">
+                style="border-radius: 7px; border: 1px solid #000000;">
                 Quét Ảnh & Nhập Kho
             </button>
         <?php endif; ?>
@@ -68,7 +68,7 @@ $allCategories = $cModel->getAll();
                             <div class="upload-zone p-3 rounded-1 mb-2">
                                 <input type="file" id="ai_multi_files" class="d-none" multiple accept="image/*" onchange="previewSelectedImages(this)">
 
-                                <button type="button" class="btn btn-outline-light fw-bold w-100 mb-2 rounded-1" onclick="document.getElementById('ai_multi_files').click()">
+                                <button type="button" class="btn btn-glass-confirm fw-bold w-100 mb-2 shadow-sm rounded-1" onclick="document.getElementById('ai_multi_files').click()">
                                     CHỌN TỆP HÌNH ẢNH (TỐI ĐA 3)
                                 </button>
                                 <p class="text-white-50 mb-3" style="font-size: 12px; line-height: 1.4;">
@@ -248,7 +248,7 @@ $allCategories = $cModel->getAll();
     }
 
     .upload-zone:hover {
-        border-color: #0d6efd !important;
+        border-color: #ffffff !important;
     }
 </style>
 <script>
@@ -333,7 +333,7 @@ $allCategories = $cModel->getAll();
         btn.innerHTML = 'ĐANG XỬ LÝ...';
         preScanArea.innerHTML = '';
         document.getElementById('post_scan_area').classList.add('d-none');
-        formContainer.innerHTML = '<div class="text-center py-5"><div class=" text-secondary mb-3"></div><p class="fw-bold text-dark">Hệ thống đang truy xuất dữ liệu kho...</p></div>';
+        formContainer.innerHTML = '<div class="text-center py-5"><div class=" mb-3"></div><p class="fw-bold">Hệ thống đang truy xuất dữ liệu kho...</p></div>';
 
         const fd = new FormData();
         selectedFilesArray.forEach(f => fd.append('images[]', f));
@@ -481,44 +481,44 @@ $allCategories = $cModel->getAll();
             <input type="hidden" name="temp_image_name" value="${imageName}">
             
             <div class="row mb-3 align-items-center">
-                <div class="col-md-3"><label class="fw-bold text-secondary small">ẢNH GỐC:</label></div>
+                <div class="col-md-3"><label class="fw-bold  small">ẢNH GỐC:</label></div>
                 <div class="col-md-9">
                     <img src="${localUrl}" class=" rounded-1" style="width: 80px; height: 80px; object-fit:contain; background-color: #f8f9fa;">
                 </div>
             </div>
 
             <div class="mb-3">
-                <label class="fw-bold text-secondary small mb-1">HÃNG SẢN XUẤT (CHỌN TRONG DANH SÁCH):</label>
+                <label class="fw-bold  small mb-1">HÃNG SẢN XUẤT (CHỌN TRONG DANH SÁCH):</label>
                 <select id="input_brand" name="category_id" class="form-select  rounded-1 shadow-sm fw-bold" required>
                     ${categoryOptions}
                 </select>
-                <small class="text-muted" style="font-size: 11px;">
+                <small style="font-size: 11px;">
                     * Nếu không thấy hãng, vui lòng liên hệ <b>Manager</b> để thêm vào danh mục.
                 </small>
             </div>
 
             <div class="mb-3">
-                <label class="fw-bold text-secondary small mb-1">TÊN DÒNG SẢN PHẨM:</label>
+                <label class="fw-bold  small mb-1">TÊN DÒNG SẢN PHẨM:</label>
                 <input type="text" id="input_product_name" name="product_name" class="form-control fw-bold  rounded-1 shadow-sm" value="${defaultName}" placeholder="Nhập tên giày" required>
             </div>
 
             <div class="row mb-3">
                 <div class="col-md-6">
-                    <label class="fw-bold text-secondary small mb-1">MÀU SẮC:</label>
+                    <label class="fw-bold  small mb-1">MÀU SẮC:</label>
                     <input type="text" name="color" class="form-control fw-bold rounded-1" placeholder="Màu sắc" required>
                 </div>
                 <div class="col-md-6">
-                    <label class="fw-bold text-secondary small mb-1">SIZE:</label>
+                    <label class="fw-bold  small mb-1">SIZE:</label>
                     <input type="number" name="size" class="form-control fw-bold text-center rounded-1" required>
                 </div>
             </div>
 
             <div class="mb-4">
-                <label class="fw-bold text-secondary small mb-1">SỐ LƯỢNG NHẬP KHO:</label>
+                <label class="fw-bold small mb-1">SỐ LƯỢNG NHẬP KHO:</label>
                 <input type="number" name="stock" class="form-control fw-bold text-center  rounded-1" value="1" min="1" required>
             </div>
 
-            <button type="submit" class="btn btn-dark w-100 fw-bold rounded-1 py-2 shadow-sm">XÁC NHẬN LƯU DỮ LIỆU</button>
+            <button type="submit" class="btn w-100 fw-bold rounded-1 py-2 shadow-sm">XÁC NHẬN LƯU DỮ LIỆU</button>
         </form>`;
     }
 
