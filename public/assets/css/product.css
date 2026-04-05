@@ -1,0 +1,134 @@
+/* =======================================================
+   1. ĐỒNG BỘ NỀN KÍNH CHO MODAL SẢN PHẨM / BIẾN THỂ
+======================================================== */
+/* Ép nền Modal thành kính (phòng trường hợp file topbar chưa phủ tới trang này) */
+.modal-content {
+    background: rgba(81, 81, 81, 0.418) !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    border-radius: 20px !important;
+    color: #ffffff !important;
+    backdrop-filter: blur(15px) saturate(150%);
+    -webkit-backdrop-filter: blur(15px) saturate(150%);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+}
+
+/* =======================================================
+   2. HỦY NỀN TRẮNG CỦA BẢNG BOOTSTRAP (TABLE)
+======================================================== */
+.modal-content .table {
+    color: #ffffff !important;
+    background-color: transparent !important;
+    margin-bottom: 0;
+}
+
+/* Xóa phông nền của từng ô, thêm gạch chân trắng mờ */
+
+.modal-content .table td {
+    background-color: transparent !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+    vertical-align: middle !important;
+    /* Căn giữa nội dung theo chiều dọc */
+}
+
+.modal-content .table th {
+    background-color: rgb(38, 38, 38) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+    vertical-align: middle !important;
+
+}
+
+/* Xử lý các dòng sọc (table-striped) - Đổi từ xám thành trắng mờ 2% */
+.modal-content .table-striped>tbody>tr:nth-of-type(odd)>* {
+    background-color: rgba(255, 255, 255, 0.02) !important;
+    color: #ffffff !important;
+}
+
+/* Hiệu ứng đưa chuột qua dòng nào dòng đó sáng nhẹ lên (table-hover) */
+.modal-content .table-hover>tbody>tr:hover>* {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    transition: background-color 0.2s ease;
+}
+
+/* =======================================================
+   3. STYLE CÁC NÚT BẤM DẠNG KÍNH LỎNG (THAO TÁC)
+======================================================== */
+/* Nút dùng chung trong bảng */
+.modal-content .table .btn {
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+}
+
+/* Nút Xanh (Đang hoạt động) */
+.modal-content .table .btn-success {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.8) !important;
+
+    /* Xanh neon */
+}
+
+.modal-content .table .btn-success:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    color: #ffffff !important;
+}
+
+/* Nút Xám (Đã tắt) */
+.modal-content .table .btn-secondary {
+    background-color: rgba(108, 117, 125, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.modal-content .table .btn-secondary:hover {
+    background-color: rgba(108, 117, 125, 0.5) !important;
+    color: #ffffff !important;
+}
+
+/* Nút Đỏ (Xóa biến thể) */
+.modal-content .table .btn-danger {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.modal-content .table .btn-danger:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important;
+}
+
+/* =======================================================
+   4. TEXT PHỤ & NÚT ĐÓNG MODAL
+======================================================== */
+/* Chữ rỗng (Chưa có biến thể) */
+.modal-content .text-muted {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Nút Đóng màu đen ở dưới */
+.modal-content .modal-footer .btn-dark {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    color: #ffffff !important;
+}
+
+.modal-content .modal-footer .btn-dark:hover {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+}
+
+
+/* Nhắm trực tiếp vào ảnh nằm trong bảng của Modal */
+.modal-content .table img {
+    width: 100% !important;    
+    height: auto !important;      
+    object-fit: contain !important; 
+
+}
+
+/* Hiệu ứng rê chuột vào ảnh phóng to nhẹ */
+.modal-content .table img:hover {
+    transform: scale(1.1);
+    border-color: rgba(255, 255, 255, 0.5);
+    cursor: zoom-in;
+}

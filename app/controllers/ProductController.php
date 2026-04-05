@@ -205,7 +205,7 @@ class ProductController
                         $res = $this->productModel->addStock($existingVariant['variant_id'], $stock_input);
                         if (!$res) throw new Exception("Lỗi cộng dồn kho!");
 
-                        
+
                         $this->productModel->logTransaction('IMPORT', $existingVariant['variant_id'], $stock_input, $userId, $hanoiTime);
                         $msg = "Sản phẩm đã có. Đã cập nhật số lượng cho hãng $brandName.";
                     } else {
@@ -220,24 +220,42 @@ class ProductController
                         $msg = "Đã thêm biến thể mới cho $product_name ($brandName).";
                     }
                 } else {
-                    // NHÁNH 3: TẠO MỚI HOÀN TOÀN
-                    $imageName = (!empty($_POST['temp_image_name']) && $_POST['temp_image_name'] !== 'undefined')
-                        ? $_POST['temp_image_name']
-                        : 'default_shoe.png';
+                    // ==============================================================
+                    // NHÁNH 3: TẠO MỚI HOÀN TOÀN (ĐÃ ĐƯỢC NÂNG CẤP XỬ LÝ ẢNH)
+                    // ==============================================================
+                    $imageName = 'default_shoe.png';
 
-                    if ($imageName !== 'default_shoe.png') {
+                    // Trường hợp 1: Có ảnh AI (Ảnh đã được AI tải lên thư mục temp_img)
+                    if (!empty($_POST['temp_image_name']) && $_POST['temp_image_name'] !== 'undefined' && $_POST['temp_image_name'] !== 'null' && trim($_POST['temp_image_name']) !== '') {
+                        $imageName = $_POST['temp_image_name'];
                         $sourcePath = "assets/img_temp/" . $imageName;
                         $destinationPath = "assets/img_product/" . $imageName;
+
                         if (file_exists($sourcePath)) {
                             if (!rename($sourcePath, $destinationPath)) {
-                                throw new Exception("Lỗi hệ thống: Không thể lưu file ảnh chính thức.");
+                                throw new Exception("Lỗi hệ thống: Không thể lưu file ảnh chính thức từ AI.");
                             }
                         }
                     }
+                    // Trường hợp 2: Chế độ thủ công (Ảnh upload trực tiếp từ $_FILES)
+                    elseif (isset($_FILES['manual_image']) && $_FILES['manual_image']['error'] === UPLOAD_ERR_OK) {
+                        $extension = pathinfo($_FILES['manual_image']['name'], PATHINFO_EXTENSION);
+                        if (empty($extension)) $extension = 'jpg';
 
+                        // Tạo tên ngẫu nhiên chống trùng lặp
+                        $imageName = time() . '_' . uniqid() . '.' . $extension;
+                        $destinationPath = "assets/img_product/" . $imageName;
+
+                        if (!move_uploaded_file($_FILES['manual_image']['tmp_name'], $destinationPath)) {
+                            throw new Exception("Lỗi hệ thống: Không thể lưu ảnh upload thủ công.");
+                        }
+                    }
+
+                    // Khởi tạo sản phẩm mới
                     $productId = $this->productModel->create($product_name, $category_id, $imageName, $userId);
                     if (!$productId) throw new Exception("Lỗi tạo sản phẩm mẫu!");
 
+                    // Chỉ lưu vector nếu là do AI quét có gửi mảng vector lên (Nhập thủ công sẽ bỏ qua)
                     if ($vector_json && $vector_json !== 'undefined' && $vector_json !== 'null') {
                         $vectorArray = json_decode($vector_json, true);
                         if (is_array($vectorArray)) {
@@ -253,7 +271,12 @@ class ProductController
                         $this->productModel->logTransaction('IMPORT', $justCreated['variant_id'], $stock_input, $userId, $hanoiTime);
                     }
 
-                    $msg = "Khởi tạo sản phẩm mẫu AI thành công cho hãng $brandName.";
+                    // Tùy chỉnh câu thông báo để bồ biết nó đang nhập bằng mode nào
+                    $modeStr = isset($_FILES['manual_image']) ? "THỦ CÔNG" : "AI";
+                    $msg = "Khởi tạo sản phẩm mẫu ($modeStr) thành công cho hãng $brandName.";
+                    // ==============================================================
+                    // KẾT THÚC NHÁNH 3
+                    // ==============================================================
                 }
 
                 pg_query($db, "COMMIT");

@@ -4,52 +4,63 @@
 class VisionService
 {
     /**
-     * Chạy Python ngầm định để chuyển đổi Ảnh thành Vector AI 512 chiều
+     * Gọi Flask API (đang chạy ngầm) để chuyển đổi Ảnh thành Vector AI 512 chiều
      */
     public function generateVector($imagePath)
     {
-        // Đường dẫn tuyệt đối của Python (Đảm bảo dùng đúng path bồ đã test ở CMD)
-        $pythonPath = "python";
-        $pythonScript = __DIR__ . '/generate_vector.py';
-
-        // Chuyển đường dẫn ảnh sang đường dẫn tuyệt đối để Python không bị lạc đường
+        // 1. Chuyển đường dẫn ảnh sang đường dẫn tuyệt đối
         $fullImagePath = realpath($imagePath);
 
         if (!$fullImagePath || !file_exists($fullImagePath)) {
             return ["status" => "error", "message" => "Không tìm thấy ảnh tại: " . $imagePath];
         }
 
-        // Lệnh thực thi: python script.py path_anh 2>&1 (để bắt cả lỗi nếu có)
-        $command = "python " . escapeshellarg($pythonScript) . " " . escapeshellarg($fullImagePath) . " 2>&1";
-        $output = shell_exec($command);
+        // 2. Cấu hình gọi API sang Flask (Python)
+        $url = 'http://127.0.0.1:5000/scan';
+        $data = array('image_path' => $fullImagePath);
+        $payload = json_encode($data);
 
-        // Chạy lệnh
-        $output = shell_exec($command);
+        // Khởi tạo cURL
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'Content-Type: application/json',
+            'Content-Length: ' . strlen($payload)
+        ));
+        
+        // Timeout 15 giây để tránh treo Web nếu Python bị nghẽn
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15); 
 
-        if ($output === null || empty(trim($output))) {
-            return ["status" => "error", "message" => "Lỗi thực thi: Không nhận được phản hồi từ AI service."];
+        // Thực thi gọi API
+        $result = curl_exec($ch);
+        $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        // 3. Xử lý kết quả trả về
+        if ($result === false) {
+            return [
+                "status" => "error", 
+                "message" => "Không kết nối được tới AI Server. Bồ đã chạy 'python api_vector.py' chưa? Lỗi: " . $error
+            ];
         }
 
-        // --- BỘ LỌC THẦN THÁNH: REGEX ---
-        // Tìm đoạn nằm trong dấu ngoặc nhọn { ... } ở cuối chuỗi output
-        // giúp loại bỏ các dòng Warning, Loading weights của Python
-        if (preg_match('/\{.*\}/s', $output, $matches)) {
-            $cleanJson = $matches[0];
-            $result = json_decode($cleanJson, true);
-
-            if (json_last_error() === JSON_ERROR_NONE && isset($result['status'])) {
-                if ($result['status'] === 'success') {
-                    return [
-                        "status" => "success",
-                        "vector" => $result['vector'] // Trả về mảng 512 số
-                    ];
-                } else {
-                    return ["status" => "error", "message" => "AI Lỗi: " . ($result['message'] ?? 'Không rõ lý do')];
-                }
-            }
+        if ($httpcode !== 200) {
+            return [
+                "status" => "error", 
+                "message" => "AI Server báo lỗi (Code $httpcode): " . substr($result, 0, 100)
+            ];
         }
 
-        // Nếu không lọc được JSON hoặc JSON lỗi, trả về toàn bộ output để debug
-        return ["status" => "error", "message" => "AI trả về dữ liệu rác: " . substr($output, 0, 200) . "..."];
+        // Vì Flask đã trả về JSON sạch sẽ, ta KHÔNG CẦN BỘ LỌC REGEX nữa!
+        $decodedResponse = json_decode($result, true);
+
+        if (json_last_error() === JSON_ERROR_NONE && isset($decodedResponse['status'])) {
+            return $decodedResponse; // Trả thẳng kết quả {"status": "success", "vector": [...]} về cho Controller
+        }
+
+        return ["status" => "error", "message" => "Dữ liệu AI trả về bị lỗi định dạng."];
     }
 }

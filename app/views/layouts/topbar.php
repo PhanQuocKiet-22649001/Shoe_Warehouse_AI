@@ -54,9 +54,24 @@ $allCategories = $cModel->getAll();
 <div class="modal fade" id="addProductModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content shadow rounded-1">
-            <div class="modal-header border-bottom">
-                <h5 class="modal-title fw-bold text-white text-uppercase">Phân Hệ Đối Soát Chứng Từ Kho</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="modal-header border-bottom flex-column align-items-start">
+                <div class="d-flex w-100 justify-content-between align-items-center mb-2">
+                    <h5 class="modal-title fw-bold text-white text-uppercase">Phân Hệ Đối Soát Chứng Từ Kho</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <ul class="nav nav-pills w-100 glass-tabs" id="importTabs" role="tablist">
+                    <li class="nav-item flex-fill text-center" role="presentation">
+                        <button class="nav-link active w-100 fw-bold" data-mode="ai" type="button">
+                            <i class="fas fa-robot me-2"></i>QUÉT AI (TỰ ĐỘNG)
+                        </button>
+                    </li>
+                    <li class="nav-item flex-fill text-center ms-2" role="presentation">
+                        <button class="nav-link w-100 fw-bold" data-mode="manual" type="button">
+                            <i class="fas fa-keyboard me-2"></i>NHẬP THỦ CÔNG
+                        </button>
+                    </li>
+                </ul>
             </div>
 
             <div class="modal-body p-0">
@@ -109,7 +124,7 @@ $allCategories = $cModel->getAll();
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow">
             <div class="modal-header ">
-                <h5 class="modal-title fw-bold text-dark" id="profileModalLabel">Thông Tin Tài Khoản</h5>
+                <h5 class="modal-title fw-bold" id="profileModalLabel">Thông Tin Tài Khoản</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
@@ -176,7 +191,7 @@ $allCategories = $cModel->getAll();
         <div class="modal-content  shadow">
             <form action="index.php?page=<?= $_GET['page'] ?? 'dashboard' ?>" method="POST" onsubmit="return confirm('Xác nhận lưu các thay đổi này vào hệ thống?')">
                 <div class="modal-header  ">
-                    <h5 class="modal-title fw-bold text-dark">Cập Nhật Thông Tin Bảo Mật</h5>
+                    <h5 class="modal-title fw-bold">Cập Nhật Thông Tin Bảo Mật</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
@@ -184,7 +199,7 @@ $allCategories = $cModel->getAll();
                         <div class="col-md-5">
                             <h6 class="mb-3 fw-bold text-dark  pb-2">Thông tin lưu trữ hiện tại</h6>
                             <div class="t p-3 rounded ">
-                                <table class="table table-sm  mb-0">
+                                <table class="table ">
                                     <tbody>
                                         <tr>
                                             <td class="text-secondary fw-bold">SĐT:</td>
@@ -223,7 +238,7 @@ $allCategories = $cModel->getAll();
                 </div>
                 <div class="modal-footer  ">
                     <button type="button" class="btn btn-outline-secondary fw-bold rounded-1 px-4" data-bs-dismiss="modal">Hủy bỏ</button>
-                    <button type="submit" name="btn_update_profile" class="btn btn-success fw-bold rounded-1 px-4 shadow-sm">Lưu Dữ Liệu</button>
+                    <button type="submit" name="btn_update_profile" class="btn btn-outline-secondary fw-bold rounded-1 px-4">Lưu Dữ Liệu</button>
                 </div>
             </form>
         </div>
@@ -288,14 +303,58 @@ $allCategories = $cModel->getAll();
     let globalScannedData = [];
     let currentSelectedIndex = 0;
     let selectedFilesArray = [];
+    let importMode = 'ai'; // Mặc định là AI
+
+
+    // BẮT SỰ KIỆN CHUYỂN TAB
+    document.querySelectorAll('#importTabs .nav-link').forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            // Đổi active
+            document.querySelectorAll('#importTabs .nav-link').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+
+            importMode = this.getAttribute('data-mode');
+
+            // Reset toàn bộ UI
+            selectedFilesArray = [];
+            globalScannedData = [];
+            currentSelectedIndex = 0;
+            renderPreScanThumbnails();
+            document.getElementById('post_scan_area').classList.add('d-none');
+            document.getElementById('active_form_container').innerHTML = `
+                <div class="text-center text-white-50 py-5 mt-4">
+                    <h4 class="mb-3 opacity-50 fw-bold">CHƯA CÓ DỮ LIỆU</h4>
+                    <p class="mb-0">Hệ thống đang chờ lệnh. Vui lòng tải tệp để tiếp tục.</p>
+                </div>`;
+
+            // Đổi text nút bấm & Gợi ý
+            const btn = document.getElementById('btn-scan-batch');
+            const note = document.querySelector('.upload-zone p');
+            const btnSelect = document.querySelector('.upload-zone button');
+
+            if (importMode === 'manual') {
+                btn.innerHTML = '<i class="fas fa-edit me-2"></i>TIẾN HÀNH NHẬP LIỆU';
+                btnSelect.innerHTML = 'CHỌN TỆP HÌNH ẢNH (TỐI ĐA 10)';
+                note.innerHTML = '*Lưu ý: Chế độ thủ công cho phép nhập tối đa 10 ảnh cùng lúc.';
+            } else {
+                btn.innerHTML = '<i class="fas fa-magic me-2"></i>BẮT ĐẦU XỬ LÝ AI';
+                btnSelect.innerHTML = 'CHỌN TỆP HÌNH ẢNH (TỐI ĐA 3)';
+                note.innerHTML = '*Lưu ý: Để chọn nhiều ảnh, vui lòng giữ phím Ctrl và click chọn các ảnh cùng lúc.';
+            }
+        });
+    });
+
 
     function previewSelectedImages(input) {
         const newFiles = Array.from(input.files);
+        const maxLimit = importMode === 'ai' ? 3 : 10; // AI max 3, Thủ công max 10
+
         for (let file of newFiles) {
-            if (selectedFilesArray.length < 3) {
+            if (selectedFilesArray.length < maxLimit) {
                 selectedFilesArray.push(file);
             } else {
-                alert("Hệ thống chỉ hỗ trợ xử lý tối đa 3 chứng từ/hình ảnh cùng lúc.");
+                alert(`Chế độ này chỉ hỗ trợ tối đa ${maxLimit} ảnh cùng lúc!`);
                 break;
             }
         }
@@ -323,17 +382,101 @@ $allCategories = $cModel->getAll();
         renderPreScanThumbnails();
     }
 
+    // async function executeBatchScan() {
+    //     if (selectedFilesArray.length === 0) return alert("Vui lòng đính kèm tệp hình ảnh để xử lý.");
+
+    //     const btn = document.getElementById('btn-scan-batch');
+    //     const formContainer = document.getElementById('active_form_container');
+    //     const preScanArea = document.getElementById('pre_scan_preview');
+
+    //     // NẾU LÀ CHẾ ĐỘ THỦ CÔNG -> BỎ QUA GỌI AI, HIỆN FORM LUÔN
+    //     if (importMode === 'manual') {
+    //         btn.innerHTML = 'ĐANG TẠO BIỂU MẪU...';
+    //         preScanArea.innerHTML = '';
+    //         document.getElementById('post_scan_area').classList.add('d-none');
+
+    //         // Tạo mảng dữ liệu rỗng (Không có AI matches)
+    //         globalScannedData = selectedFilesArray.map(f => ({
+    //             temp_image: "",
+    //             vector: null,
+    //             matches: [],
+    //             similarity: 0,
+    //             status: "manual",
+    //             fileObj: f // Lưu lại file gốc để xíu gửi lên PHP
+    //         }));
+
+    //         renderThumbnails();
+    //         loadFormForIndex(0);
+    //         btn.innerHTML = '<i class="fas fa-edit me-2"></i>TIẾN HÀNH NHẬP LIỆU';
+    //         return;
+    //     }
+
+    //     // --- NẾU LÀ AI THÌ CHẠY LOGIC CŨ Ở ĐÂY ---
+    //     btn.disabled = true;
+    //     btn.innerHTML = 'ĐANG XỬ LÝ...';
+    //     preScanArea.innerHTML = '';
+    //     document.getElementById('post_scan_area').classList.add('d-none');
+    //     formContainer.innerHTML = '<div class="text-center py-5"><p class="fw-bold">Hệ thống đang truy xuất dữ liệu kho...</p></div>';
+
+    //     const fd = new FormData();
+    //     selectedFilesArray.forEach(f => fd.append('images[]', f));
+
+    //     try {
+    //         const response = await fetch('index.php?page=products&action=scan-ai', {
+    //             method: 'POST',
+    //             body: fd
+    //         });
+    //         const res = await response.json();
+    //         if (res.status === 'success') {
+    //             globalScannedData = res.data;
+    //             renderThumbnails();
+    //             if (globalScannedData.length > 0) loadFormForIndex(0);
+    //         } else {
+    //             alert("Lỗi xử lý: " + res.message);
+    //             formContainer.innerHTML = '<div class="text-center py-5 fw-bold text-danger">Tiến trình thất bại.</div>';
+    //         }
+    //     } catch (e) {
+    //         alert("Mất kết nối máy chủ.");
+    //     } finally {
+    //         btn.disabled = false;
+    //         btn.innerHTML = '<i class="fas fa-magic me-2"></i>BẮT ĐẦU XỬ LÝ AI';
+    //     }
+    // }
+
     async function executeBatchScan() {
         if (selectedFilesArray.length === 0) return alert("Vui lòng đính kèm tệp hình ảnh để xử lý.");
+
         const btn = document.getElementById('btn-scan-batch');
         const formContainer = document.getElementById('active_form_container');
         const preScanArea = document.getElementById('pre_scan_preview');
 
+        // NẾU LÀ CHẾ ĐỘ THỦ CÔNG -> BỎ QUA GỌI AI
+        if (importMode === 'manual') {
+            btn.innerHTML = 'ĐANG TẠO BIỂU MẪU...';
+            preScanArea.innerHTML = '';
+            document.getElementById('post_scan_area').classList.add('d-none');
+
+            globalScannedData = selectedFilesArray.map(f => ({
+                temp_image: "",
+                vector: null,
+                matches: [],
+                similarity: 0,
+                status: "manual",
+                fileObj: f
+            }));
+
+            renderThumbnails();
+            loadFormForIndex(0);
+            btn.innerHTML = '<i class="fas fa-edit me-2"></i>TIẾN HÀNH NHẬP LIỆU';
+            return;
+        }
+
+        // --- NẾU LÀ AI ---
         btn.disabled = true;
         btn.innerHTML = 'ĐANG XỬ LÝ...';
         preScanArea.innerHTML = '';
         document.getElementById('post_scan_area').classList.add('d-none');
-        formContainer.innerHTML = '<div class="text-center py-5"><div class=" mb-3"></div><p class="fw-bold">Hệ thống đang truy xuất dữ liệu kho...</p></div>';
+        formContainer.innerHTML = '<div class="text-center py-5"><p class="fw-bold">Hệ thống đang truy xuất dữ liệu kho...</p></div>';
 
         const fd = new FormData();
         selectedFilesArray.forEach(f => fd.append('images[]', f));
@@ -343,20 +486,36 @@ $allCategories = $cModel->getAll();
                 method: 'POST',
                 body: fd
             });
-            const res = await response.json();
-            if (res.status === 'success') {
-                globalScannedData = res.data;
-                renderThumbnails();
-                if (globalScannedData.length > 0) loadFormForIndex(0);
-            } else {
-                alert("Lỗi xử lý: " + res.message);
-                formContainer.innerHTML = '<div class="text-center py-5 fw-bold text-danger">Tiến trình thất bại.</div>';
+
+            // KỸ THUẬT DEBUG: Lấy text thô từ Server trước khi ép sang JSON
+            const rawText = await response.text();
+
+            try {
+                // Thử ép sang JSON
+                const res = JSON.parse(rawText);
+                if (res.status === 'success') {
+                    globalScannedData = res.data;
+                    renderThumbnails();
+                    if (globalScannedData.length > 0) loadFormForIndex(0);
+                } else {
+                    alert("Lỗi xử lý: " + res.message);
+                    formContainer.innerHTML = '<div class="text-center py-5 fw-bold text-danger">Tiến trình thất bại.</div>';
+                }
+            } catch (parseError) {
+                // CHÌA KHÓA Ở ĐÂY: Nếu PHP bị lỗi (dư dấu ngoặc, sai cú pháp), nó in ra HTML
+                // JS sẽ in thẳng cục HTML đó ra màn hình để bồ biết đường mà sửa!
+                console.error("LỖI PHP TRẢ VỀ:", rawText);
+                formContainer.innerHTML = `
+                    <div class="p-4 text-danger bg-dark rounded-1 text-start" style="overflow-y: auto; max-height: 400px;">
+                        <h6 class="fw-bold text-warning"><i class="fas fa-bug me-2"></i>SERVER PHP BÁO LỖI:</h6>
+                        <pre style="white-space: pre-wrap; font-size: 13px; color: #ff6b6b;">${rawText}</pre>
+                    </div>`;
             }
         } catch (e) {
-            alert("Mất kết nối máy chủ.");
+            alert("Lỗi mạng! Không thể gửi request đến server.");
         } finally {
             btn.disabled = false;
-            btn.innerHTML = 'BẮT ĐẦU XỬ LÝ';
+            btn.innerHTML = '<i class="fas fa-magic me-2"></i>BẮT ĐẦU XỬ LÝ AI';
         }
     }
 
@@ -369,7 +528,7 @@ $allCategories = $cModel->getAll();
             postScanArea.classList.add('d-none');
             document.getElementById('active_form_container').innerHTML = `
                 <div class="text-center py-5">
-                    <h4 class="text-success fw-bold">HOÀN TẤT!</h4>
+                    <h4 class=" fw-bold">HOÀN TẤT!</h4>
                     <p>Đã nhập kho xong toàn bộ sản phẩm.</p>
                     <button class="btn btn-dark btn-sm rounded-1" onclick="window.location.reload()">CẬP NHẬT DANH SÁCH KHO</button>
                 </div>`;
@@ -387,11 +546,15 @@ $allCategories = $cModel->getAll();
 
     // --- HÀM LƯU AJAX (GIẢI QUYẾT VẤN ĐỀ CỦA BẠN) ---
     async function saveProductByAJAX(event, form) {
-        event.preventDefault(); // CHẶN LOAD TRANG
-
+        event.preventDefault();
         const btn = form.querySelector('button[type="submit"]');
         const formData = new FormData(form);
         formData.append('add_product', '1');
+
+        // KỸ THUẬT QUAN TRỌNG: Nếu nhập thủ công, nhét file ảnh thực tế vào FormData để gửi lên PHP
+        if (importMode === 'manual' && globalScannedData[currentSelectedIndex].fileObj) {
+            formData.append('manual_image', globalScannedData[currentSelectedIndex].fileObj);
+        }
 
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> ĐANG LƯU...';
@@ -404,18 +567,15 @@ $allCategories = $cModel->getAll();
             const res = await response.json();
 
             if (res.status === 'success') {
-                // 1. Xóa dữ liệu của ảnh vừa lưu thành công
                 globalScannedData.splice(currentSelectedIndex, 1);
                 selectedFilesArray.splice(currentSelectedIndex, 1);
-
                 alert("Lưu thành công!");
 
-                // 2. Load ảnh kế tiếp (nếu còn)
                 if (globalScannedData.length > 0) {
-                    currentSelectedIndex = 0; // Quay về index đầu tiên của mảng mới
+                    currentSelectedIndex = 0;
                     loadFormForIndex(0);
                 } else {
-                    renderThumbnails(); // Sẽ hiện màn hình Hoàn tất
+                    renderThumbnails(); // Hiện Hoàn tất
                 }
             } else {
                 alert("Lỗi: " + res.message);
@@ -438,41 +598,76 @@ $allCategories = $cModel->getAll();
         let localUrl = URL.createObjectURL(selectedFilesArray[index]);
 
         const vectorStr = (item.vector && Array.isArray(item.vector)) ? JSON.stringify(item.vector) : "";
-        const imageName = item.temp_image || selectedFilesArray[index].name;
+        const imageName = item.temp_image || ""; // Thủ công thì rỗng
 
-        const matches = item.matches || [];
-        const topMatch = matches.length > 0 ? matches[0] : null;
-        const topScore = topMatch ? Math.round(topMatch.similarity_score * 100) : 0;
-
-        let defaultBrand = "";
-        let defaultName = "";
         let alertMessage = "";
         let suggestionHtml = "";
+        let defaultBrand = "";
+        let defaultName = "";
 
-        // GIỮ NGUYÊN LOGIC PHÂN LOẠI AI CỦA BẠN
-        if (topScore >= 95) {
-            alertMessage = `<div class="alert alert-success py-2 rounded-1 mb-3"><i class="fas fa-check-circle me-2"></i><strong>AI XÁC THỰC:</strong> Khớp tuyệt đối (${topScore}%).</div>`;
-            defaultBrand = topMatch.brand;
-            defaultName = topMatch.product_name;
-        } else if (topScore >= 80) {
-            alertMessage = `<div class="alert alert-info py-2  rounded-1 mb-3"><i class="fas fa-lightbulb me-2"></i><strong>AI GỢI Ý:</strong> Tìm thấy các mẫu gần giống (${topScore}%). Click để chọn:</div>`;
-            suggestionHtml = `<div class="suggestion-list mb-3 p-2  rounded " style="max-height: 150px; overflow-y: auto;">`;
-            matches.forEach((m) => {
-                suggestionHtml += `<div class="d-flex align-items-center p-2 style="cursor:pointer;" onclick="fillFormFromSuggestion('${m.brand}', '${m.product_name}')"><img src="assets/img_product/${m.product_image}" style="width:40px; height:40px; object-fit:cover;" class="me-2 rounded"><div style="font-size: 11px;"><span class="fw-bold d-block">${m.product_name}</span><span class="text-muted">${m.brand} - Khớp ${Math.round(m.similarity_score * 100)}%</span></div></div>`;
-            });
-            suggestionHtml += `</div>`;
+        // --- KHỞI TẠO BIẾN CHO GIAO DIỆN MÀU SẮC ---
+        let colorContainerHtml = `<input type="text" name="color" class="form-control fw-bold rounded-1" placeholder="Nhập màu sắc" required>`;
+
+        // ============================================
+        // PHÂN LOẠI: NẾU LÀ THỦ CÔNG HOẶC NẾU LÀ AI
+        // ============================================
+        if (importMode === 'manual') {
+            alertMessage = `<div class="alert alert-glass-blink py-2 rounded-1 mb-3"><strong>NHẬP THỦ CÔNG:</strong> Vui lòng tự khai báo thông tin.</div>`;
         } else {
-            alertMessage = `<div class="alert alert-warning py-2  rounded-1 mb-3"><i class="fas fa-plus-circle me-2"></i><strong>MẪU MỚI:</strong> Không tìm thấy dữ liệu cũ tương đồng.</div>`;
+            const matches = item.matches || [];
+            const topMatch = matches.length > 0 ? matches[0] : null;
+            const topScore = topMatch ? Math.round(topMatch.similarity_score * 100) : 0;
+
+            if (topScore >= 95) {
+                alertMessage = `<div class="alert alert-glass-blink py-2 rounded-1 mb-3"><i class="fas fa-check-circle me-2"></i><strong>AI XÁC THỰC:</strong> Khớp tuyệt đối (${topScore}%).</div>`;
+                defaultBrand = topMatch.brand;
+                defaultName = topMatch.product_name;
+
+                // NẾU KHỚP 100%, CHUYỂN Ô TEXT THÀNH COMBOBOX CÁC MÀU ĐÃ CÓ
+                if (item.colors && item.colors.length > 0) {
+                    let opts = `<option value="">-- Chọn màu kho --</option>`;
+                    item.colors.forEach(c => {
+                        opts += `<option value="${c.color}">${c.color}</option>`;
+                    });
+                    opts += `<option value="new" class="fw-bold"">+ TẠO MÀU MỚI KHÁC...</option>`;
+
+                    colorContainerHtml = `
+                        <select name="color" class="form-select fw-bold rounded-1 shadow-sm" onchange="toggleNewColorInput(this)" required>
+                            ${opts}
+                        </select>
+                        <input type="text" name="new_color" id="input_color_new" class="form-control fw-bold rounded-1 mt-2 d-none" placeholder="Gõ tên màu mới...">
+                    `;
+                }
+
+            } else if (topScore >= 80) {
+                alertMessage = `<div class="alert alert-info py-2 rounded-1 mb-3 bg-transparent border border-info text-info"><i class="fas fa-lightbulb me-2"></i><strong>AI GỢI Ý:</strong> Mẫu gần giống (${topScore}%). Xem bên dưới.</div>`;
+                suggestionHtml = `<div class="suggestion-list mb-3 p-2 rounded" style="max-height: 150px; overflow-y: auto;">`;
+                matches.forEach((m) => {
+                    // CHÚ Ý Ở ĐÂY: Truyền thêm m.product_id vào hàm click
+                    suggestionHtml += `<div class="d-flex align-items-center p-2" style="cursor:pointer;" onclick="fillFormFromSuggestion('${m.brand}', '${m.product_name}', ${m.product_id})">
+                                           <img src="assets/img_product/${m.product_image}" style="width:40px; height:40px; object-fit:cover;" class="me-2 rounded">
+                                           <div style="font-size: 11px;">
+                                               <span class="fw-bold d-block">${m.product_name}</span>
+                                               <span class="text-muted">${m.brand} - Khớp ${Math.round(m.similarity_score * 100)}%</span>
+                                           </div>
+                                       </div>`;
+                });
+                suggestionHtml += `</div>`;
+            } else {
+                alertMessage = `<div class="alert alert-glass-blink rounded-1 mb-3"><i class="fas fa-plus-circle me-2"></i><strong>MẪU MỚI:</strong> Không tìm thấy dữ liệu cũ.</div>`;
+            }
         }
 
-        // Tạo danh sách các <option> cho Combobox
+        // Tạo danh sách Hãng
         let categoryOptions = `<option value="">-- Chọn thương hiệu --</option>`;
-        categoriesList.forEach(cat => {
-            // Nếu AI nhận diện đúng tên thương hiệu, chúng ta sẽ đánh dấu selected
-            let isSelected = (cat.category_name.toLowerCase() === defaultBrand.toLowerCase()) ? 'selected' : '';
-            categoryOptions += `<option value="${cat.category_id}" ${isSelected}>${cat.category_name.toUpperCase()}</option>`;
-        });
+        if (typeof categoriesList !== 'undefined') {
+            categoriesList.forEach(cat => {
+                let isSelected = (cat.category_name.toLowerCase() === defaultBrand.toLowerCase()) ? 'selected' : '';
+                categoryOptions += `<option value="${cat.category_id}" ${isSelected}>${cat.category_name.toUpperCase()}</option>`;
+            });
+        }
 
+        // RENDER FORM (Chú ý thẻ div chứa colorContainerHtml)
         container.innerHTML = `
         <form onsubmit="saveProductByAJAX(event, this)">
             ${alertMessage}
@@ -481,52 +676,51 @@ $allCategories = $cModel->getAll();
             <input type="hidden" name="temp_image_name" value="${imageName}">
             
             <div class="row mb-3 align-items-center">
-                <div class="col-md-3"><label class="fw-bold  small">ẢNH GỐC:</label></div>
+                <div class="col-md-3"><label class="fw-bold small">ẢNH GỐC:</label></div>
                 <div class="col-md-9">
-                    <img src="${localUrl}" class=" rounded-1" style="width: 80px; height: 80px; object-fit:contain; background-color: #f8f9fa;">
+                    <img src="${localUrl}" class="rounded-1" style="width: 80px; height: 80px; object-fit:contain; background-color: #f8f9fa;">
                 </div>
             </div>
 
             <div class="mb-3">
-                <label class="fw-bold  small mb-1">HÃNG SẢN XUẤT (CHỌN TRONG DANH SÁCH):</label>
-                <select id="input_brand" name="category_id" class="form-select  rounded-1 shadow-sm fw-bold" required>
+                <label class="fw-bold small mb-1">HÃNG SẢN XUẤT:</label>
+                <select id="input_brand" name="category_id" class="form-select rounded-1 shadow-sm fw-bold" required>
                     ${categoryOptions}
                 </select>
-                <small style="font-size: 11px;">
-                    * Nếu không thấy hãng, vui lòng liên hệ <b>Manager</b> để thêm vào danh mục.
-                </small>
             </div>
 
             <div class="mb-3">
-                <label class="fw-bold  small mb-1">TÊN DÒNG SẢN PHẨM:</label>
-                <input type="text" id="input_product_name" name="product_name" class="form-control fw-bold  rounded-1 shadow-sm" value="${defaultName}" placeholder="Nhập tên giày" required>
+                <label class="fw-bold small mb-1">TÊN DÒNG SẢN PHẨM:</label>
+                <input type="text" id="input_product_name" name="product_name" class="form-control fw-bold rounded-1 shadow-sm" value="${defaultName}" placeholder="Nhập tên giày" required>
             </div>
 
             <div class="row mb-3">
                 <div class="col-md-6">
-                    <label class="fw-bold  small mb-1">MÀU SẮC:</label>
-                    <input type="text" name="color" class="form-control fw-bold rounded-1" placeholder="Màu sắc" required>
+                    <label class="fw-bold small mb-1">MÀU SẮC:</label>
+                    <div id="color_input_wrapper">
+                        ${colorContainerHtml}
+                    </div>
                 </div>
                 <div class="col-md-6">
-                    <label class="fw-bold  small mb-1">SIZE:</label>
+                    <label class="fw-bold small mb-1">SIZE:</label>
                     <input type="number" name="size" class="form-control fw-bold text-center rounded-1" required>
                 </div>
             </div>
 
             <div class="mb-4">
                 <label class="fw-bold small mb-1">SỐ LƯỢNG NHẬP KHO:</label>
-                <input type="number" name="stock" class="form-control fw-bold text-center  rounded-1" value="1" min="1" required>
+                <input type="number" name="stock" class="form-control fw-bold text-center rounded-1" value="1" min="1" required>
             </div>
 
-            <button type="submit" class="btn w-100 fw-bold rounded-1 py-2 shadow-sm">XÁC NHẬN LƯU DỮ LIỆU</button>
+            <button type="submit" class="btn btn-glass-confirm w-100 fw-bold rounded-1 py-2 shadow-sm">XÁC NHẬN LƯU DỮ LIỆU</button>
         </form>`;
     }
 
-    function fillFormFromSuggestion(brandName, productName) {
+    async function fillFormFromSuggestion(brandName, productName, productId) {
         const selectBrand = document.getElementById('input_brand');
         document.getElementById('input_product_name').value = productName;
 
-        // Tìm option có text khớp với brandName và chọn nó
+        // Chọn Hãng
         for (let i = 0; i < selectBrand.options.length; i++) {
             if (selectBrand.options[i].text.toLowerCase() === brandName.toLowerCase()) {
                 selectBrand.selectedIndex = i;
@@ -534,11 +728,60 @@ $allCategories = $cModel->getAll();
             }
         }
 
-        // Hiệu ứng highlight để người dùng biết đã điền dữ liệu
+        // Hiệu ứng Highlight báo hiệu đã chọn
         const inputs = [selectBrand, document.getElementById('input_product_name')];
         inputs.forEach(el => {
-            el.style.backgroundColor = '#e8f0fe';
+            el.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
             setTimeout(() => el.style.backgroundColor = '', 500);
         });
+
+        // --- GỌI API LẤY MÀU SẮC CỦA SẢN PHẨM VỪA CHỌN ---
+        const colorWrapper = document.getElementById('color_input_wrapper');
+        colorWrapper.innerHTML = '<span class="text-white-50 small"><i class="fas fa-spinner fa-spin"></i> Đang tải màu...</span>';
+
+        try {
+            // Chú ý: Đảm bảo URL này gọi đúng hàm getColorsAjax trong Controller của bồ
+            const res = await fetch(`index.php?page=products&action=getColorsAjax&product_id=${productId}`);
+            const colors = await res.json();
+
+            let opts = `<option value="">-- Chọn màu kho --</option>`;
+            if (colors && colors.length > 0) {
+                colors.forEach(c => {
+                    opts += `<option value="${c.color}">${c.color}</option>`;
+                });
+            }
+            opts += `<option value="new" class="fw-bold" style="color: #00d2ff;">+ TẠO MÀU MỚI KHÁC...</option>`;
+
+            // Render lại ô Select
+            colorWrapper.innerHTML = `
+                <select name="color" id="input_color_select" class="form-select fw-bold rounded-1 shadow-sm" onchange="toggleNewColorInput(this)" required>
+                    ${opts}
+                </select>
+                <input type="text" name="new_color" id="input_color_new" class="form-control fw-bold rounded-1 mt-2 d-none" placeholder="Gõ tên màu mới...">
+            `;
+
+            // Highlight combo màu
+            document.getElementById('input_color_select').style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+            setTimeout(() => document.getElementById('input_color_select').style.backgroundColor = '', 500);
+
+        } catch (e) {
+            // Lỗi mạng thì trả về ô text bình thường cho người dùng tự gõ
+            colorWrapper.innerHTML = '<input type="text" name="color" class="form-control fw-bold rounded-1" placeholder="Màu sắc" required>';
+        }
+    }
+
+    function toggleNewColorInput(selectObj) {
+        const newColorInput = document.getElementById('input_color_new');
+        if (selectObj.value === 'new') {
+            // Bật ô text lên, ép buộc phải gõ
+            newColorInput.classList.remove('d-none');
+            newColorInput.setAttribute('required', 'true');
+            newColorInput.focus();
+        } else {
+            // Tắt đi nếu chọn màu có sẵn
+            newColorInput.classList.add('d-none');
+            newColorInput.removeAttribute('required');
+            newColorInput.value = ''; // Xóa rác
+        }
     }
 </script>
