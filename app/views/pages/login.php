@@ -39,8 +39,9 @@ $error = isset($error) ? $error : '';
                     </div>
 
                     <?php if (!empty($error)): ?>
-                        <div class="alert alert-danger text-center small py-2 rounded-3 border-0 bg-danger bg-opacity-25 text-light" role="alert">
-                            <i class="fas fa-exclamation-circle me-1"></i> <?= $error ?>
+                        <div class="alert alert-glass-danger alert-glass-blink text-center small py-2 rounded-1 border-0" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            <strong>LỖI:</strong> <?= htmlspecialchars($error) ?>
                         </div>
                     <?php endif; ?>
 

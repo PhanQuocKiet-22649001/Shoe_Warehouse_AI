@@ -77,7 +77,7 @@ class ProductModel
                    p.product_name, p.product_image
             FROM product_variants v
             JOIN products p ON v.product_id = p.product_id
-            WHERE v.product_id = $1 AND v.is_deleted = false
+            WHERE v.product_id = $1 AND v.is_deleted = false AND v.stock > 0
             ORDER BY v.size ASC";
         $result = pg_query_params($this->conn, $sql, [$product_id]);
         return $result ? pg_fetch_all($result) : [];

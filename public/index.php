@@ -1,4 +1,5 @@
 <?php
+ob_start(); // BỔ SUNG QUAN TRỌNG: Ngăn chặn lỗi header
 session_start();
 
 // 1. XỬ LÝ AJAX TẠI ĐÂY (TRƯỚC KHI HIỆN GIAO DIỆN)
@@ -7,17 +8,45 @@ if (isset($_GET['page'])) {
     if ($_GET['page'] === 'history-detail') {
         require_once __DIR__ . '/../app/controllers/TransactionController.php';
         $controller = new TransactionController();
-        $controller->getDetailsAjax(); 
+        $controller->getDetailsAjax();
         exit;
-    } 
-    
+    }
+
     // THÊM ĐOẠN NÀY CHO BÁO CÁO
     if ($_GET['page'] === 'report-detail') {
         require_once __DIR__ . '/../app/controllers/ReportController.php';
         $controller = new ReportController();
-        $controller->getReportDetailsAjax(); 
-        exit; 
+        $controller->getReportDetailsAjax();
+        exit;
     }
+    
+    // --- BỔ SUNG: CHUYỂN CÁC YÊU CẦU AJAX CỦA PRODUCT LÊN ĐÂY ---
+    if ($_GET['page'] === 'products' && isset($_GET['action'])) {
+        require_once '../config/database.php';
+        require_once '../app/models/ProductModel.php';
+        require_once '../app/models/CategoryModel.php'; // ProductModel có thể gọi cái này
+        require_once '../app/controllers/ProductController.php';
+        
+        $productControllerAjax = new ProductController();
+        
+        if ($_GET['action'] === 'getColorsAjax') {
+            $productControllerAjax->getColorsAjax();
+            exit;
+        }
+        if ($_GET['action'] === 'getSizesAjax') {
+            $productControllerAjax->getSizesAjax();
+            exit;
+        }
+        if ($_GET['action'] === 'export-ai') {
+            $productControllerAjax->exportByAI();
+            exit;
+        }
+        if ($_GET['action'] === 'scan-ai') {
+            $productControllerAjax->scanWithAI();
+            exit;
+        }
+    }
+    // -----------------------------------------------------------
 }
 
 // 1. Gọi Database & Models trước
@@ -95,10 +124,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
     } elseif ($page === 'products') {
-        if (isset($_GET['action']) && $_GET['action'] === 'scan-ai') {
-            $productController->scanWithAI();
-            exit;
-        }
         if (isset($_POST['add_product'])) {
             $productController->add();
             exit;
@@ -192,7 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             break;
 
                         case 'history':
-         
+
                             require_once __DIR__ . '/../app/controllers/TransactionController.php';
                             $controller = new TransactionController();
                             $data = $controller->index();

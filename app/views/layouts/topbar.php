@@ -25,7 +25,13 @@ $allCategories = $cModel->getAll();
             <button class="btn me-3 fw-bold"
                 data-bs-toggle="modal" data-bs-target="#addProductModal"
                 style="border-radius: 7px; border: 1px solid #000000;">
-                Quét Ảnh & Nhập Kho
+                Nhập Kho (AI)
+            </button>
+
+            <button class="btn me-3 fw-bold"
+                data-bs-toggle="modal" data-bs-target="#exportAIModal"
+                style="border-radius: 7px; border: 1px solid #000000;">
+                Xuất Kho (AI)
             </button>
         <?php endif; ?>
 
@@ -56,7 +62,7 @@ $allCategories = $cModel->getAll();
         <div class="modal-content shadow rounded-1">
             <div class="modal-header border-bottom flex-column align-items-start">
                 <div class="d-flex w-100 justify-content-between align-items-center mb-2">
-                    <h5 class="modal-title fw-bold text-white text-uppercase">Phân Hệ Đối Soát Chứng Từ Kho</h5>
+                    <h5 class="modal-title fw-bold text-white text-uppercase">Nhập kho với AI</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
 
@@ -120,6 +126,88 @@ $allCategories = $cModel->getAll();
     </div>
 </div>
 
+
+<div class="modal fade" id="exportAIModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content shadow rounded-1">
+            <div class="modal-header border-bottom flex-column align-items-start">
+                <div class="d-flex w-100 justify-content-between align-items-center mb-2">
+                    <h5 class="modal-title fw-bold text-white text-uppercase">Xuất Kho Với AI </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+            </div>
+
+            <div class="modal-body p-0">
+                <div class="row g-0 d-flex">
+                    <div class="col-md-6 p-4 border-end-glass">
+                        <div class="text-start mb-4">
+                            <h6 class="fw-bold text-white pb-2 mb-3 border-bottom-glass">1. QUÉT ẢNH SẢN PHẨM CẦN XUẤT</h6>
+
+                            <div class="upload-zone p-3 rounded-1 mb-2" id="export_upload_zone">
+                                <input type="file" id="export_ai_file" class="d-none" accept="image/*" multiple onchange="previewExportImages(this)">
+                                <button type="button" class="btn btn-glass-confirm fw-bold w-100 mb-2 shadow-sm rounded-1" onclick="document.getElementById('export_ai_file').click()">
+                                    <i class="fas fa-camera me-2"></i> CHỌN/CHỤP ẢNH SẢN PHẨM (TỐI ĐA 3)
+                                </button>
+                                <p class="text-white-50 mb-3" style="font-size: 12px; line-height: 1.4;">
+                                    *Lưu ý: Để chọn nhiều ảnh, vui lòng giữ phím Ctrl và click chọn các ảnh cùng lúc.
+                                </p>
+                                <button type="button" class="btn btn-glass-confirm w-100 fw-bold shadow-sm rounded-1" id="btn-export-scan" onclick="executeExportScan()">
+                                    BẮT ĐẦU XỬ LÝ
+                                </button>
+                            </div>
+
+                            <div id="export_pre_scan_preview" class="d-flex flex-wrap gap-2 mt-2 mb-3"></div>
+
+                            <div id="export_post_scan_area" class="text-start d-none">
+                                <h6 class="fw-bold text-white pb-2 mb-3 border-bottom-glass">DANH SÁCH ĐÃ NHẬN DIỆN</h6>
+                                <p class="text-white-50 small fw-bold mb-2">Click vào từng ảnh để khai báo số lượng xuất:</p>
+                                <div id="export_scanned_thumbnails" class="d-flex flex-wrap gap-3 p-3 rounded-1 glass-inner-box"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 p-4 position-relative">
+                        <h6 class="fw-bold text-white pb-2 mb-3 text-uppercase border-bottom-glass">2. Khai Báo Biểu Mẫu Xuất Kho</h6>
+
+                        <div id="export_default_screen" class="rounded-1 p-4 shadow-sm glass-inner-box d-flex flex-column justify-content-center" style="min-height: 400px;">
+                            <div class="text-center text-white-50">
+                                <h4 class="mb-3 opacity-50 fw-bold">CHƯA CÓ DỮ LIỆU</h4>
+                                <p class="mb-0">Hệ thống đang chờ lệnh. Vui lòng quét ảnh để tiếp tục.</p>
+                            </div>
+                        </div>
+
+                        <div id="export_loading" class="rounded-1 p-4 shadow-sm glass-inner-box d-none flex-column justify-content-center align-items-center" style="min-height: 400px;">
+                            <div class="spinner-border text-light mb-3"></div>
+                            <h6 class="text-white fw-bold">AI ĐANG PHÂN TÍCH...</h6>
+                        </div>
+
+                        <div id="export_ai_form" class="rounded-1 p-4 shadow-sm glass-inner-box d-none" style="min-height: 400px;">
+                            <div class="alert py-2 rounded-1 small mb-3 bg-transparent border border-success text-success" id="export_ai_alert"></div>
+
+                            <h5 id="exp_product_name" class="fw-bold text-white mb-1">...</h5>
+                            <p id="exp_brand_name" class="small mb-3 fw-bold text-uppercase">...</p>
+                            <hr class="border-secondary">
+
+                            <form id="final_export_form" onsubmit="executeExportStockAI(event)">
+                                <input type="hidden" name="product_id" id="exp_product_id">
+
+                                <div id="export_variants_container">
+                                </div>
+
+                                <button type="button" class="btn btn-glass-confirm fw-bold w-100 mb-4 shadow-sm rounded-1 border-dashed" onclick="addExportVariantRow()" style="border-style: dashed;">
+                                    + THÊM PHÂN LOẠI XUẤT CÙNG MẪU NÀY
+                                </button>
+
+                                <button type="submit" class="btn btn-glass-confirm fw-bold w-100 mb-2" style="letter-spacing: 1px;">XÁC NHẬN TRỪ KHO MẪU NÀY</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow">
@@ -166,40 +254,23 @@ $allCategories = $cModel->getAll();
     </div>
 </div>
 
-<?php if (isset($_SESSION['success'])): ?>
-    <div class="alert alert-success alert-dismissible fade show  shadow-sm mb-4 mx-3 mt-2 rounded-1" role="alert">
-        <div class="d-flex align-items-center">
-            <div><strong>Thành công:</strong> <?= $_SESSION['success'];
-                                                unset($_SESSION['success']); ?></div>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-<?php endif; ?>
-
-<?php if (isset($_SESSION['error'])): ?>
-    <div class="alert alert-danger alert-dismissible fade show  shadow-sm mb-4 mx-3 mt-2 rounded-1" role="alert">
-        <div class="d-flex align-items-center">
-            <div><strong>Cảnh báo hệ thống:</strong> <?= $_SESSION['error'];
-                                                        unset($_SESSION['error']); ?></div>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-<?php endif; ?>
-
 <div class="modal fade" id="updateProfileModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content  shadow">
-            <form action="index.php?page=<?= $_GET['page'] ?? 'dashboard' ?>" method="POST" onsubmit="return confirm('Xác nhận lưu các thay đổi này vào hệ thống?')">
-                <div class="modal-header  ">
+        <div class="modal-content shadow">
+            <form id="formUpdateProfile" action="index.php?page=<?= $_GET['page'] ?? 'dashboard' ?>" method="POST">
+                <div class="modal-header">
                     <h5 class="modal-title fw-bold">Cập Nhật Thông Tin Bảo Mật</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
+
+                    <div id="profile-msg-container"></div>
+
                     <div class="row">
                         <div class="col-md-5">
-                            <h6 class="mb-3 fw-bold text-dark  pb-2">Thông tin lưu trữ hiện tại</h6>
-                            <div class="t p-3 rounded ">
-                                <table class="table ">
+                            <h6 class="mb-3 fw-bold text-dark pb-2">Thông tin lưu trữ hiện tại</h6>
+                            <div class="t p-3 rounded">
+                                <table class="table">
                                     <tbody>
                                         <tr>
                                             <td class="text-secondary fw-bold">SĐT:</td>
@@ -217,7 +288,7 @@ $allCategories = $cModel->getAll();
                             <h6 class="fw-bold mb-3 text-dark pb-2">Biểu mẫu thay đổi dữ liệu</h6>
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-secondary">Số điện thoại mới</label>
-                                <input type="text" name="phone_number" class="form-control rounded-1 ">
+                                <input type="text" name="phone_number" class="form-control rounded-1">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-secondary">Địa chỉ mới</label>
@@ -225,20 +296,20 @@ $allCategories = $cModel->getAll();
                             </div>
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-secondary">Mật khẩu mới (Bỏ trống nếu không đổi)</label>
-                                <input type="password" name="new_password" class="form-control rounded-1 ">
+                                <input type="password" name="new_password" class="form-control rounded-1">
                             </div>
 
-                            <div class="p-3 mt-4 rounded">
+                            <div class="mb-3">
                                 <label class="form-label fw-bold text-danger mb-2">XÁC THỰC QUYỀN TRUY CẬP</label>
-                                <input type="password" name="old_password" class="form-control rounded-1 " required placeholder="Nhập mật khẩu hiện tại của bạn để lưu">
+                                <input type="password" name="old_password" class="form-control rounded-1" required placeholder="Nhập mật khẩu hiện tại để lưu">
                                 <small class="text-muted mt-1 d-block">Đây là bước bắt buộc để đảm bảo an toàn dữ liệu kho.</small>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer  ">
+                <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary fw-bold rounded-1 px-4" data-bs-dismiss="modal">Hủy bỏ</button>
-                    <button type="submit" name="btn_update_profile" class="btn btn-outline-secondary fw-bold rounded-1 px-4">Lưu Dữ Liệu</button>
+                    <button type="submit" name="btn_update_profile" class=" btn btn-outline-secondary fw-bold rounded-1 px-4">Lưu Dữ Liệu</button>
                 </div>
             </form>
         </div>
@@ -784,4 +855,405 @@ $allCategories = $cModel->getAll();
             newColorInput.value = ''; // Xóa rác
         }
     }
+
+
+    // ==========================================
+    // LOGIC XUẤT KHO AI (MULTI & DYNAMIC)
+    // ==========================================
+    let exportSelectedFilesArray = [];
+    let exportGlobalScannedData = [];
+    let exportCurrentSelectedIndex = 0;
+    let exportCurrentColors = []; // Lưu trữ list màu của sản phẩm đang chọn
+
+    function previewExportImages(input) {
+        const newFiles = Array.from(input.files);
+        for (let file of newFiles) {
+            if (exportSelectedFilesArray.length < 3) {
+                exportSelectedFilesArray.push(file);
+            } else {
+                alert("Chỉ hỗ trợ quét tối đa 3 ảnh xuất kho cùng lúc!");
+                break;
+            }
+        }
+        input.value = '';
+        renderExportPreScanThumbnails();
+
+        if (exportSelectedFilesArray.length > 0) {
+            document.getElementById('btn-export-scan').classList.remove('d-none');
+        } else {
+            document.getElementById('btn-export-scan').classList.add('d-none');
+        }
+    }
+
+    function renderExportPreScanThumbnails() {
+        const container = document.getElementById('export_pre_scan_preview');
+        container.innerHTML = '';
+        exportSelectedFilesArray.forEach((file, index) => {
+            const fileUrl = URL.createObjectURL(file);
+            container.innerHTML += `
+                <div class="position-relative rounded-1" style="width: 100px; height: 100px;">
+                    <img src="${fileUrl}" style="width: 100%; height: 100%; object-fit: contain; background: rgba(255,255,255,0.1);">
+                    <button type="button" class="btn btn-danger p-0 position-absolute" 
+                            style="top: 4px; right: 4px; width: 22px; height: 22px; font-size: 12px; font-weight: bold;"
+                            onclick="removeExportSelectedFile(${index})">X</button>
+                </div>`;
+        });
+    }
+
+    function removeExportSelectedFile(index) {
+        exportSelectedFilesArray.splice(index, 1);
+        renderExportPreScanThumbnails();
+        if (exportSelectedFilesArray.length === 0) document.getElementById('btn-export-scan').classList.add('d-none');
+    }
+
+    async function executeExportScan() {
+        if (exportSelectedFilesArray.length === 0) return;
+
+        const btnScan = document.getElementById('btn-export-scan');
+        const defaultScreen = document.getElementById('export_default_screen');
+        const formArea = document.getElementById('export_ai_form');
+        const loading = document.getElementById('export_loading');
+        const preScanArea = document.getElementById('export_pre_scan_preview');
+
+        btnScan.disabled = true;
+        btnScan.innerHTML = 'ĐANG XỬ LÝ...';
+        defaultScreen.classList.add('d-none');
+        formArea.classList.add('d-none');
+        loading.classList.remove('d-none');
+        loading.classList.add('d-flex');
+        preScanArea.innerHTML = '';
+
+        const fd = new FormData();
+        exportSelectedFilesArray.forEach(f => fd.append('images[]', f));
+
+        try {
+            const response = await fetch('index.php?page=products&action=scan-ai', {
+                method: 'POST',
+                body: fd
+            });
+            const res = await response.json();
+
+            loading.classList.add('d-none');
+            loading.classList.remove('d-flex');
+
+            if (res.status === 'success') {
+                exportGlobalScannedData = res.data;
+                renderExportPostScanThumbnails();
+                if (exportGlobalScannedData.length > 0) loadExportFormForIndex(0);
+            } else {
+                alert("Lỗi AI: " + res.message);
+                defaultScreen.classList.remove('d-none');
+            }
+        } catch (e) {
+            alert("Lỗi kết nối server AI.");
+            defaultScreen.classList.remove('d-none');
+            loading.classList.add('d-none');
+        } finally {
+            btnScan.classList.add('d-none');
+            btnScan.disabled = false;
+            btnScan.innerHTML = 'BẮT ĐẦU ĐỐI SOÁT AI';
+        }
+    }
+
+    function renderExportPostScanThumbnails() {
+        const postScanArea = document.getElementById('export_post_scan_area');
+        const container = document.getElementById('export_scanned_thumbnails');
+
+        if (exportGlobalScannedData.length === 0) {
+            postScanArea.classList.add('d-none');
+            document.getElementById('export_default_screen').classList.remove('d-none');
+            document.getElementById('export_default_screen').innerHTML = `
+                <div class="text-center py-5">
+                    <h4 class="fw-bold text-success">ĐÃ XUẤT XONG!</h4>
+                    <p>Hoàn tất danh sách quét xuất kho.</p>
+                    <button class="btn btn-glass-confirm fw-bold w-100 mb-4" onclick="window.location.reload()">CẬP NHẬT TRANG</button>
+                </div>`;
+            document.getElementById('export_ai_form').classList.add('d-none');
+            return;
+        }
+
+        postScanArea.classList.remove('d-none');
+        container.innerHTML = '';
+        exportGlobalScannedData.forEach((item, index) => {
+            let borderClass = (index === exportCurrentSelectedIndex) ? ' opacity-100 shadow border border-2' : ' opacity-50';
+            let localUrl = URL.createObjectURL(exportSelectedFilesArray[index]);
+            container.innerHTML += `<img src="${localUrl}" onclick="loadExportFormForIndex(${index})" class="rounded-1 ${borderClass}" style="width: 100px; height: auto; object-fit:contain; cursor:pointer; transition: 0.2s;">`;
+        });
+    }
+
+    async function loadExportFormForIndex(index) {
+        exportCurrentSelectedIndex = index;
+        renderExportPostScanThumbnails();
+
+        const item = exportGlobalScannedData[index];
+        const formArea = document.getElementById('export_ai_form');
+        const alertBox = document.getElementById('export_ai_alert');
+        const variantsContainer = document.getElementById('export_variants_container');
+        const submitBtn = document.querySelector('#final_export_form button[type="submit"]');
+        const addVariantBtn = document.querySelector('button[onclick="addExportVariantRow()"]');
+
+        // --- BƯỚC 1: RESET SẠCH SẼ GIAO DIỆN TRƯỚC KHI NẠP DỮ LIỆU MỚI ---
+        variantsContainer.innerHTML = ''; // Xóa sạch các dòng Màu/Size cũ
+        document.getElementById('exp_product_id').value = "";
+        document.getElementById('exp_product_name').innerText = "Đang tải...";
+        document.getElementById('exp_brand_name').innerText = "...";
+
+        // Đảm bảo form luôn hiện để người dùng thấy thông báo
+        formArea.classList.remove('d-none');
+
+        // --- BƯỚC 2: KIỂM TRA DỮ LIỆU TỪ AI ---
+        if (item.matches && item.matches.length > 0) {
+            // TRƯỜNG HỢP: TÌM THẤY SẢN PHẨM
+            const topMatch = item.matches[0];
+
+            // Nạp dữ liệu mới
+            document.getElementById('exp_product_id').value = topMatch.product_id;
+            document.getElementById('exp_product_name').innerText = topMatch.product_name;
+            document.getElementById('exp_brand_name').innerText = topMatch.brand + ' - Khớp: ' + item.similarity + '%';
+
+            // Hiện các nút thao tác
+            if (submitBtn) submitBtn.style.display = 'block';
+            if (addVariantBtn) addVariantBtn.style.display = 'block';
+
+            // Cấu hình Alert Xanh
+            alertBox.className = "alert py-2 rounded-1 small mb-3 border-success text-success bg-transparent alert-glass-blink";
+            if (item.similarity < 95) {
+                alertBox.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i><strong>AI GỢI Ý:</strong> Hãy kiểm tra kỹ tên giày (${item.similarity}%).`;
+            } else {
+                alertBox.innerHTML = `<i class="fas fa-check-circle me-2"></i><strong>AI XÁC THỰC:</strong> Khớp tuyệt đối (${item.similarity}%).`;
+            }
+
+            // Tải màu và size
+            await cacheColorsForProduct(topMatch.product_id);
+            addExportVariantRow();
+
+        } else {
+            // TRƯỜNG HỢP: KHÔNG TÌM THẤY (ẢNH LỖI HOẶC GIÀY MỚI)
+
+            // 1. Ghi đè chữ cũ để tránh "râu ông nọ cắm cằm bà kia"
+            document.getElementById('exp_product_name').innerText = "SẢN PHẨM LẠ";
+            document.getElementById('exp_brand_name').innerText = "AI không nhận diện được mẫu này trong tổng kho.";
+
+            // 2. Ẩn các nút để đảm bảo nhân viên không bấm nhầm
+            if (submitBtn) submitBtn.style.display = 'none';
+            if (addVariantBtn) addVariantBtn.style.display = 'none';
+
+            // 3. Cấu hình Alert Đỏ kèm hiệu ứng nháy (alert-glass-blink)
+            // Tui đã thêm 'alert-glass-blink' vào cuối chuỗi className
+            alertBox.className = "alert py-2 rounded-1 small mb-3 border-danger text-danger bg-transparent alert-glass-blink";
+
+            alertBox.innerHTML = `<i class="fas fa-times-circle me-2"></i><strong>LỖI ĐỐI SOÁT:</strong> Mẫu giày này chưa được khai báo hoặc ảnh quá mờ.`;
+        }
+    }
+
+    // Tải mảng màu sắc lưu vào biến cục bộ
+    async function cacheColorsForProduct(productId) {
+        try {
+            const res = await fetch(`index.php?page=products&action=getColorsAjax&product_id=${productId}`);
+            exportCurrentColors = await res.json();
+        } catch (e) {
+            exportCurrentColors = [];
+        }
+    }
+
+    // THÊM DÒNG BIẾN THỂ ĐỘNG
+    function addExportVariantRow() {
+        const container = document.getElementById('export_variants_container');
+
+        // Tạo HTML cho list màu
+        let colorOpts = '<option value="">-- Chọn màu --</option>';
+        exportCurrentColors.forEach(c => {
+            colorOpts += `<option value="${c.color}">${c.color}</option>`;
+        });
+
+        const rowHtml = `
+            <div class="row gx-2 mb-3 align-items-end export-variant-row p-2 rounded" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
+                <div class="col-4">
+                    <label class="small fw-bold text-white-50 mb-1" style="font-size: 10px; white-space: nowrap;">MÀU SẮC</label>
+                    <select name="colors[]" class="form-select form-select-sm bg-dark text-white fw-bold exp-color" required onchange="loadSizesForExportRow(this)">
+                        ${colorOpts}
+                    </select>
+                </div>
+
+                <div class="col-5">
+                    <label class="small fw-bold text-white-50 mb-1" style="font-size: 10px; white-space: nowrap;">SIZE KHẢ DỤNG</label>
+                    <select name="sizes[]" class="form-select form-select-sm bg-dark text-white fw-bold exp-size" required>
+                        <option value="">-- Trống --</option>
+                    </select>
+                </div>
+
+                <div class="col-2">
+                    <label class="small fw-bold text-white-50 mb-1" style="font-size: 10px; white-space: nowrap;">SL XUẤT</label>
+                    <input type="number" name="quantities[]" class="form-control form-select-sm bg-dark text-white text-center fw-bold exp-qty" value="1" min="1" required>
+                </div>
+
+                <div class="col-1 text-end pb-1">
+                    <button type="button" class="btn btn-sm text-white border-0 p-0" onclick="removeExportVariantRow(this)" title="Xóa dòng này">
+                        <i class="fas fa-trash" style="color: white;"></i>
+                    </button>
+                </div>
+            </div>`;
+        container.insertAdjacentHTML('beforeend', rowHtml);
+    }
+
+    function removeExportVariantRow(btn) {
+        const row = btn.closest('.export-variant-row');
+        // Không cho xóa nếu chỉ còn 1 dòng
+        if (document.querySelectorAll('.export-variant-row').length > 1) {
+            row.remove();
+        } else {
+            alert("Phải xuất ít nhất 1 biến thể!");
+        }
+    }
+
+    // Tải Size cho TỪNG DÒNG độc lập
+    async function loadSizesForExportRow(colorSelectObj) {
+        const productId = document.getElementById('exp_product_id').value;
+        const color = colorSelectObj.value;
+
+        // Tìm cái ô Size nằm cùng dòng với ô Màu vừa đổi
+        const row = colorSelectObj.closest('.export-variant-row');
+        const sizeSelect = row.querySelector('.exp-size');
+
+        if (!color) {
+            sizeSelect.innerHTML = '<option value="">-- Trống --</option>';
+            return;
+        }
+
+        sizeSelect.innerHTML = '<option value="">Đang tải...</option>';
+        try {
+            const res = await fetch(`index.php?page=products&action=getSizesAjax&product_id=${productId}&color=${encodeURIComponent(color)}`);
+            const variants = await res.json();
+
+            sizeSelect.innerHTML = '<option value="">-- Chọn size --</option>';
+            if (variants.length === 0) {
+                sizeSelect.innerHTML = '<option value="">(Hết hàng)</option>';
+                return;
+            }
+            variants.forEach(v => {
+                sizeSelect.innerHTML += `<option value="${v.size}" data-stock="${v.stock}">Size ${v.size} (Tồn: ${v.stock})</option>`;
+            });
+        } catch (e) {
+            sizeSelect.innerHTML = '<option value="">Lỗi tải dữ liệu</option>';
+        }
+    }
+
+
+    // XUẤT KHO
+
+    async function executeExportStockAI(event) {
+        event.preventDefault();
+
+        // Frontend Validate: Duyệt qua tất cả các dòng để check Tồn kho
+        const rows = document.querySelectorAll('.export-variant-row');
+        for (let i = 0; i < rows.length; i++) {
+            const sizeSelect = rows[i].querySelector('.exp-size');
+            if (!sizeSelect.value) return alert("Vui lòng chọn Size cho tất cả các dòng!");
+
+            const selectedOption = sizeSelect.options[sizeSelect.selectedIndex];
+            const maxStock = parseInt(selectedOption.getAttribute('data-stock'));
+            const qtyInput = parseInt(rows[i].querySelector('.exp-qty').value);
+
+            if (qtyInput > maxStock) {
+                return alert(`Dòng thứ ${i+1}: Không đủ hàng! Chỉ còn ${maxStock} đôi.`);
+            }
+        }
+
+        if (!confirm("Xác nhận trừ kho cho tất cả các biến thể vừa chọn?")) return;
+
+        const form = event.target;
+        const fd = new FormData(form);
+        fd.append('export_stock_ai_multi', '1'); // Gửi cờ báo xử lý mảng
+
+        const btn = form.querySelector('button[type="submit"]');
+        const oldText = btn.innerHTML; // Lưu lại chữ gốc "XÁC NHẬN TRỪ KHO..."
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>ĐANG TRỪ KHO...';
+
+        try {
+            const response = await fetch('index.php?page=products&action=export-ai', {
+                method: 'POST',
+                body: fd
+            });
+            const res = await response.json();
+
+            if (res.status === 'success') {
+                // Xóa sản phẩm vừa xuất xong khỏi mảng và render lại
+                exportGlobalScannedData.splice(exportCurrentSelectedIndex, 1);
+                exportSelectedFilesArray.splice(exportCurrentSelectedIndex, 1);
+                alert("Xuất kho thành công!");
+
+                // ==========================================
+                // FIX LỖI Ở ĐÂY: Mở khóa nút bấm cho đôi thứ 2
+                // ==========================================
+                btn.disabled = false;
+                btn.innerHTML = oldText;
+
+                if (exportGlobalScannedData.length > 0) {
+                    exportCurrentSelectedIndex = 0;
+                    loadExportFormForIndex(0); // Nạp đôi thứ 2 lên
+                } else {
+                    renderExportPostScanThumbnails(); // Hiện màn hình Hoàn Tất
+                }
+            } else {
+                alert("Lỗi: " + res.message);
+                btn.disabled = false;
+                btn.innerHTML = oldText;
+            }
+        } catch (e) {
+            alert("Lỗi hệ thống khi trừ kho.");
+            btn.disabled = false;
+            btn.innerHTML = oldText;
+        }
+    }
+
+
+    //chặn việc load lại trang và xử lý dữ liệu ngầm.
+    document.getElementById('formUpdateProfile').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        if (!confirm('Xác nhận lưu thay đổi?')) return;
+
+        const formData = new FormData(this);
+        // BẮT BUỘC PHẢI CÓ 2 DÒNG NÀY
+        formData.append('ajax_update', '1');
+        formData.append('btn_update_profile', '1');
+
+        const msgContainer = document.getElementById('profile-msg-container');
+        const submitBtn = this.querySelector('button[name="btn_update_profile"]');
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = 'Đang lưu...';
+
+        try {
+            const response = await fetch(this.action, {
+                method: 'POST',
+                body: formData
+            });
+
+            // Đoạn này để bồ debug: Nếu server trả về lỗi (không phải JSON), nó sẽ hiện ra code HTML
+            const text = await response.text();
+            try {
+                const res = JSON.parse(text); // Cố gắng biến chữ thành JSON
+
+                if (res.status === 'success') {
+                    msgContainer.innerHTML = `<div class="alert alert-success py-2 rounded-1 mb-3 alert-glass-blink">${res.message}</div>`;
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    msgContainer.innerHTML = `<div class="alert alert-danger py-2 rounded-1 mb-3 alert-glass-blink">${res.message}</div>`;
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Lưu Dữ Liệu';
+                    this.querySelector('input[name="old_password"]').value = '';
+                }
+            } catch (e) {
+                console.error("Server trả về rác:", text); // Xem rác ở Console
+                msgContainer.innerHTML = `<div class="alert alert-danger py-2 mb-3">Lỗi: Server trả về HTML thay vì JSON.</div>`;
+                submitBtn.disabled = false;
+            }
+        } catch (err) {
+            msgContainer.innerHTML = `<div class="alert alert-danger py-2 mb-3">Lỗi kết nối server!</div>`;
+            submitBtn.disabled = false;
+        }
+    });
 </script>

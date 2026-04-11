@@ -193,3 +193,31 @@
     transform: translateY(-1px);
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
+
+
+.alert-glass-danger {
+    background: rgba(255, 255, 255, 0.1) !important; /* Nền đỏ cực nhạt trong suốt */
+    backdrop-filter: blur(10px); /* Hiệu ứng mờ kính */
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.4) !important; /* Viền đỏ mảnh */
+    color: #ffffff !important; /* Chữ đỏ sáng để nổi trên nền tối */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Hiệu ứng nháy đỏ "thở" cho đồng bộ với các Modal khác */
+.alert-glass-blink {
+    animation: glass-blink-red 2s infinite ease-in-out;
+}
+
+@keyframes glass-blink-red {
+    0%, 100% { 
+        box-shadow:  0 4px 15px rgba(255, 255, 255, 0.2);
+        opacity: 1; 
+    }
+    50% { 
+        box-shadow:  0 4px 15px rgba(255, 255, 255, 0.2);
+        opacity: 0.8; 
+    }
+}

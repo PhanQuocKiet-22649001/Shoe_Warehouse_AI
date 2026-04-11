@@ -113,11 +113,20 @@ class UserController
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['btn_update_profile'])) {
             $user_id = $_SESSION['user_id'];
             $old_pass = $_POST['old_password'];
+            $is_ajax = isset($_POST['ajax_update']); // Kiểm tra cờ AJAX
 
             // 1. Kiểm tra mật khẩu cũ
             if (!$this->userModel->verifyOldPassword($user_id, $old_pass)) {
-                $_SESSION['error'] = "Mật khẩu cũ không chính xác!";
-                // Redirect ngay lập tức, không echo gì cả
+                $msg = "Mật khẩu xác thực không chính xác!";
+
+                if ($is_ajax) {
+                    if (ob_get_length()) ob_clean(); // Xóa sạch rác
+                    header('Content-Type: application/json');
+                    echo json_encode(["status" => "error", "message" => $msg]);
+                    exit; // DỪNG LẠI NGAY, không cho chạy xuống dưới hay redirect
+                }
+
+                $_SESSION['error'] = $msg;
                 header("Location: " . $_SERVER['HTTP_REFERER']);
                 exit;
             }
@@ -130,9 +139,23 @@ class UserController
 
             // 2. Cập nhật
             if ($this->userModel->updateProfile($user_id, $data)) {
-                $_SESSION['success'] = "Cập nhật hồ sơ thành công rồi nhé!";
+                $msg = "Cập nhật hồ sơ thành công!";
+                if ($is_ajax) {
+                    if (ob_get_length()) ob_clean();
+                    header('Content-Type: application/json');
+                    echo json_encode(["status" => "success", "message" => $msg]);
+                    exit;
+                }
+                $_SESSION['success'] = $msg;
             } else {
-                $_SESSION['error'] = "Lỗi kỹ thuật, không lưu được dữ liệu.";
+                $msg = "Lỗi kỹ thuật, không lưu được dữ liệu.";
+                if ($is_ajax) {
+                    if (ob_get_length()) ob_clean();
+                    header('Content-Type: application/json');
+                    echo json_encode(["status" => "error", "message" => $msg]);
+                    exit;
+                }
+                $_SESSION['error'] = $msg;
             }
 
             header("Location: " . $_SERVER['HTTP_REFERER']);

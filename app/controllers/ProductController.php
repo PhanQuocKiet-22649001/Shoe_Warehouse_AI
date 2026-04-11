@@ -566,4 +566,113 @@ class ProductController
         date_default_timezone_set('Asia/Ho_Chi_Minh');
         return date('Y-m-d H:i:s');
     }
+
+    /**
+     * API: Lấy danh sách Size và Tồn kho dựa trên Product ID và Màu sắc
+     * (Sử dụng cho luồng Xuất Kho AI)
+     */
+    public function getSizesAjax()
+    {
+        ob_start();
+        header('Content-Type: application/json');
+
+        try {
+            $product_id = isset($_GET['product_id']) ? intval($_GET['product_id']) : 0;
+            $color = isset($_GET['color']) ? trim($_GET['color']) : '';
+
+            if ($product_id <= 0 || empty($color)) {
+                echo json_encode([]);
+                exit;
+            }
+
+            // Gọi Model để tìm tất cả các size của màu đó, yêu cầu stock > 0
+            // Ta viết luôn câu SQL ở đây cho nhanh, hoặc bồ có thể tạo 1 hàm getSizesByColor trong ProductModel.
+            $sql = "SELECT variant_id, size, stock FROM product_variants 
+                    WHERE product_id = $1 AND color ILIKE $2 AND is_deleted = false AND stock > 0
+                    ORDER BY size ASC";
+            
+            $res = pg_query_params($this->productModel->getConnection(), $sql, [$product_id, $color]);
+            $variants = $res ? pg_fetch_all($res) : [];
+            
+            ob_clean();
+            echo json_encode($variants ?: []);
+        } catch (Exception $e) {
+            ob_clean();
+            echo json_encode([]);
+        }
+        exit;
+    }
+
+   /**
+     * Xử lý xuất kho từ Form AI (Bản nâng cấp: Hỗ trợ Đa biến thể)
+     * Nhận mảng colors[], sizes[], quantities[]
+     */
+    public function exportByAI()
+    {
+        $this->checkStaff();
+        
+        if (ob_get_length()) ob_clean(); // Chống dính HTML từ sidebar
+        header('Content-Type: application/json');
+
+        if (isset($_POST['export_stock_ai_multi'])) {
+            $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
+            
+            // Hứng dữ liệu mảng
+            $colors = isset($_POST['colors']) ? $_POST['colors'] : [];
+            $sizes = isset($_POST['sizes']) ? $_POST['sizes'] : [];
+            $quantities = isset($_POST['quantities']) ? $_POST['quantities'] : [];
+            
+            $user_id = $_SESSION['user_id'];
+
+            if (empty($colors) || count($colors) !== count($sizes)) {
+                echo json_encode(["status" => "error", "message" => "Dữ liệu gửi lên không hợp lệ."]);
+                exit;
+            }
+
+            $db = $this->productModel->getConnection();
+            pg_query($db, "BEGIN");
+
+            try {
+                $hanoiTime = $this->getHanoiTime();
+
+                // Lặp qua từng dòng biến thể mà khách hàng đã chọn trên Form
+                for ($i = 0; $i < count($colors); $i++) {
+                    $color = trim($colors[$i]);
+                    $size = trim($sizes[$i]);
+                    $quantity = intval($quantities[$i]);
+
+                    if ($quantity <= 0) throw new Exception("Số lượng xuất ở một dòng không hợp lệ.");
+
+                    // 1. Tìm variant_id
+                    $variant = $this->productModel->findVariant($product_id, $size, $color);
+                    if (!$variant) {
+                        throw new Exception("Không tìm thấy Size {$size} - Màu {$color} trong kho!");
+                    }
+                    
+                    $variant_id = $variant['variant_id'];
+
+                    // 2. Thực hiện trừ kho
+                    $res1 = $this->productModel->removeStock($variant_id, $quantity);
+                    if (!$res1 || pg_affected_rows($res1) == 0) {
+                        throw new Exception("Không đủ tồn kho cho Size {$size} - Màu {$color}!");
+                    }
+
+                    // 3. Ghi log giao dịch
+                    $res2 = $this->productModel->logTransaction('EXPORT', $variant_id, $quantity, $user_id, $hanoiTime);
+                    if (!$res2) {
+                        throw new Exception("Lỗi hệ thống: Không thể ghi nhận lịch sử giao dịch.");
+                    }
+                }
+
+                // Nếu tất cả các vòng lặp đều suôn sẻ, lưu DB
+                pg_query($db, "COMMIT");
+                echo json_encode(["status" => "success"]);
+
+            } catch (Exception $e) {
+                pg_query($db, "ROLLBACK");
+                echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+            }
+            exit; // Luôn dùng exit để ngăn load tiếp giao diện
+        }
+    }
 }
