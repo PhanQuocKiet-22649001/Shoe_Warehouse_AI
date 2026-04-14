@@ -19,16 +19,16 @@ if (isset($_GET['page'])) {
         $controller->getReportDetailsAjax();
         exit;
     }
-    
+
     // --- BỔ SUNG: CHUYỂN CÁC YÊU CẦU AJAX CỦA PRODUCT LÊN ĐÂY ---
     if ($_GET['page'] === 'products' && isset($_GET['action'])) {
         require_once '../config/database.php';
         require_once '../app/models/ProductModel.php';
         require_once '../app/models/CategoryModel.php'; // ProductModel có thể gọi cái này
         require_once '../app/controllers/ProductController.php';
-        
+
         $productControllerAjax = new ProductController();
-        
+
         if ($_GET['action'] === 'getColorsAjax') {
             $productControllerAjax->getColorsAjax();
             exit;
@@ -181,6 +181,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="page-body">
                     <?php
                     switch ($page) {
+                        case 'get_brand_data':
+                            $reportController->getBrandDataAjax();
+                            break;
+
+                        case 'get_product_data':
+                            $reportController->getProductDataAjax();
+                            break;
+
+                        case 'get_variant_data':
+                            $reportController->getVariantDataAjax();
+                            break;
                         case 'employees':
                             if ($_SESSION['role'] !== 'MANAGER') {
                                 header("Location: index.php?page=dashboard");

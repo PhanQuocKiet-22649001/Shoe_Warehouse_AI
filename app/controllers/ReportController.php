@@ -104,4 +104,65 @@ class ReportController
         header("Location: index.php?page=report&start_date=$start&end_date=$end");
         exit;
     }
+
+
+
+    /**
+     * AJAX Cấp 1: Lấy tổng hợp theo từng Brand dựa trên loại thẻ (stock, import, export, shortage)
+     */
+    public function getBrandDataAjax()
+    {
+        $this->cleanBuffer();
+        $type = $_GET['type'] ?? 'stock';
+        $data = $this->reportModel->getBrandDetail($type);
+        echo json_encode($data ?: []);
+        exit;
+    }
+
+    /**
+     * AJAX Cấp 2: Lấy danh sách sản phẩm thuộc một Brand
+     */
+    public function getProductDataAjax()
+    {
+        $this->cleanBuffer();
+        $brandId = $_GET['brand_id'] ?? null;
+        $type = $_GET['type'] ?? 'stock';
+        
+        if (!$brandId) {
+            echo json_encode([]);
+            exit;
+        }
+        
+        $data = $this->reportModel->getProductsByBrand($brandId, $type);
+        echo json_encode($data ?: []);
+        exit;
+    }
+
+    /**
+     * AJAX Cấp 3: Lấy chi tiết biến thể (Size/Color) của một sản phẩm
+     */
+    public function getVariantDataAjax()
+    {
+        $this->cleanBuffer();
+        $productId = $_GET['product_id'] ?? null;
+        $type = $_GET['type'] ?? 'stock';
+
+        if (!$productId) {
+            echo json_encode([]);
+            exit;
+        }
+
+        $data = $this->reportModel->getVariantsByProduct($productId, $type);
+        echo json_encode($data ?: []);
+        exit;
+    }
+
+    /**
+     * Hàm bổ trợ: Làm sạch bộ đệm và set Header JSON để tránh lỗi hiển thị
+     */
+    private function cleanBuffer()
+    {
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/json; charset=utf-8');
+    }
 }

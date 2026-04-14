@@ -217,12 +217,21 @@
             appendMessage('bot', '<span class="typing">Đang truy vấn kho...</span>', loadingId);
 
             try {
-                const response = await fetch(`http://127.0.0.1:8000/ask?question=${encodeURIComponent(text)}`);
+                // Đổi thành phương thức POST và gửi dữ liệu dạng JSON
+                const response = await fetch('http://127.0.0.1:8000/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ query: text })
+                });
+                
                 const data = await response.json();
 
-                const reply = data.status === 'success' ? data.answer : data.message;
+                const reply = data.status === 'success' ? data.answer : "Lỗi từ AI Server.";
                 document.getElementById(loadingId).innerHTML = reply;
             } catch (error) {
+                console.error("Fetch error:", error);
                 document.getElementById(loadingId).innerText = "Mất kết nối với AI Server (Cổng 8000).";
             }
 

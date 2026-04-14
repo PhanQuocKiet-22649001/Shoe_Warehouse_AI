@@ -43,7 +43,7 @@ class VisionService
         if ($result === false) {
             return [
                 "status" => "error", 
-                "message" => "Không kết nối được tới AI Server. Bồ đã chạy 'python api_vector.py' chưa? Lỗi: " . $error
+                "message" => "Không kết nối được tới AI Server. Bạn đã chạy 'python api_vector.py' chưa? Lỗi: " . $error
             ];
         }
 

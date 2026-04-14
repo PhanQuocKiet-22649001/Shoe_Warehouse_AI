@@ -197,7 +197,8 @@
         sort($uniqueBrands);
         ?>
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h6 class="section-title m-0" style="border: none;">Phân Tích Tồn Kho Hiện Tại</h6>
+            <h6 class="section-title m-0" id="inventoryTitle" style="border: none;">Phân Tích Tồn Kho Hiện Tại</h6>
+
             <div class="d-flex align-items-center">
                 <label for="brandFilter" class="form-label mb-0 me-2 text-muted small fw-bold">Lọc:</label>
                 <select id="brandFilter" class="form-select form-select-sm shadow-sm" style="width: auto;">
@@ -208,6 +209,7 @@
                 </select>
             </div>
         </div>
+
         <div class="inventory-grid" id="inventoryGrid">
             <?php foreach ($groupedInventory as $pName => $pData): ?>
                 <div class="inv-product-card" data-brand="<?= htmlspecialchars($pData['brand']) ?>">
@@ -218,7 +220,7 @@
                     <div class="inv-body">
                         <?php foreach ($pData['variants'] as $var): ?>
                             <div class="stock-chip <?= $var['stock'] < 10 ? 'danger' : '' ?>">
-                                Sz <?= $var['size'] ?>: <b><?= $var['stock'] ?></b>
+                                Sz <?= $var['size'] ?>: <b class="variant-stock"><?= $var['stock'] ?></b>
                             </div>
                         <?php endforeach; ?>
                     </div>
@@ -226,9 +228,8 @@
             <?php endforeach; ?>
         </div>
     </div>
-</div>
 
-<div class="modal fade" id="modalReportDetail" tabindex="-1" aria-hidden="true">
+    <!-- <div class="modal fade" id="modalReportDetail" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-dark text-white">
@@ -259,136 +260,134 @@
             </div>
         </div>
     </div>
+</div> -->
 
+    <script>
+        // 1. DATA VÀ CHART (Giữ nguyên logic của bồ)
+        const colorPrimary = '#4e73df';
+        const colorSuccess = '#1cc88a';
+        const dayData = <?= json_encode($top_5_days) ?>;
+        const brandData = <?= json_encode($brand_dist) ?>;
+        const flowData = <?= json_encode($product_flow) ?>;
 
-</div>
-
-<script>
-    // 1. DATA VÀ CHART (Giữ nguyên logic của bồ)
-    const colorPrimary = '#4e73df';
-    const colorSuccess = '#1cc88a';
-    const dayData = <?= json_encode($top_5_days) ?>;
-    const brandData = <?= json_encode($brand_dist) ?>;
-    const flowData = <?= json_encode($product_flow) ?>;
-
-    // Tìm đến đoạn vẽ 'daysChart' và sửa lại như sau:
-    if (document.getElementById('daysChart') && dayData.length > 0) {
-        new Chart(document.getElementById('daysChart'), {
-            type: 'bar',
-            data: {
-                // Nhãn là các ngày
-                labels: dayData.map(d => new Date(d.work_date).toLocaleDateString('vi-VN')),
-                datasets: [{
-                        label: 'Nhập kho',
-                        data: dayData.map(d => d.total_import),
-                        backgroundColor: '#4e73df', // Màu xanh dương
-                        borderRadius: 4,
-                        barPercentage: 0.8,
-                        categoryPercentage: 0.8
-                    },
-                    {
-                        label: 'Xuất kho',
-                        data: dayData.map(d => d.total_export),
-                        backgroundColor: '#1cc88a', // Màu xanh lá (hoặc đỏ #e74a3b tùy bồ chọn)
-                        borderRadius: 4,
-                        barPercentage: 0.8,
-                        categoryPercentage: 0.8
-                    }
-                ]
-            },
-            options: {
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'bottom' // Hiện chú thích ở dưới cho dễ nhìn
-                    },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false
-                    }
+        // Tìm đến đoạn vẽ 'daysChart' và sửa lại như sau:
+        if (document.getElementById('daysChart') && dayData.length > 0) {
+            new Chart(document.getElementById('daysChart'), {
+                type: 'bar',
+                data: {
+                    // Nhãn là các ngày
+                    labels: dayData.map(d => new Date(d.work_date).toLocaleDateString('vi-VN')),
+                    datasets: [{
+                            label: 'Nhập kho',
+                            data: dayData.map(d => d.total_import),
+                            backgroundColor: '#4e73df', // Màu xanh dương
+                            borderRadius: 4,
+                            barPercentage: 0.8,
+                            categoryPercentage: 0.8
+                        },
+                        {
+                            label: 'Xuất kho',
+                            data: dayData.map(d => d.total_export),
+                            backgroundColor: '#1cc88a', // Màu xanh lá (hoặc đỏ #e74a3b tùy bồ chọn)
+                            borderRadius: 4,
+                            barPercentage: 0.8,
+                            categoryPercentage: 0.8
+                        }
+                    ]
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
                             display: true,
-                            text: 'Số lượng (đôi)'
+                            position: 'bottom' // Hiện chú thích ở dưới cho dễ nhìn
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
                         }
                     },
-                    x: {
-                        grid: {
-                            display: false
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Số lượng (đôi)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
                         }
                     }
                 }
-            }
-        });
-    }
+            });
+        }
 
-    if (document.getElementById('brandChart') && brandData.length > 0) {
-        new Chart(document.getElementById('brandChart'), {
-            type: 'doughnut',
-            data: {
-                labels: brandData.map(d => d.brand),
-                datasets: [{
-                    data: brandData.map(d => d.total_stock),
-                    backgroundColor: [colorPrimary, colorSuccess, '#36b9cc', '#f6c23e', '#e74a3b']
-                }]
-            },
-            options: {
-                maintainAspectRatio: false,
-                cutout: '70%'
-            }
-        });
-    }
+        if (document.getElementById('brandChart') && brandData.length > 0) {
+            new Chart(document.getElementById('brandChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: brandData.map(d => d.brand),
+                    datasets: [{
+                        data: brandData.map(d => d.total_stock),
+                        backgroundColor: [colorPrimary, colorSuccess, '#36b9cc', '#f6c23e', '#e74a3b']
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    cutout: '70%'
+                }
+            });
+        }
 
-    if (document.getElementById('productFlowChart') && flowData.length > 0) {
-        new Chart(document.getElementById('productFlowChart'), {
-            type: 'bar',
-            data: {
-                labels: flowData.map(p => p.product_name),
-                datasets: [{
-                        label: 'Nhập',
-                        data: flowData.map(p => p.total_import),
-                        backgroundColor: colorPrimary
-                    },
-                    {
-                        label: 'Xuất',
-                        data: flowData.map(p => p.total_export),
-                        backgroundColor: colorSuccess
-                    }
-                ]
-            },
-            options: {
-                indexAxis: 'y',
-                maintainAspectRatio: false
-            }
-        });
-    }
+        if (document.getElementById('productFlowChart') && flowData.length > 0) {
+            new Chart(document.getElementById('productFlowChart'), {
+                type: 'bar',
+                data: {
+                    labels: flowData.map(p => p.product_name),
+                    datasets: [{
+                            label: 'Nhập',
+                            data: flowData.map(p => p.total_import),
+                            backgroundColor: colorPrimary
+                        },
+                        {
+                            label: 'Xuất',
+                            data: flowData.map(p => p.total_export),
+                            backgroundColor: colorSuccess
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    maintainAspectRatio: false
+                }
+            });
+        }
 
-    // 2. LOGIC AJAX CHO MODAL CHI TIẾT (NEW)
-    document.querySelectorAll('.btn-open-report-detail').forEach(btn => {
-        btn.addEventListener('click', async function() {
-            const date = this.dataset.date;
-            const modal = new bootstrap.Modal(document.getElementById('modalReportDetail'));
-            const tableBody = document.getElementById('reportDetailBody');
+        // 2. LOGIC AJAX CHO MODAL CHI TIẾT (NEW)
+        document.querySelectorAll('.btn-open-report-detail').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const date = this.dataset.date;
+                const modal = new bootstrap.Modal(document.getElementById('modalReportDetail'));
+                const tableBody = document.getElementById('reportDetailBody');
 
-            document.getElementById('reportDetailDate').innerText = "Chi tiết ngày: " + new Date(date).toLocaleDateString('vi-VN');
-            tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Đang tải dữ liệu...</td></tr>';
-            modal.show();
+                document.getElementById('reportDetailDate').innerText = "Chi tiết ngày: " + new Date(date).toLocaleDateString('vi-VN');
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Đang tải dữ liệu...</td></tr>';
+                modal.show();
 
-            try {
-                const response = await fetch(`index.php?page=report-detail&date=${date}`);
-                const data = await response.json();
-                if (data.length > 0) {
-                    let html = '';
-                    data.forEach(item => {
-                        const time = new Date(item.created_at).toLocaleTimeString('vi-VN', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        });
-                        html += `
+                try {
+                    const response = await fetch(`index.php?page=report-detail&date=${date}`);
+                    const data = await response.json();
+                    if (data.length > 0) {
+                        let html = '';
+                        data.forEach(item => {
+                            const time = new Date(item.created_at).toLocaleTimeString('vi-VN', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                            html += `
                         <tr>
                             <td class="small text-muted">${time}</td>
                             <td><span class="badge ${item.transaction_type === 'IMPORT' ? 'bg-success' : 'bg-danger'}">${item.transaction_type}</span></td>
@@ -398,27 +397,86 @@
                             <td class="text-center fw-bold text-dark">${item.quantity} đôi</td>
                             <td class="small text-muted">${item.staff}</td>
                         </tr>`;
-                    });
-                    tableBody.innerHTML = html;
-                    document.getElementById('totalItemsCount').innerText = data.length + " lượt giao dịch";
-                } else {
-                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Không có chi tiết biến thể nào.</td></tr>';
+                        });
+                        tableBody.innerHTML = html;
+                        document.getElementById('totalItemsCount').innerText = data.length + " lượt giao dịch";
+                    } else {
+                        tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Không có chi tiết biến thể nào.</td></tr>';
+                    }
+                } catch (error) {
+                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Lỗi kết nối máy chủ hoặc dữ liệu không hợp lệ.</td></tr>';
                 }
-            } catch (error) {
-                tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Lỗi kết nối máy chủ hoặc dữ liệu không hợp lệ.</td></tr>';
-            }
+            });
         });
-    });
 
-    // 3. BỘ LỌC BRAND (Giữ nguyên logic của bồ)
-    document.getElementById('brandFilter')?.addEventListener('change', function() {
-        const brand = this.value;
-        let count = 0;
-        document.querySelectorAll('.inv-product-card').forEach(card => {
-            const show = (brand === 'ALL' || card.dataset.brand === brand);
-            card.style.display = show ? '' : 'none';
-            if (show) count++;
+        // 3. BỘ LỌC BRAND (Giữ nguyên logic của bồ)
+        document.getElementById('brandFilter')?.addEventListener('change', function() {
+            const brand = this.value;
+            let count = 0;
+            document.querySelectorAll('.inv-product-card').forEach(card => {
+                const show = (brand === 'ALL' || card.dataset.brand === brand);
+                card.style.display = show ? '' : 'none';
+                if (show) count++;
+            });
+            document.getElementById('noDataMessage').style.display = count === 0 ? 'block' : 'none';
         });
-        document.getElementById('noDataMessage').style.display = count === 0 ? 'block' : 'none';
-    });
-</script>
+
+
+
+        // hiện tồn kho theo brand
+        document.addEventListener('DOMContentLoaded', function() {
+            const brandFilter = document.getElementById('brandFilter');
+            const inventoryTitle = document.getElementById('inventoryTitle');
+            const productCards = document.querySelectorAll('.inv-product-card');
+
+            function updateInventoryDisplay() {
+                const selectedBrand = brandFilter.value;
+                let totalStock = 0;
+
+                productCards.forEach(card => {
+                    const cardBrand = card.getAttribute('data-brand');
+
+                    if (selectedBrand === 'ALL' || cardBrand === selectedBrand) {
+                        // Hiển thị card
+                        card.style.display = 'block';
+
+                        // Tính tổng tồn kho của các biến thể trong card này
+                        const variants = card.querySelectorAll('.variant-stock');
+                        variants.forEach(v => {
+                            totalStock += parseInt(v.innerText);
+                        });
+                    } else {
+                        // Ẩn card không thuộc hãng được chọn
+                        card.style.display = 'none';
+                    }
+                });
+
+                // Cập nhật nội dung tiêu đề
+                if (selectedBrand === 'ALL') {
+                    inventoryTitle.innerHTML = `
+        <i class="bi bi-box-seam me-2"></i>Phân Tích Tồn Kho 
+        <span class="ms-2 badge bg-primary-soft text-primary fw-bold" style="font-size: 0.9rem; padding: 5px 12px; border-radius: 50px; background-color: #e7f1ff;">
+            Tất cả: ${totalStock.toLocaleString()} đôi
+        </span>
+    `;
+                } else {
+                    inventoryTitle.innerHTML = `
+        Phân Tích Tồn Kho 
+        <span class="ms-2 text-muted fw-normal" style="font-size: 0.85rem;">|</span>
+        <span class="ms-2 badge bg-light text-dark border fw-medium" style="padding: 5px 12px; border-radius: 6px;">
+            Hãng: <b class="text-primary">${selectedBrand}</b>
+        </span>
+        <span class="ms-2 badge bg-light text-dark border fw-medium" style="padding: 5px 12px; border-radius: 6px;">
+            Tổng tồn: <b class="text-danger">${totalStock.toLocaleString()} đôi</b>
+        </span>
+    `;
+                }
+            }
+
+            // Chạy lần đầu khi load trang để hiện tổng số lượng ban đầu
+            updateInventoryDisplay();
+
+            // Lắng nghe sự kiện thay đổi bộ lọc
+            brandFilter.addEventListener('change', updateInventoryDisplay);
+        });
+    </script>

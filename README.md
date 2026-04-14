@@ -54,15 +54,11 @@ D:\Application\xampp\htdocs\Shoe_Warehouse
 - Mở Terminal dự án và cài đặt các thư viện cần thiết để chạy LangChain và Model CLIP:
 python -m pip install -U torch Pillow ftfy regex tqdm langchain langchain-community langchain-ollama langgraph sqlalchemy psycopg2-binary pgvector fastapi uvicorn flask sentence-transformers python-dotenv
 
+pip install vanna google-generativeai fastapi uvicorn python-dotenv psycopg2-binary pandaspython 
+
 - Cài đặt thư viện CLIP trực tiếp từ source OpenAI:
 python -m pip install git+https://github.com/openai/CLIP.git
 
-
-
-🔹 Bước 2: Thiết lập mô hình AI Offline
-Đối với Chatbot: - Tải và cài đặt Ollama tại ollama.com.
-
-- Mở Terminal gõ lệnh để tải model (4.7GB): ollama pull qwen2.5-coder:7b
 
 - Đối với Quét ảnh:
 Chạy file generate_vector.py để AI tự động tải bộ não CLIP về thư mục models (Chỉ chạy 1 lần duy nhất):

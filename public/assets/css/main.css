@@ -5,12 +5,19 @@
     box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
     height: 100%;
     width: 100%;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
-    background-color: #f3f4f6;
-    overflow: hidden; /* Tránh thanh cuộn kép của body */
+    background: linear-gradient(to bottom right,
+            rgba(0, 0, 0, 0.3),
+            /* Đen mờ 60% ở góc trên trái */
+            rgba(255, 255, 255, 0.1)
+            /* Trắng mờ 20% ở góc dưới phải */
+        );
+    overflow: hidden;
+    /* Tránh thanh cuộn kép của body */
 }
 
 /* --- 2. Layout Chính --- */
@@ -25,15 +32,17 @@ html, body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden; 
+    overflow: hidden;
     padding: 0px 20px;
 }
 
 /* Phần ruột chứa nội dung trang (Dashboard, Employees...) */
 .content {
     flex: 1;
-    padding: 25px; /* Đẩy padding xuống đây để nội dung không dính lề */
-    overflow-y: auto; /* Chỉ cho phép cuộn ở phần này */
+    padding: 25px;
+    /* Đẩy padding xuống đây để nội dung không dính lề */
+    overflow-y: auto;
+    /* Chỉ cho phép cuộn ở phần này */
 }
 
 /* --- 3. Typography & Tiện ích --- */

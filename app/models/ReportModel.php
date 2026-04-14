@@ -190,4 +190,96 @@ class ReportModel
                 GROUP BY u.full_name ORDER BY total_tx DESC LIMIT 3";
         return pg_fetch_all(pg_query($this->conn, $sql)) ?: [];
     }
+
+
+
+    // --- CẤP 1: Lấy tổng hợp theo Brand ---
+    public function getBrandDetail($type)
+    {
+        if ($type === 'stock') {
+            $sql = "SELECT c.category_id, c.category_name as brand, SUM(pv.stock) as total 
+                FROM categories c 
+                JOIN products p ON c.category_id = p.category_id 
+                JOIN product_variants pv ON p.product_id = pv.product_id 
+                WHERE pv.is_deleted = false AND pv.status = true 
+                  AND p.is_deleted = false AND p.status = true
+                  AND c.is_deleted = false AND c.status = true
+                GROUP BY c.category_id, c.category_name";
+        } elseif ($type === 'shortage') {
+            $sql = "SELECT c.category_id, c.category_name as brand, COUNT(pv.variant_id) as total 
+                FROM categories c 
+                JOIN products p ON c.category_id = p.category_id 
+                JOIN product_variants pv ON p.product_id = pv.product_id 
+                WHERE pv.stock < 10 AND pv.is_deleted = false AND pv.status = true
+                  AND p.is_deleted = false AND p.status = true
+                  AND c.is_deleted = false AND c.status = true
+                GROUP BY c.category_id, c.category_name";
+        } else {
+            $tType = strtoupper($type); // IMPORT hoặc EXPORT
+            $sql = "SELECT c.category_id, c.category_name as brand, SUM(t.quantity) as total 
+                FROM categories c 
+                JOIN products p ON c.category_id = p.category_id 
+                JOIN product_variants pv ON p.product_id = pv.product_id 
+                JOIN transactions t ON pv.variant_id = t.variant_id 
+                WHERE t.transaction_type = '$tType' 
+                  AND date_trunc('month', t.created_at) = date_trunc('month', CURRENT_DATE)
+                  AND pv.is_deleted = false AND p.is_deleted = false AND c.is_deleted = false
+                GROUP BY c.category_id, c.category_name";
+        }
+        $res = pg_query($this->conn, $sql);
+        return pg_fetch_all($res) ?: [];
+    }
+
+    // --- CẤP 2: Lấy danh sách sản phẩm theo từng Brand ---
+    public function getProductsByBrand($brandId, $type)
+    {
+        if ($type === 'stock') {
+            $sql = "SELECT p.product_id, p.product_name, SUM(pv.stock) as total 
+                FROM products p 
+                JOIN product_variants pv ON p.product_id = pv.product_id 
+                WHERE p.category_id = $1 AND pv.is_deleted = false AND pv.status = true
+                  AND p.is_deleted = false AND p.status = true
+                GROUP BY p.product_id, p.product_name";
+        } elseif ($type === 'shortage') {
+            $sql = "SELECT p.product_id, p.product_name, COUNT(pv.variant_id) as total 
+                FROM products p 
+                JOIN product_variants pv ON p.product_id = pv.product_id 
+                WHERE p.category_id = $1 AND pv.stock < 10 AND pv.is_deleted = false AND pv.status = true
+                GROUP BY p.product_id, p.product_name";
+        } else {
+            $tType = strtoupper($type);
+            $sql = "SELECT p.product_id, p.product_name, SUM(t.quantity) as total 
+                FROM products p 
+                JOIN product_variants pv ON p.product_id = pv.product_id 
+                JOIN transactions t ON pv.variant_id = t.variant_id 
+                WHERE p.category_id = $1 AND t.transaction_type = '$tType' 
+                  AND date_trunc('month', t.created_at) = date_trunc('month', CURRENT_DATE)
+                  AND pv.is_deleted = false AND p.is_deleted = false
+                GROUP BY p.product_id, p.product_name";
+        }
+        $res = pg_query_params($this->conn, $sql, [$brandId]);
+        return pg_fetch_all($res) ?: [];
+    }
+
+    // --- CẤP 3: Lấy chi tiết biến thể (Size/Color) của một sản phẩm ---
+    public function getVariantsByProduct($productId, $type)
+    {
+        if ($type === 'stock' || $type === 'shortage') {
+            $sql = "SELECT size, color, stock as total 
+                FROM product_variants 
+                WHERE product_id = $1 AND is_deleted = false AND status = true";
+            if ($type === 'shortage') $sql .= " AND stock < 10";
+        } else {
+            $tType = strtoupper($type);
+            $sql = "SELECT pv.size, pv.color, SUM(t.quantity) as total 
+                FROM product_variants pv 
+                JOIN transactions t ON pv.variant_id = t.variant_id 
+                WHERE pv.product_id = $1 AND t.transaction_type = '$tType' 
+                  AND date_trunc('month', t.created_at) = date_trunc('month', CURRENT_DATE)
+                  AND pv.is_deleted = false
+                GROUP BY pv.size, pv.color";
+        }
+        $res = pg_query_params($this->conn, $sql, [$productId]);
+        return pg_fetch_all($res) ?: [];
+    }
 }
