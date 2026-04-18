@@ -45,6 +45,14 @@ if (isset($_GET['page'])) {
             $productControllerAjax->scanWithAI();
             exit;
         }
+        if ($_GET['action'] === 'get_mini_heatmap') {
+            $productControllerAjax->getMiniHeatmap();
+            exit;
+        }
+        if ($_GET['action'] === 'getPutawaySuggestions') {
+            $productControllerAjax->getPutawaySuggestionsAjax();
+            exit;
+        }
     }
     // -----------------------------------------------------------
 }

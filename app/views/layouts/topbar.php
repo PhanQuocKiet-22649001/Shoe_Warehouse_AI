@@ -620,6 +620,15 @@ $allCategories = $cModel->getAll();
         event.preventDefault();
         const btn = form.querySelector('button[type="submit"]');
         const formData = new FormData(form);
+        const putawayData = JSON.parse(document.getElementById('putaway_data_input').value);
+        const stockInput = parseInt(document.getElementById('input_stock_qty').value);
+        let totalAssigned = putawayData.reduce((sum, item) => sum + item.quantity, 0);
+        if (totalAssigned < stockInput) {
+            alert(`Bạn chưa xếp vị trí! Cần xếp ${stockInput - totalAssigned} đôi nữa.`);
+            if (document.getElementById('inline_putaway_area').classList.contains('d-none')) toggleInlinePutaway();
+            return;
+        }
+
         formData.append('add_product', '1');
 
         // KỸ THUẬT QUAN TRỌNG: Nếu nhập thủ công, nhét file ảnh thực tế vào FormData để gửi lên PHP
@@ -779,9 +788,33 @@ $allCategories = $cModel->getAll();
             </div>
 
             <div class="mb-4">
-                <label class="fw-bold small mb-1">SỐ LƯỢNG NHẬP KHO:</label>
-                <input type="number" name="stock" class="form-control fw-bold text-center rounded-1" value="1" min="1" required>
+                <label class="fw-bold small mb-1">SỐ LƯỢNG NHẬP KHO & VỊ TRÍ:</label>
+                <div class="input-group">
+                    <input type="number" id="input_stock_qty" name="stock" class="form-control fw-bold text-center rounded-start-1" value="1" min="1" required>
+                    <button type="button" class="btn btn-info fw-bold text-dark px-3 rounded-end-1" onclick="toggleInlinePutaway()">
+                        <i class="fas fa-map-marked-alt me-1"></i> CHỌN KỆ
+                    </button>
+                </div>
             </div>
+
+            <div id="inline_putaway_area" class="d-none mb-4 p-3 rounded-2" style="background: rgba(0,0,0,0.3); border: 1px dashed #0dcaf0;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-bold text-info small"><i class="fas fa-location-arrow me-1"></i> BẢN ĐỒ KHO</span>
+                    <span class="badge bg-warning text-dark" id="putaway_status_badge">Cần xếp: 0 đôi</span>
+                </div>
+                
+                <div id="inline_heatmap_content" class="mb-2 p-2 bg-dark rounded" style="max-height: 300px; overflow-y: auto; overflow-x: hidden;">
+                    </div>
+
+                <div class="bg-dark p-2 rounded border border-secondary small">
+                    <span class="text-white-50">Vị trí đã chọn:</span>
+                    <div id="putaway_selected_list" class="d-flex flex-wrap gap-1 mt-1">
+                        <span class="text-muted">Chưa chọn</span>
+                    </div>
+                </div>
+            </div>
+            
+            <input type="hidden" name="putaway_data" id="putaway_data_input" value="[]">
 
             <button type="submit" class="btn btn-glass-confirm w-100 fw-bold rounded-1 py-2 shadow-sm">XÁC NHẬN LƯU DỮ LIỆU</button>
         </form>`;
@@ -1256,4 +1289,132 @@ $allCategories = $cModel->getAll();
             submitBtn.disabled = false;
         }
     });
+
+
+    let putawayNeededQty = 0;
+    let currentPutawaySelections = {};
+
+    async function toggleInlinePutaway() {
+        const area = document.getElementById('inline_putaway_area');
+        const inputQty = document.getElementById('input_stock_qty');
+        const brand = document.getElementById('input_brand').value;
+        const name = document.getElementById('input_product_name').value;
+
+        if (!brand || !name) return alert("Vui lòng nhập Hãng và Tên giày trước khi chọn vị trí!");
+
+        if (!area.classList.contains('d-none')) {
+            area.classList.add('d-none');
+            return;
+        }
+
+        putawayNeededQty = parseInt(inputQty.value);
+        if (isNaN(putawayNeededQty) || putawayNeededQty <= 0) return alert("Số lượng không hợp lệ!");
+
+        currentPutawaySelections = {};
+        updatePutawayBadge();
+        area.classList.remove('d-none');
+
+        const heatmapContent = document.getElementById('inline_heatmap_content');
+        heatmapContent.innerHTML = '<div class="text-center text-info my-3"><i class="fas fa-spinner fa-spin me-2"></i> AI đang phân tích dữ liệu...</div>';
+
+        try {
+            // TẢI UI SƠ ĐỒ KHO (Bồ có file php vẽ HTML lưới kho thì trỏ URL vào đây, hoặc tui giả lập code HTML lưới kho)
+            // Lưu ý: Đảm bảo có route action=get_mini_heatmap trả về cục HTML kệ kho
+            const resHtml = await fetch('index.php?page=products&action=get_mini_heatmap');
+            heatmapContent.innerHTML = await resHtml.text();
+
+            // GỌI DRY RUN LẤY GỢI Ý
+            const formElement = document.getElementById('active_form_container').querySelector('form');
+            const formData = new FormData(formElement);
+            const resAjax = await fetch('index.php?page=products&action=getPutawaySuggestions', {
+                method: 'POST',
+                body: formData
+            });
+            const aiData = await resAjax.json();
+            if (aiData.status === 'success' && aiData.suggestions && aiData.suggestions.length > 0) {
+                // Biến lưu phần tử ô vuông đầu tiên được gợi ý
+                let firstSuggestedCell = null;
+
+                aiData.suggestions.forEach((code, index) => {
+                    let cell = heatmapContent.querySelector(`.shelf-cell[data-code="${code}"]`);
+                    if (cell) {
+                        cell.classList.add('slot-suggested'); // Nháy sáng
+                        if (index === 0) firstSuggestedCell = cell; // Lưu lại ô đầu tiên
+                    }
+                });
+
+                // LOGIC AUTO-SCROLL CỰC MƯỢT
+                if (firstSuggestedCell) {
+                    // Tìm khung chứa có thanh cuộn (overflow-y: auto)
+                    const scrollContainer = document.getElementById('inline_heatmap_content');
+
+                    // Tính toán vị trí cuộn để ô được chọn nằm ngay giữa khung nhìn
+                    const cellTop = firstSuggestedCell.offsetTop;
+                    const containerHalfHeight = scrollContainer.clientHeight / 2;
+
+                    scrollContainer.scrollTo({
+                        top: cellTop - containerHalfHeight,
+                        behavior: 'smooth' // Cuộn từ từ cho người dùng kịp nhìn
+                    });
+                }
+            }
+            if (aiData.status === 'success' && aiData.suggestions) {
+                aiData.suggestions.forEach(code => {
+                    let cell = heatmapContent.querySelector(`.shelf-cell[data-code="${code}"]`);
+                    if (cell) cell.classList.add('slot-suggested'); // Móc CSS class chớp nháy vô đây
+                });
+            }
+
+            bindMiniHeatmapClicks();
+        } catch (e) {
+            heatmapContent.innerHTML = '<div class="text-danger small text-center py-3">Lỗi tải bản đồ kho!</div>';
+        }
+    }
+
+    function bindMiniHeatmapClicks() {
+        document.querySelectorAll('#inline_heatmap_content .shelf-cell').forEach(cell => {
+            cell.addEventListener('click', function() {
+                if (putawayNeededQty <= 0) return alert("Đã xếp đủ số lượng!");
+
+                let code = this.getAttribute('data-code');
+                let occ = parseInt(this.getAttribute('data-occupancy') || 0);
+                if (occ >= 4) return alert("Ô này đã đầy!");
+
+                let takeQty = Math.min(putawayNeededQty, 4 - occ);
+                putawayNeededQty -= takeQty;
+                this.setAttribute('data-occupancy', occ + takeQty);
+
+                if (!currentPutawaySelections[code]) currentPutawaySelections[code] = 0;
+                currentPutawaySelections[code] += takeQty;
+
+                // UI Đổi màu xanh dương
+                this.classList.remove('slot-suggested');
+                this.style.background = '#0dcaf0';
+                this.style.color = '#000';
+                this.style.borderColor = '#fff';
+                updatePutawayBadge();
+            });
+        });
+    }
+
+    function updatePutawayBadge() {
+        const badge = document.getElementById('putaway_status_badge');
+        const list = document.getElementById('putaway_selected_list');
+        const hiddenInput = document.getElementById('putaway_data_input');
+
+        badge.innerText = `Cần xếp: ${putawayNeededQty} đôi`;
+        badge.className = putawayNeededQty === 0 ? "badge bg-success" : "badge bg-warning text-dark";
+
+        let html = [],
+            jsonArray = [];
+        for (const [code, qty] of Object.entries(currentPutawaySelections)) {
+            html.push(`<span class="badge bg-info text-dark">${code}: ${qty} đôi</span>`);
+            jsonArray.push({
+                location: code,
+                quantity: qty
+            });
+        }
+        list.innerHTML = html.length > 0 ? html.join('') : '<span class="text-muted">Chưa có vị trí</span>';
+        hiddenInput.value = JSON.stringify(jsonArray);
+    }
 </script>

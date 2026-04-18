@@ -219,7 +219,7 @@
                     </div>
                     <div class="inv-body">
                         <?php foreach ($pData['variants'] as $var): ?>
-                            <div class="stock-chip <?= $var['stock'] < 10 ? 'danger' : '' ?>">
+                            <div class="stock-chip <?= $var['stock'] < 5 ? 'danger' : '' ?>">
                                 Sz <?= $var['size'] ?>: <b class="variant-stock"><?= $var['stock'] ?></b>
                             </div>
                         <?php endforeach; ?>

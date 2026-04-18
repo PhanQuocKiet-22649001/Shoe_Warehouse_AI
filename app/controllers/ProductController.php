@@ -278,7 +278,19 @@ class ProductController
                     // KẾT THÚC NHÁNH 3
                     // ==============================================================
                 }
+                $justCreated = $this->productModel->findVariant($productId, $size, $color);
+                if ($justCreated) {
+                    $this->productModel->logTransaction('IMPORT', $justCreated['variant_id'], $stock_input, $userId, $hanoiTime);
 
+                    // LƯU VỊ TRÍ HEATMAP VÀO KỆ (JSONB)
+                    if (!empty($_POST['putaway_data'])) {
+                        $putawayArray = json_decode($_POST['putaway_data'], true);
+                        if (is_array($putawayArray) && count($putawayArray) > 0) {
+                            $this->productModel->savePutawayToShelves($putawayArray, $justCreated['variant_id']);
+                            $msg .= " Đã xếp vị trí kệ thành công.";
+                        }
+                    }
+                }
                 pg_query($db, "COMMIT");
                 echo json_encode(["status" => "success", "message" => $msg]);
                 exit;
@@ -590,10 +602,10 @@ class ProductController
             $sql = "SELECT variant_id, size, stock FROM product_variants 
                     WHERE product_id = $1 AND color ILIKE $2 AND is_deleted = false AND stock > 0
                     ORDER BY size ASC";
-            
+
             $res = pg_query_params($this->productModel->getConnection(), $sql, [$product_id, $color]);
             $variants = $res ? pg_fetch_all($res) : [];
-            
+
             ob_clean();
             echo json_encode($variants ?: []);
         } catch (Exception $e) {
@@ -603,25 +615,25 @@ class ProductController
         exit;
     }
 
-   /**
+    /**
      * Xử lý xuất kho từ Form AI (Bản nâng cấp: Hỗ trợ Đa biến thể)
      * Nhận mảng colors[], sizes[], quantities[]
      */
     public function exportByAI()
     {
         $this->checkStaff();
-        
+
         if (ob_get_length()) ob_clean(); // Chống dính HTML từ sidebar
         header('Content-Type: application/json');
 
         if (isset($_POST['export_stock_ai_multi'])) {
             $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
-            
+
             // Hứng dữ liệu mảng
             $colors = isset($_POST['colors']) ? $_POST['colors'] : [];
             $sizes = isset($_POST['sizes']) ? $_POST['sizes'] : [];
             $quantities = isset($_POST['quantities']) ? $_POST['quantities'] : [];
-            
+
             $user_id = $_SESSION['user_id'];
 
             if (empty($colors) || count($colors) !== count($sizes)) {
@@ -648,7 +660,7 @@ class ProductController
                     if (!$variant) {
                         throw new Exception("Không tìm thấy Size {$size} - Màu {$color} trong kho!");
                     }
-                    
+
                     $variant_id = $variant['variant_id'];
 
                     // 2. Thực hiện trừ kho
@@ -667,12 +679,105 @@ class ProductController
                 // Nếu tất cả các vòng lặp đều suôn sẻ, lưu DB
                 pg_query($db, "COMMIT");
                 echo json_encode(["status" => "success"]);
-
             } catch (Exception $e) {
                 pg_query($db, "ROLLBACK");
                 echo json_encode(["status" => "error", "message" => $e->getMessage()]);
             }
             exit; // Luôn dùng exit để ngăn load tiếp giao diện
         }
+    }
+
+
+
+
+
+    // lưu giả lập để lấy ib variant gợi ý vị trí kệ
+    public function getPutawaySuggestionsAjax()
+    {
+        ob_start();
+        header('Content-Type: application/json');
+        try {
+            $brandId = isset($_POST['category_id']) ? intval($_POST['category_id']) : 0;
+            $productName = isset($_POST['product_name']) ? trim($_POST['product_name']) : '';
+            $color = isset($_POST['color']) && $_POST['color'] !== 'new' ? trim($_POST['color']) : (isset($_POST['new_color']) ? trim($_POST['new_color']) : '');
+            $size = isset($_POST['size']) ? trim($_POST['size']) : '';
+            $qty = isset($_POST['stock']) ? intval($_POST['stock']) : 0;
+
+            $categoryName = $this->productModel->getCategoryName($brandId);
+            $existingProduct = $this->productModel->findExistingProduct($categoryName, $productName);
+
+            $productId = $existingProduct ? $existingProduct['product_id'] : null;
+            $variantId = null;
+            if ($productId) {
+                $existingVariant = $this->productModel->findVariant($productId, $size, $color);
+                if ($existingVariant) $variantId = $existingVariant['variant_id'];
+            }
+
+            // Chạy AI lấy mảng gợi ý (Không lưu gì cả)
+            $suggestedSlots = $this->productModel->findSuggestedPutawaySlots($productId, $brandId, $variantId, $qty);
+
+            ob_clean();
+            echo json_encode(["status" => "success", "is_new" => ($variantId === null), "suggestions" => $suggestedSlots]);
+        } catch (Exception $e) {
+            ob_clean();
+            echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+        }
+        exit;
+    }
+
+
+
+
+    public function getMiniHeatmap()
+    {
+        if (ob_get_length()) ob_clean();
+        $db = $this->productModel->getConnection();
+        
+        $sql = "SELECT shelf_name, layout FROM shelves ORDER BY shelf_name ASC";
+        $res = pg_query($db, $sql);
+        $shelvesList = $res ? pg_fetch_all($res) : [];
+
+        ob_start();
+        // Không dùng row chia cột nữa, cho các kệ xếp chồng lên nhau thành list
+        echo '<div class="d-flex flex-column gap-3">'; 
+        
+        foreach ($shelvesList as $shelf) {
+            $shelfName = $shelf['shelf_name'];
+            $layout = json_decode($shelf['layout'], true) ?: [];
+            
+            // Đặt id cho mỗi kệ để tí nữa JS dùng id này để cuộn tới
+            echo "<div id='mini_shelf_{$shelfName}' class='p-3 rounded-2' style='background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1);'>";
+            echo "<h6 class='text-info fw-bold mb-3 text-center' style='letter-spacing: 1px;'>KỆ {$shelfName}</h6>";
+            
+            // Ép grid 1 dòng Tầng, 6 dòng Ô
+            echo '<div style="display: grid; grid-template-columns: 40px repeat(6, 1fr); gap: 6px; align-items: center;">';
+            
+            for ($tier = 4; $tier >= 1; $tier--) {
+                echo "<div class='text-white-50 fw-bold text-end pe-2' style='font-size: 12px;'>T{$tier}</div>";
+                
+                for ($slot = 1; $slot <= 6; $slot++) {
+                    $slotKey = str_pad($slot, 2, '0', STR_PAD_LEFT);
+                    $slotCode = "{$shelfName}{$tier}-{$slotKey}";
+                    $occupancy = count($layout[(string)$tier][$slotKey] ?? []);
+                    
+                    $fillPercent = ($occupancy / 4) * 100;
+                    
+                    echo "
+                        <div class='shelf-cell mini-cell' 
+                             style='height: 45px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.5); cursor: pointer; position: relative; overflow: hidden; background: linear-gradient(to top, rgba(255,255,255,0.95) {$fillPercent}%, rgba(0,0,0,0.6) {$fillPercent}%); display: flex; align-items: center; justify-content: center; transition: 0.2s;'
+                             data-code='{$slotCode}' 
+                             data-occupancy='{$occupancy}'
+                             title='{$slotCode}'>
+                             <span style='mix-blend-mode: difference; color: white; font-weight: bold; font-size: 13px; z-index: 2;'>{$occupancy}/4</span>
+                        </div>
+                    ";
+                }
+            }
+            echo '</div></div>'; // Đóng kệ
+        }
+        echo '</div>'; // Đóng container
+        
+        echo ob_get_clean();
+        exit;
     }
 }

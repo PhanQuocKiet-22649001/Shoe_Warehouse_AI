@@ -114,3 +114,12 @@ ollama pull qwen2.5-coder:7b-instruct-q4_K_M
 ## CHƯA LÀM
 1. Quản lí vị trí kệ (heatmap)
 2. Dự đoán xu hướng tiêu thụ (AI)
+
+
+## Đang làm 
+1. quản lí vị trí kệ
+- load được vị trí sản phẩm ra giao diện
+- thêm được sản phẩm vào kệ đã chọn nhưng chưa xong hoàn chỉnh
+- xuất kho chưa tự trừ sản phẩm trên kệ
+- thuật toán gợi ý vị trí nhập kho vào kệ chưa hoàn chỉnh
+

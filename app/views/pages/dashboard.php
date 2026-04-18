@@ -4,7 +4,6 @@
 <h1>Tổng quan Kho</h1>
 <p class="text-muted mb-4">Dữ liệu cập nhật thời gian thực</p>
 
-<!-- card thống kê -->
 <div class="d-flex flex-wrap gap-3 mb-4 cards">
     <div class="flex-fill clickable-card" data-type="stock" style="min-width: 150px; cursor: pointer;">
         <div class="card p-3 border-0 shadow-sm border-start border-primary border-4">
@@ -35,7 +34,6 @@
     </div>
 </div>
 
-<!-- modal -->
 <div class="modal fade" id="detailModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow">
@@ -44,8 +42,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div id="modalContent">
-                </div>
+                <div id="modalContent"></div>
             </div>
         </div>
     </div>
@@ -58,7 +55,6 @@
                 <h3>Top Bán Chạy</h3>
                 <?php
                 if (!empty($top_selling)):
-                    // Tìm số lượng bán cao nhất để làm mốc 100% cho thanh Progress
                     $max_sold = $top_selling[0]['total_sold'];
                     foreach ($top_selling as $item):
                         $percent = ($item['total_sold'] / $max_sold) * 100;
@@ -88,16 +84,102 @@
             </div>
         </div>
     </div>
-
-    <div class="card p-3 heatmap-box border-0 shadow-sm">
-        <h3>Heatmap Vị Trí Sản Phẩm</h3>
-        <p class="small text-muted mb-3">Màu càng đậm thể hiện biến thể càng được luân chuyển nhiều</p>
-    </div>
 <?php else: ?>
-    <div class="alert alert-info border-0 shadow-sm">
-        <i class="fas fa-info-circle me-2"></i> Chào <strong><?= htmlspecialchars($_SESSION['full_name'] ?? 'bạn') ?></strong>, hãy kiểm tra danh sách yêu cầu xuất kho hôm nay nhé!
+    <div class="alert alert-info border-0 shadow-sm mb-4">
+        <i class="fas fa-info-circle me-2"></i> Chào <strong><?= htmlspecialchars($_SESSION['full_name'] ?? 'bạn') ?></strong>, hãy kiểm tra bản đồ kho bên dưới để bắt đầu nhặt hàng nhé!
     </div>
 <?php endif; ?>
+
+
+<!-- heatmap -->
+<div class="card p-4 heatmap-box border-0 mb-4 heatmap-glass">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="text-white"><i class="fas fa-map-marked-alt text-white me-2"></i> Sơ Đồ Không Gian Kho</h3>
+
+        <div class="d-flex gap-3 small fw-bold">
+            <span class="badge text-dark border border-white" style="background: rgba(255, 255, 255, 0.95); padding: 8px 12px;">Đầy (4/4)</span>
+            <span class="badge text-white border border-white" style="background: linear-gradient(to right, rgba(255,255,255,0.9) 50%, rgba(0,0,0,0.7) 50%); padding: 8px 12px; text-shadow: 1px 1px 2px #000;">Còn chỗ</span>
+            <span class="badge text-white border border-white" style="background: rgba(0, 0, 0, 0.7); padding: 8px 12px;">Trống (0/4)</span>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <?php
+        $shelvesList = $stats['shelvesData'] ?? ($shelvesData ?? []);
+        $vDict = $stats['variantDict'] ?? ($variantDict ?? []);
+
+        foreach ($shelvesList as $shelf):
+            $shelfName = $shelf['shelf_name'];
+            $layout = json_decode($shelf['layout'], true) ?: [];
+        ?>
+            <div class="col-12 col-xl-6">
+                <div class="shelf-wrapper p-3">
+                    <h5 class="text-center shelf-title">KỆ <?= $shelfName ?></h5>
+                    <div class="shelf-grid">
+                        <?php
+                        for ($tier = 4; $tier >= 1; $tier--):
+                            // In số tầng bên trái
+                            echo "<div class='tier-label'>Tầng {$tier}</div>";
+
+                            for ($slot = 1; $slot <= 6; $slot++):
+                                $slotKey = str_pad($slot, 2, '0', STR_PAD_LEFT);
+                                $slotCode = "{$shelfName}{$tier}-{$slotKey}";
+
+                                $shoesInSlot = $layout[(string)$tier][$slotKey] ?? [];
+                                $occupancy = count($shoesInSlot);
+
+                                // TÍNH TỶ LỆ TRẮNG (25%, 50%, 75%, 100%)
+                                $fillPercent = ($occupancy / 4) * 100;
+
+                                $popoverHtml = "<div class='popover-inventory'>";
+                                if ($occupancy == 0) {
+                                    $popoverHtml .= "<p class='text-white mb-0 text-center fs-6'>Ô trống</p>";
+                                } else {
+                                    $groupedShoes = array_count_values($shoesInSlot);
+                                    foreach ($groupedShoes as $v_id => $qty) {
+                                        $shoeData = $vDict[$v_id] ?? null;
+                                        if ($shoeData) {
+                                            $imgPath = "assets/img_product/" . htmlspecialchars($shoeData['product_image']);
+                                            $popoverHtml .= "
+                                            <div class='d-flex align-items-center mb-3 border-bottom pb-3' style='border-color: rgba(255,255,255,0.1) !important;'>
+                                                
+                                                <img src='{$imgPath}' class='popover-shoe-img rounded me-3 border border-secondary'>
+                                                
+                                                <div class='text-start lh-sm text-white flex-grow-1'>
+                                                    <strong class='d-block text-truncate popover-shoe-name'>{$shoeData['product_name']}</strong>
+                                                    <span class='d-block mt-1 popover-shoe-detail'>Size: {$shoeData['size']} | {$shoeData['color']}</span>
+                                                </div>
+                                                
+                                                <div class='ms-2 fw-bold text-black bg-white rounded popover-shoe-qty'>
+                                                    x{$qty}
+                                                </div>
+
+                                            </div>";
+                                        }
+                                    }
+                                }
+                                $popoverHtml .= "</div>";
+                        ?>
+                                <div class="shelf-cell"
+                                    style="--fill: <?= $fillPercent ?>%;"
+                                    data-bs-toggle="popover"
+                                    data-bs-trigger="hover focus"
+                                    data-bs-placement="top"
+                                    data-bs-html="true"
+                                    title="<span class='fw-bold'><?= $slotCode ?></span> <span class='float-end badge bg-white text-dark border'><?= $occupancy ?>/4 đôi</span>"
+                                    data-bs-content="<?= htmlspecialchars($popoverHtml, ENT_QUOTES) ?>">
+                                    <span><?= $slotKey ?></span>
+                                </div>
+                        <?php
+                            endfor;
+                        endfor;
+                        ?>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+</div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -106,14 +188,23 @@
         const modalContent = document.getElementById('modalContent');
         const bsModal = new bootstrap.Modal(modalEl);
 
-        // 1. XỬ LÝ CLICK CARD CHÍNH (CẤP 1: HIỆN HÃNG BẰNG TABLE)
+        // 1. KÍCH HOẠT POPOVER CHO HEATMAP
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+        var popoverList = popoverTriggerList.map(function(popoverTriggerEl) {
+            return new bootstrap.Popover(popoverTriggerEl, {
+                container: 'body',
+                sanitize: false
+            })
+        });
+
+        // 2. XỬ LÝ CLICK CARD CHÍNH (CẤP 1: HIỆN HÃNG BẰNG TABLE)
         document.querySelectorAll('.clickable-card').forEach(card => {
             card.addEventListener('click', function() {
                 const type = this.getAttribute('data-type');
                 const title = this.querySelector('p').innerText;
 
                 modalTitle.innerText = 'Phân tích chi tiết: ' + title;
-                modalTitle.style.color = '#ffffff'; // Thép ép màu trắng bằng JS
+                modalTitle.style.color = '#ffffff';
                 modalContent.innerHTML = '<div class="text-center p-4"><div class="spinner-border" role="status"></div><p class="mt-2">Đang nạp dữ liệu...</p></div>';
                 bsModal.show();
 
@@ -125,7 +216,6 @@
                             return;
                         }
 
-                        // VẪN GIỮ CẤU TRÚC TABLE, CHỈ BỎ CLASS MÀU
                         let html = `
                         <table class="table align-middle">
                             <thead>
@@ -160,7 +250,7 @@
             });
         });
 
-        // 2. XỬ LÝ CLICK XEM SẢN PHẨM (CẤP 2: HIỆN MẪU GIÀY BẰNG TABLE)
+        // 3. XỬ LÝ CLICK XEM SẢN PHẨM (CẤP 2: HIỆN MẪU GIÀY BẰNG TABLE)
         modalContent.addEventListener('click', function(e) {
             const btn = e.target.closest('.btn-get-products');
             if (!btn) return;
@@ -213,7 +303,7 @@
             }
         });
 
-        // 3. XỬ LÝ CLICK XEM BIẾN THỂ (CẤP 3: HIỆN SIZE/MÀU)
+        // 4. XỬ LÝ CLICK XEM BIẾN THỂ (CẤP 3: HIỆN SIZE/MÀU)
         modalContent.addEventListener('click', function(e) {
             const btn = e.target.closest('.btn-get-variants');
             if (!btn) return;

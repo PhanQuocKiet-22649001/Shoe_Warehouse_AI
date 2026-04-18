@@ -292,4 +292,106 @@ class ProductModel
         $result = pg_query_params($this->conn, $sql, [(int)$variantId]);
         return $result ? true : false;
     }
+
+
+
+
+
+
+
+
+    // =========================================================================
+    // THUẬT TOÁN THÁC NƯỚC (WATERFALL PUTAWAY) & LƯU JSONB
+    // =========================================================================
+
+    // 1. Hàm tính điểm độ Hot
+    private function getVelocityRank($categoryId) {
+        if (!$categoryId) return 'COLD';
+        $sql = "WITH CategoryVelocity AS (
+                    SELECT c.category_id, SUM(t.quantity) as total_sold
+                    FROM transactions t JOIN product_variants pv ON t.variant_id = pv.variant_id
+                    JOIN products p ON pv.product_id = p.product_id JOIN categories c ON p.category_id = c.category_id
+                    WHERE t.transaction_type = 'EXPORT' AND t.created_at >= CURRENT_DATE - INTERVAL '30 days'
+                    GROUP BY c.category_id
+                )
+                SELECT rank() OVER (ORDER BY total_sold DESC) as rank FROM CategoryVelocity WHERE category_id = $1";
+        $res = pg_query_params($this->conn, $sql, [$categoryId]);
+        $row = $res ? pg_fetch_assoc($res) : null;
+        
+        if (!$row) return 'COLD';
+        if ($row['rank'] <= 2) return 'SUPER_HOT';
+        if ($row['rank'] <= 5) return 'HOT';
+        return 'MEDIUM';
+    }
+
+    // 2. Hàm Dry Run: Quét kho và trả về mảng các ô gợi ý
+    public function findSuggestedPutawaySlots($productId, $categoryId, $variantId, $qtyNeeded) {
+        $velocityRank = $this->getVelocityRank($categoryId);
+        $sql = "SELECT shelf_name, layout FROM shelves";
+        $shelves = pg_fetch_all(pg_query($this->conn, $sql)) ?: [];
+
+        $scoredSlots = [];
+        foreach ($shelves as $shelf) {
+            $shelfName = $shelf['shelf_name'];
+            $layout = json_decode($shelf['layout'], true) ?: [];
+            
+            foreach ($layout as $tier => $slots) {
+                foreach ($slots as $slotKey => $shoesArray) {
+                    $occupancy = count($shoesArray);
+                    if ($occupancy >= 4) continue; // Bỏ qua ô đầy
+
+                    $score = 0;
+                    if ($occupancy > 0) {
+                        // Nếu ô có hàng, chỉ cộng điểm nếu nó chứa chính xác Variant ID này
+                        if ($variantId && in_array($variantId, $shoesArray)) $score += 1000;
+                        else continue; // Ô đang chứa hàng khác -> Bỏ qua
+                    } else {
+                        // Ô trống: Chấm điểm theo độ Hot
+                        if ($velocityRank == 'SUPER_HOT' && in_array($shelfName, ['A'])) $score += 300;
+                        if ($velocityRank == 'HOT' && in_array($shelfName, ['B', 'C'])) $score += 200;
+                        if ($velocityRank == 'COLD' && in_array($shelfName, ['E', 'F'])) $score += 300;
+                        // Chấm điểm theo Tầng
+                        if (in_array($velocityRank, ['SUPER_HOT', 'HOT']) && in_array($tier, ['2', '3'])) $score += 100;
+                        if ($velocityRank == 'COLD' && in_array($tier, ['1', '4'])) $score += 50;
+                    }
+                    $scoredSlots[] = ['code' => "{$shelfName}{$tier}-{$slotKey}", 'score' => $score];
+                }
+            }
+        }
+
+        // Sắp xếp giảm dần theo điểm
+        usort($scoredSlots, function($a, $b) { return $b['score'] <=> $a['score']; });
+        
+        // Cắt lấy top n ô cần thiết để chứa đủ số lượng
+        $suggestions = [];
+        for ($i = 0; $i < min(count($scoredSlots), ceil($qtyNeeded / 4)); $i++) {
+            $suggestions[] = $scoredSlots[$i]['code'];
+        }
+        return $suggestions;
+    }
+
+    // 3. Hàm lưu mảng vị trí vào JSONB (Dùng khi ấn Lưu)
+    public function savePutawayToShelves($putawayDataArray, $variantId) {
+        foreach ($putawayDataArray as $item) {
+            $loc = $item['location']; // Ví dụ: A1-01
+            $qty = intval($item['quantity']);
+            
+            preg_match('/([A-Z])(\d)-(\d{2})/', $loc, $matches);
+            if (count($matches) == 4) {
+                $shelfName = $matches[1]; $tier = $matches[2]; $slot = $matches[3];
+                
+                $sql = "SELECT layout FROM shelves WHERE shelf_name = $1";
+                $res = pg_query_params($this->conn, $sql, [$shelfName]);
+                if ($row = pg_fetch_assoc($res)) {
+                    $layout = json_decode($row['layout'], true);
+                    if (!isset($layout[$tier][$slot])) $layout[$tier][$slot] = [];
+                    
+                    for ($k = 0; $k < $qty; $k++) { array_push($layout[$tier][$slot], (int)$variantId); }
+                    
+                    $jsonb_str = json_encode($layout);
+                    pg_query_params($this->conn, "UPDATE shelves SET layout = $1::jsonb WHERE shelf_name = $2", [$jsonb_str, $shelfName]);
+                }
+            }
+        }
+    }
 }

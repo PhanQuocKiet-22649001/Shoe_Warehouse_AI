@@ -34,6 +34,8 @@ class ReportController
         // Dữ liệu KPIs tổng quát cho mọi đối tượng
         $data = [
             'stats' => $this->reportModel->getGeneralStats(),
+            'shelvesData' => $this->reportModel->getAllShelvesLayout(),
+            'variantDict' => $this->reportModel->getVariantDictionary(),
         ];
 
         // Nếu là Manager, lấy thêm dữ liệu phân tích chuyên sâu cho Dashboard
@@ -45,6 +47,8 @@ class ReportController
             // Xu hướng nhập xuất 6 tháng gần nhất
             $data['monthly_trend'] = $this->reportModel->getMonthlyTrend();
         }
+
+        
 
         return $data;
     }
