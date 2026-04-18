@@ -3,3 +3,5 @@
 
 # Chặn thư mục chứa bộ não AI (Nặng, không đẩy lên Git)
 ai_services/models/
+
+public/assets/img_temp
