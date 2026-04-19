@@ -46,7 +46,7 @@ if (isset($_GET['page'])) {
             exit;
         }
         if ($_GET['action'] === 'get_mini_heatmap') {
-            $productControllerAjax->getMiniHeatmap();
+            $productControllerAjax->getMiniWarehouseMap();
             exit;
         }
         if ($_GET['action'] === 'getPutawaySuggestions') {

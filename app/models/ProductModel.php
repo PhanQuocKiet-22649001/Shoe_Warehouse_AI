@@ -394,4 +394,62 @@ class ProductModel
             }
         }
     }
+
+
+
+
+
+    /**
+     * Rút variant_id khỏi kệ. 
+     * - Nếu $qtyToRemove là số nguyên: Rút đúng số lượng (Dùng cho Xuất kho)
+     * - Nếu $qtyToRemove là null: Quét và rút sạch toàn bộ (Dùng cho Xóa biến thể)
+     */
+    public function removePutawayFromShelves($variantId, $qtyToRemove = null) {
+        $sql = "SELECT shelf_name, layout FROM shelves";
+        $shelves = pg_fetch_all(pg_query($this->conn, $sql)) ?: [];
+
+        $remainingToRemove = $qtyToRemove;
+        $removeAll = ($qtyToRemove === null); // Cờ báo hiệu: Xóa tất cả
+
+        foreach ($shelves as $shelf) {
+            // Nếu không phải chế độ xóa tất cả, và đã rút đủ số lượng -> Dừng quét kho
+            if (!$removeAll && $remainingToRemove <= 0) break;
+
+            $shelfName = $shelf['shelf_name'];
+            $layout = json_decode($shelf['layout'], true);
+            $layoutModified = false;
+
+            if ($layout) {
+                foreach ($layout as $tier => &$slots) {
+                    foreach ($slots as $slotKey => &$shoesArray) {
+                        
+                        $indexesToDelete = array_keys($shoesArray, (int)$variantId);
+                        
+                        if (!empty($indexesToDelete)) {
+                            foreach ($indexesToDelete as $idx) {
+                                if ($removeAll || $remainingToRemove > 0) {
+                                    unset($shoesArray[$idx]);
+                                    if (!$removeAll) $remainingToRemove--;
+                                    $layoutModified = true;
+                                } else {
+                                    break; // Đủ số lượng thì thoát vòng lặp nhỏ
+                                }
+                            }
+                            // Gắn lại key của mảng để khi lưu JSON không bị biến thành Object
+                            $shoesArray = array_values($shoesArray); 
+                        }
+                    }
+                }
+            }
+
+            // Lưu kệ này nếu có thay đổi
+            if ($layoutModified) {
+                $jsonb_str = json_encode($layout);
+                pg_query_params($this->conn, "UPDATE shelves SET layout = $1::jsonb WHERE shelf_name = $2", [$jsonb_str, $shelfName]);
+            }
+        }
+
+        // Trả về true nếu là chế độ xóa sạch, hoặc nếu xuất kho đã rút đủ số lượng
+        return $removeAll ? true : ($remainingToRemove == 0);
+    }
 }

@@ -92,251 +92,99 @@
 
 
 <!-- heatmap -->
-<div class="card p-4 heatmap-box border-0 mb-4 heatmap-glass">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="text-white"><i class="fas fa-map-marked-alt text-white me-2"></i> Sơ Đồ Không Gian Kho</h3>
-
-        <div class="d-flex gap-3 small fw-bold">
-            <span class="badge text-dark border border-white" style="background: rgba(255, 255, 255, 0.95); padding: 8px 12px;">Đầy (4/4)</span>
-            <span class="badge text-white border border-white" style="background: linear-gradient(to right, rgba(255,255,255,0.9) 50%, rgba(0,0,0,0.7) 50%); padding: 8px 12px; text-shadow: 1px 1px 2px #000;">Còn chỗ</span>
-            <span class="badge text-white border border-white" style="background: rgba(0, 0, 0, 0.7); padding: 8px 12px;">Trống (0/4)</span>
-        </div>
-    </div>
-
-    <div class="row g-4">
-        <?php
-        $shelvesList = $stats['shelvesData'] ?? ($shelvesData ?? []);
-        $vDict = $stats['variantDict'] ?? ($variantDict ?? []);
-
-        foreach ($shelvesList as $shelf):
-            $shelfName = $shelf['shelf_name'];
-            $layout = json_decode($shelf['layout'], true) ?: [];
-        ?>
-            <div class="col-12 col-xl-6">
-                <div class="shelf-wrapper p-3">
-                    <h5 class="text-center shelf-title">KỆ <?= $shelfName ?></h5>
-                    <div class="shelf-grid">
-                        <?php
-                        for ($tier = 4; $tier >= 1; $tier--):
-                            // In số tầng bên trái
-                            echo "<div class='tier-label'>Tầng {$tier}</div>";
-
-                            for ($slot = 1; $slot <= 6; $slot++):
-                                $slotKey = str_pad($slot, 2, '0', STR_PAD_LEFT);
-                                $slotCode = "{$shelfName}{$tier}-{$slotKey}";
-
-                                $shoesInSlot = $layout[(string)$tier][$slotKey] ?? [];
-                                $occupancy = count($shoesInSlot);
-
-                                // TÍNH TỶ LỆ TRẮNG (25%, 50%, 75%, 100%)
-                                $fillPercent = ($occupancy / 4) * 100;
-
-                                $popoverHtml = "<div class='popover-inventory'>";
-                                if ($occupancy == 0) {
-                                    $popoverHtml .= "<p class='text-white mb-0 text-center fs-6'>Ô trống</p>";
-                                } else {
-                                    $groupedShoes = array_count_values($shoesInSlot);
-                                    foreach ($groupedShoes as $v_id => $qty) {
-                                        $shoeData = $vDict[$v_id] ?? null;
-                                        if ($shoeData) {
-                                            $imgPath = "assets/img_product/" . htmlspecialchars($shoeData['product_image']);
-                                            $popoverHtml .= "
-                                            <div class='d-flex align-items-center mb-3 border-bottom pb-3' style='border-color: rgba(255,255,255,0.1) !important;'>
-                                                
-                                                <img src='{$imgPath}' class='popover-shoe-img rounded me-3 border border-secondary'>
-                                                
-                                                <div class='text-start lh-sm text-white flex-grow-1'>
-                                                    <strong class='d-block text-truncate popover-shoe-name'>{$shoeData['product_name']}</strong>
-                                                    <span class='d-block mt-1 popover-shoe-detail'>Size: {$shoeData['size']} | {$shoeData['color']}</span>
-                                                </div>
-                                                
-                                                <div class='ms-2 fw-bold text-black bg-white rounded popover-shoe-qty'>
-                                                    x{$qty}
-                                                </div>
-
-                                            </div>";
-                                        }
-                                    }
-                                }
-                                $popoverHtml .= "</div>";
-                        ?>
-                                <div class="shelf-cell"
-                                    style="--fill: <?= $fillPercent ?>%;"
-                                    data-bs-toggle="popover"
-                                    data-bs-trigger="hover focus"
-                                    data-bs-placement="top"
-                                    data-bs-html="true"
-                                    title="<span class='fw-bold'><?= $slotCode ?></span> <span class='float-end badge bg-white text-dark border'><?= $occupancy ?>/4 đôi</span>"
-                                    data-bs-content="<?= htmlspecialchars($popoverHtml, ENT_QUOTES) ?>">
-                                    <span><?= $slotKey ?></span>
-                                </div>
-                        <?php
-                            endfor;
-                        endfor;
-                        ?>
-                    </div>
-                </div>
-            </div>
-        <?php endforeach; ?>
+<div class="row mb-4">
+    <div class="col-12 col-md-6">
+        <button class="btn btn-outline-light w-100 fw-bold py-3 shadow-sm d-flex justify-content-between align-items-center text-dark rounded-2" 
+                type="button" 
+                data-bs-toggle="collapse" 
+                data-bs-target="#mapCollapseArea" 
+                aria-expanded="false" 
+                aria-controls="mapCollapseArea"
+                id="btnToggleMap">
+            <span class="fs-6 text-dark"><i class="fas fa-map-marked-alt me-2"></i> BẤM ĐỂ HIỂN THỊ SƠ ĐỒ KHÔNG GIAN KHO</span>
+            <i class="fas fa-chevron-down fs-5 text-dark" id="mapToggleIcon"></i>
+        </button>
     </div>
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const modalEl = document.getElementById('detailModal');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalContent = document.getElementById('modalContent');
-        const bsModal = new bootstrap.Modal(modalEl);
+<div class="collapse" id="mapCollapseArea">
+    <div class="card p-4 warehouse-map-box border-0 mb-4 warehouse-map-glass position-relative">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="text-dark"><i class="fas fa-map-marked-alt text-dark me-2"></i> Sơ Đồ Không Gian Kho</h3>
+            <div class="d-flex gap-3 small fw-bold">
+                <span class="badge text-dark border border-white" style="background: rgba(255, 255, 255, 0.95); padding: 8px 12px;">Đầy (4/4)</span>
+                <span class="badge text-white border border-white" style="background: linear-gradient(to right, rgba(255,255,255,0.9) 50%, rgba(0,0,0,0.7) 50%); padding: 8px 12px; text-shadow: 1px 1px 2px #000;">Còn chỗ</span>
+                <span class="badge text-white border border-white" style="background: rgba(0, 0, 0, 0.7); padding: 8px 12px;">Trống (0/4)</span>
+            </div>
+        </div>
 
-        // 1. KÍCH HOẠT POPOVER CHO HEATMAP
-        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
-        var popoverList = popoverTriggerList.map(function(popoverTriggerEl) {
-            return new bootstrap.Popover(popoverTriggerEl, {
-                container: 'body',
-                sanitize: false
-            })
-        });
+        <div class="row g-4">
+            <?php
+            $shelvesList = $stats['shelvesData'] ?? ($shelvesData ?? []);
+            $vDict = $stats['variantDict'] ?? ($variantDict ?? []);
 
-        // 2. XỬ LÝ CLICK CARD CHÍNH (CẤP 1: HIỆN HÃNG BẰNG TABLE)
-        document.querySelectorAll('.clickable-card').forEach(card => {
-            card.addEventListener('click', function() {
-                const type = this.getAttribute('data-type');
-                const title = this.querySelector('p').innerText;
+            foreach ($shelvesList as $shelf):
+                $shelfName = $shelf['shelf_name'];
+                $layout = json_decode($shelf['layout'], true) ?: [];
+            ?>
+                <div class="col-12 col-xl-6">
+                    <div class="shelf-wrapper p-3">
+                        <h5 class="text-center shelf-title">KỆ <?= $shelfName ?></h5>
+                        <div class="shelf-grid">
+                            <?php
+                            for ($tier = 4; $tier >= 1; $tier--):
+                                echo "<div class='tier-label'>Tầng {$tier}</div>";
+                                for ($slot = 1; $slot <= 6; $slot++):
+                                    $slotKey = str_pad($slot, 2, '0', STR_PAD_LEFT);
+                                    $slotCode = "{$shelfName}{$tier}-{$slotKey}";
+                                    $shoesInSlot = $layout[(string)$tier][$slotKey] ?? [];
+                                    $occupancy = count($shoesInSlot);
+                                    $fillPercent = ($occupancy / 4) * 100;
 
-                modalTitle.innerText = 'Phân tích chi tiết: ' + title;
-                modalTitle.style.color = '#ffffff';
-                modalContent.innerHTML = '<div class="text-center p-4"><div class="spinner-border" role="status"></div><p class="mt-2">Đang nạp dữ liệu...</p></div>';
-                bsModal.show();
+                                    // Xây dựng Data ẩn thay vì gắn Popover trực tiếp
+                                    $detailHtml = "<div class='popover-inventory'>";
+                                    if ($occupancy == 0) {
+                                        $detailHtml .= "<p class='text-white mb-0 text-center fs-6'>Ô trống</p>";
+                                    } else {
+                                        $groupedShoes = array_count_values($shoesInSlot);
+                                        foreach ($groupedShoes as $v_id => $qty) {
+                                            $shoeData = $vDict[$v_id] ?? null;
+                                            if ($shoeData) {
+                                                $imgPath = "assets/img_product/" . htmlspecialchars($shoeData['product_image']);
+                                                $detailHtml .= "
+                                                <div class='d-flex align-items-center mb-3 border-bottom pb-3' style='border-color: rgba(255,255,255,0.1) !important;'>
+                                                    <img src='{$imgPath}' class='popover-shoe-img rounded me-3 border border-secondary'>
+                                                    <div class='text-start lh-sm text-white flex-grow-1'>
+                                                        <strong class='d-block text-truncate popover-shoe-name'>{$shoeData['product_name']}</strong>
+                                                        <span class='d-block mt-1 popover-shoe-detail'>Size: {$shoeData['size']} | {$shoeData['color']}</span>
+                                                    </div>
+                                                    <div class='ms-2 fw-bold text-black bg-white rounded popover-shoe-qty'>
+                                                        x{$qty}
+                                                    </div>
+                                                </div>";
+                                            }
+                                        }
+                                    }
+                                    $detailHtml .= "</div>";
+                            ?>
+                                    <div class="shelf-cell"
+                                        style="--fill: <?= $fillPercent ?>%; cursor: pointer;"
+                                        data-code="<?= $slotCode ?>"
+                                        data-occupancy="<?= $occupancy ?>"
+                                        data-detail="<?= htmlspecialchars($detailHtml, ENT_QUOTES) ?>">
+                                        <span><?= $slotKey ?></span>
+                                    </div>
+                            <?php
+                                endfor;
+                            endfor;
+                            ?>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</div>
 
-                fetch(`index.php?page=get_brand_data&type=${type}`)
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.length === 0) {
-                            modalContent.innerHTML = '<p class="text-center p-4">Không có dữ liệu cho mục này.</p>';
-                            return;
-                        }
+<script src="assets/js/warehouse_map.js"></script>
 
-                        let html = `
-                        <table class="table align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Thương hiệu</th>
-                                    <th class="text-end">Số lượng</th>
-                                    <th class="text-center">Thao tác</th>
-                                </tr>
-                            </thead>
-                            <tbody>`;
-
-                        data.forEach(item => {
-                            html += `
-                            <tr class="brand-row" data-id="${item.category_id}" data-type="${type}">
-                                <td class="fw-bold">${item.brand}</td>
-                                <td class="text-end fw-bold">${parseInt(item.total).toLocaleString()}</td>
-                                <td class="text-center">
-                                    <button class="btn btn-sm btn-get-products" style="border: 1px solid currentColor;" data-id="${item.category_id}" data-type="${type}">
-                                        Chi tiết <i class="fas fa-chevron-down ms-1"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr id="brand-detail-${item.category_id}" class="d-none">
-                                <td colspan="3" class="p-3">
-                                    <div class="product-container p-2 rounded" style="border: 1px solid currentColor;">Đang tải sản phẩm...</div>
-                                </td>
-                            </tr>`;
-                        });
-                        html += '</tbody></table>';
-                        modalContent.innerHTML = html;
-                    });
-            });
-        });
-
-        // 3. XỬ LÝ CLICK XEM SẢN PHẨM (CẤP 2: HIỆN MẪU GIÀY BẰNG TABLE)
-        modalContent.addEventListener('click', function(e) {
-            const btn = e.target.closest('.btn-get-products');
-            if (!btn) return;
-
-            const brandId = btn.getAttribute('data-id');
-            const type = btn.getAttribute('data-type');
-            const childBox = document.getElementById(`brand-detail-${brandId}`);
-            const icon = btn.querySelector('i');
-
-            if (childBox.classList.contains('d-none')) {
-                childBox.classList.remove('d-none');
-                icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
-
-                fetch(`index.php?page=get_product_data&brand_id=${brandId}&type=${type}`)
-                    .then(res => res.json())
-                    .then(products => {
-                        let pTable = `
-                        <table class="table table-sm mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Mẫu giày</th>
-                                    <th class="text-end">Tổng</th>
-                                    <th class="text-center">Biến thể</th>
-                                </tr>
-                            </thead>
-                            <tbody>`;
-                        products.forEach(p => {
-                            pTable += `
-                            <tr class="product-row" data-id="${p.product_id}" data-type="${type}">
-                                <td>${p.product_name}</td>
-                                <td class="text-end">${p.total}</td>
-                                <td class="text-center">
-                                    <button class="btn btn-sm p-0 btn-get-variants" style="text-decoration: underline;">
-                                        Xem
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr id="product-detail-${p.product_id}" class="d-none">
-                                <td colspan="3" class="p-2">
-                                    <div class="variant-container"></div>
-                                </td>
-                            </tr>`;
-                        });
-                        pTable += '</tbody></table>';
-                        childBox.querySelector('.product-container').innerHTML = pTable;
-                    });
-            } else {
-                childBox.classList.add('d-none');
-                icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
-            }
-        });
-
-        // 4. XỬ LÝ CLICK XEM BIẾN THỂ (CẤP 3: HIỆN SIZE/MÀU)
-        modalContent.addEventListener('click', function(e) {
-            const btn = e.target.closest('.btn-get-variants');
-            if (!btn) return;
-
-            const row = btn.closest('.product-row');
-            const productId = row.getAttribute('data-id');
-            const type = row.getAttribute('data-type');
-            const variantBox = document.getElementById(`product-detail-${productId}`);
-
-            if (variantBox.classList.contains('d-none')) {
-                variantBox.classList.remove('d-none');
-                btn.innerText = 'Đóng';
-
-                fetch(`index.php?page=get_variant_data&product_id=${productId}&type=${type}`)
-                    .then(res => res.json())
-                    .then(variants => {
-                        let vHtml = '<div class="row g-2">';
-                        variants.forEach(v => {
-                            vHtml += `
-                            <div class="col-4">
-                                <div class="p-2 border rounded text-center small">
-                                    <span>Size ${v.size} - ${v.color}</span><br>
-                                    <strong>${v.total} đôi</strong>
-                                </div>
-                            </div>`;
-                        });
-                        vHtml += '</div>';
-                        variantBox.querySelector('.variant-container').innerHTML = vHtml;
-                    });
-            } else {
-                variantBox.classList.add('d-none');
-                btn.innerHTML = 'Xem';
-            }
-        });
-    });
-</script>

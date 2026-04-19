@@ -473,32 +473,44 @@ class ProductController
     /**
      * Xử lý xuất kho sản phẩm (Trừ số lượng)
      */
+    /**
+     * Xử lý xuất kho sản phẩm (Trừ số lượng)
+     */
     public function exportStock()
     {
         $this->checkStaff();
         if (isset($_POST['export_stock'])) {
             $variant_id = $_POST['variant_id'];
             $quantity = intval($_POST['quantity']);
-            $user_id = $_SESSION['user_id']; // Lấy ID của nhân viên đang đăng nhập
+            $user_id = $_SESSION['user_id'];
             $category_id = $_POST['category_id'];
 
             $db = $this->productModel->getConnection();
-            pg_query($db, "BEGIN"); // Bắt đầu giao dịch
+            pg_query($db, "BEGIN");
 
             try {
-                // 1. Trừ số lượng tồn kho
+                // 1. Trừ số lượng tồn kho (Variant DB)
                 $res1 = $this->productModel->removeStock($variant_id, $quantity);
                 if (!$res1 || pg_affected_rows($res1) == 0) throw new Exception("Không đủ tồn kho!");
 
-                // 2. Ghi nhật ký xuất kho
+                // ==============================================================
+                // 2. RÚT HÀNG KHỎI KỆ (Shelves DB) - BƯỚC MỚI BỔ SUNG
+                // ==============================================================
+                $isRemovedFromShelf = $this->productModel->removePutawayFromShelves($variant_id, $quantity);
+                if (!$isRemovedFromShelf) {
+                    // Nếu lỗi này xảy ra, chứng tỏ dữ liệu tồn kho và dữ liệu bản đồ đang bị lệch
+                    throw new Exception("Lỗi đồng bộ: Không tìm thấy đủ số lượng giày này trên kệ để rút!"); 
+                }
+
+                // 3. Ghi nhật ký xuất kho
                 $hanoiTime = $this->getHanoiTime();
                 $res2 = $this->productModel->logTransaction('EXPORT', $variant_id, $quantity, $user_id, $hanoiTime);
                 if (!$res2) throw new Exception("Lỗi ghi nhật ký giao dịch!");
 
-                pg_query($db, "COMMIT"); // Thành công hết thì lưu lại
-                $_SESSION['success'] = "Xuất kho thành công và đã lưu nhật ký!";
+                pg_query($db, "COMMIT");
+                $_SESSION['success'] = "Xuất kho thành công, đã lưu nhật ký và dọn vị trí trên kệ!";
             } catch (Exception $e) {
-                pg_query($db, "ROLLBACK"); // Có lỗi thì hủy hết các lệnh trên
+                pg_query($db, "ROLLBACK");
                 $_SESSION['error'] = "Lỗi: " . $e->getMessage();
             }
 
@@ -506,7 +518,6 @@ class ProductController
             exit;
         }
     }
-
 
     /**
      * Bật/Tắt trạng thái biến thể (Chỉ dành cho MANAGER)
@@ -543,11 +554,22 @@ class ProductController
 
         if (isset($_POST['variant_id'])) {
             $variant_id = $_POST['variant_id'];
+            $db = $this->productModel->getConnection();
+            
+            pg_query($db, "BEGIN");
+            try {
+                // 1. Tắt trạng thái hiển thị và đánh dấu xóa trong DB
+                $res1 = $this->productModel->softDeleteVariant($variant_id);
+                if (!$res1) throw new Exception("Lỗi khi xóa biến thể!");
 
-            if ($this->productModel->softDeleteVariant($variant_id)) {
-                $_SESSION['success'] = "Đã xóa biến thể thành công!";
-            } else {
-                $_SESSION['error'] = "Lỗi khi xóa biến thể!";
+                // 2. TÁI SỬ DỤNG HÀM RÚT KỆ! Truyền null để ra lệnh "XÓA SẠCH SÀNH SANH"
+                $this->productModel->removePutawayFromShelves($variant_id, null);
+
+                pg_query($db, "COMMIT");
+                $_SESSION['success'] = "Đã xóa biến thể và giải phóng không gian kệ thành công!";
+            } catch (Exception $e) {
+                pg_query($db, "ROLLBACK");
+                $_SESSION['error'] = "Lỗi: " . $e->getMessage();
             }
         }
 
@@ -669,6 +691,13 @@ class ProductController
                         throw new Exception("Không đủ tồn kho cho Size {$size} - Màu {$color}!");
                     }
 
+                    // 3. RÚT HÀNG KHỎI KỆ (Shelves DB) - BƯỚC MỚI BỔ SUNG
+                    // ==============================================================
+                    $isRemovedFromShelf = $this->productModel->removePutawayFromShelves($variant_id, $quantity);
+                    if (!$isRemovedFromShelf) {
+                        throw new Exception("Lỗi đồng bộ sơ đồ kho đối với Size {$size} - Màu {$color}!"); 
+                    }
+
                     // 3. Ghi log giao dịch
                     $res2 = $this->productModel->logTransaction('EXPORT', $variant_id, $quantity, $user_id, $hanoiTime);
                     if (!$res2) {
@@ -728,7 +757,7 @@ class ProductController
 
 
 
-    public function getMiniHeatmap()
+    public function getMiniWarehouseMap()
     {
         if (ob_get_length()) ob_clean();
         $db = $this->productModel->getConnection();
