@@ -564,7 +564,7 @@
             document.getElementById('export_default_screen').classList.remove('d-none');
             document.getElementById('export_default_screen').innerHTML = `
                 <div class="text-center py-5">
-                    <h4 class="fw-bold text-success">ĐÃ XUẤT XONG!</h4>
+                    <h4 class="fw-bold text-white">ĐÃ XUẤT XONG!</h4>
                     <p>Hoàn tất danh sách quét xuất kho.</p>
                     <button class="btn btn-glass-confirm fw-bold w-100 mb-4" onclick="window.location.reload()">CẬP NHẬT TRANG</button>
                 </div>`;

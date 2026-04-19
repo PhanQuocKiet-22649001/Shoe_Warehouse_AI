@@ -31,24 +31,25 @@ class ReportController
     {
         $role = strtoupper($_SESSION['role'] ?? '');
 
-        // Dữ liệu KPIs tổng quát cho mọi đối tượng
+        // 1. Lấy dữ liệu KPIs tổng quát từ ReportModel
         $data = [
-            'stats' => $this->reportModel->getGeneralStats(),
+            'stats'       => $this->reportModel->getGeneralStats(),
             'shelvesData' => $this->reportModel->getAllShelvesLayout(),
             'variantDict' => $this->reportModel->getVariantDictionary(),
+            'top_selling' => [] // Khởi tạo rỗng để tránh lỗi Undefined variable ở View
         ];
 
-        // Nếu là Manager, lấy thêm dữ liệu phân tích chuyên sâu cho Dashboard
+        // 2. Nếu là Manager, lấy thêm dữ liệu phân tích
         if ($role === 'MANAGER') {
-            // Top 4 sản phẩm bán chạy
             $data['top_selling']   = $this->reportModel->getTopSelling(4);
-            // Dữ liệu mật độ hoạt động (Heatmap)
             $data['heatmap']       = $this->reportModel->getHeatmapData();
-            // Xu hướng nhập xuất 6 tháng gần nhất
             $data['monthly_trend'] = $this->reportModel->getMonthlyTrend();
         }
 
-        
+        // 3. GỌI LOGIC BẢN ĐỒ TỪ PRODUCT CONTROLLER
+        // Lưu ý: Đảm bảo ProductController của bồ có hàm getWarehouseMapData() trả về key 'processedShelves'
+        $productCtrl = new ProductController();
+        $data['warehouseMap'] = $productCtrl->getWarehouseMapData();
 
         return $data;
     }
@@ -131,12 +132,12 @@ class ReportController
         $this->cleanBuffer();
         $brandId = $_GET['brand_id'] ?? null;
         $type = $_GET['type'] ?? 'stock';
-        
+
         if (!$brandId) {
             echo json_encode([]);
             exit;
         }
-        
+
         $data = $this->reportModel->getProductsByBrand($brandId, $type);
         echo json_encode($data ?: []);
         exit;

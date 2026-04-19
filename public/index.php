@@ -53,6 +53,10 @@ if (isset($_GET['page'])) {
             $productControllerAjax->getPutawaySuggestionsAjax();
             exit;
         }
+        if ($_GET['action'] === 'search_map') {
+            $productControllerAjax->ajaxSearchMap();
+            exit;
+        }
     }
     // -----------------------------------------------------------
 }
@@ -150,6 +154,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         if (isset($_GET['action']) && $_GET['action'] === 'delete_variant') {
             $productController->deleteVariant();
+            exit;
+        }
+        if (isset($_GET['action']) && $_GET['action'] === 'search_map') {
+            $productController->ajaxSearchMap();
             exit;
         }
     } elseif ($page === 'report') {
