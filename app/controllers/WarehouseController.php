@@ -79,10 +79,14 @@ class WarehouseController
 
     // Tính toán sức chứa và đếm hãng cho Dashboard
 
+    // Tính toán sức chứa và đếm hãng cho Dashboard
     public function getWarehouseMapData()
     {
         $rawShelves = $this->warehouseModel->getAllShelves();
         $brandMap = $this->warehouseModel->getVariantBrandMap();
+
+        // BỔ SUNG: Lấy dictionary để truyền qua View cho Popover
+        $variantDict = $this->warehouseModel->getVariantDict();
 
         $totalLoad = 0;
         $totalCap = 0;
@@ -116,7 +120,13 @@ class WarehouseController
             $totalLoad += $shelfLoad;
             $totalCap += $shelfCap;
         }
-        return ['total_load' => $totalLoad, 'total_capacity' => $totalCap, 'processedShelves' => $processedShelves];
+
+        return [
+            'total_load' => $totalLoad,
+            'total_capacity' => $totalCap,
+            'processedShelves' => $processedShelves,
+            'variantDict' => $variantDict // BỔ SUNG: Truyền biến này ra View
+        ];
     }
 
     /**

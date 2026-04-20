@@ -41,4 +41,20 @@ class WarehouseModel
         $res = pg_query_params($this->conn, $sql, ["%$keyword%"]);
         return $res ? pg_fetch_all($res) : [];
     }
+
+
+    //Lấy Dictionary chi tiết của tất cả Variant (Dùng cho Popover Sơ đồ kho)
+    public function getVariantDict() {
+        $sql = "SELECT v.variant_id, p.product_name, p.product_image, v.size, v.color 
+                FROM product_variants v 
+                JOIN products p ON v.product_id = p.product_id";
+        $res = pg_query($this->conn, $sql);
+        $dict = [];
+        if ($res) {
+            while ($row = pg_fetch_assoc($res)) {
+                $dict[$row['variant_id']] = $row;
+            }
+        }
+        return $dict;
+    }
 }
