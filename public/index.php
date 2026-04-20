@@ -65,6 +65,10 @@ if (isset($_GET['page'])) {
             $warehouseAjax->ajaxSearchMap();
             exit;
         }
+        if ($_GET['action'] === 'move_location') {
+            $productControllerAjax->processMoveLocation();
+            exit;
+        }
     }
     // -----------------------------------------------------------
 }

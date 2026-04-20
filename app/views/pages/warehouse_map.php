@@ -1,3 +1,4 @@
+<?php include __DIR__ . '/../layouts/topbar.php'; ?>
 <link rel="stylesheet" href="assets/css/warehouse_map.css">
 <!-- sơ đồ kho -->
 <div class="card p-4 warehouse-map-box border-0 mb-4 warehouse-map-glass position-relative">
@@ -63,57 +64,78 @@
 
                     <div class="shelf-grid" style="grid-template-columns: 60px repeat(<?= $globalMaxSlots ?>, 1fr);">
                         <?php
-                        // LẶP QUA TẦNG (Từ cao xuống thấp)
                         for ($tier = $globalMaxTiers; $tier >= 1; $tier--):
                             echo "<div class='tier-label text-white-50'>T$tier</div>";
-
                             $slotsInTier = $layout[(string)$tier] ?? [];
 
-                            // LẶP QUA Ô (Từ 01 đến Max)
                             for ($i = 1; $i <= $globalMaxSlots; $i++):
                                 $slotKey = str_pad($i, 2, '0', STR_PAD_LEFT);
                                 $shoesInSlot = $slotsInTier[$slotKey] ?? [];
-
                                 $slotCode = "{$shelfName}{$tier}-{$slotKey}";
                                 $occupancy = count($shoesInSlot);
                                 $slotMax = (int)$shelf['slot_max'];
                                 $fillPercent = ($slotMax > 0) ? ($occupancy / $slotMax) * 100 : 0;
 
-                                // LOGIC CHI TIẾT KHI RÊ CHUỘT
-                                $detailHtml = "<div class='popover-inventory'>";
+                                // --- BẮT ĐẦU LOGIC CHI TIẾT ---
+                                $detailHtml = "<div class='popover-inventory shadow-lg'>";
+                                $detailHtml .= "<div class='d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 mb-3'>
+                                <span class='text-white fw-bold fs-5'>{$slotCode}</span>
+                                <span class='badge bg-white text-dark py-1'>{$occupancy}/{$slotMax}</span>
+                            </div>";
+
                                 if ($occupancy == 0) {
-                                    $detailHtml .= "<p class='text-white mb-0 text-center fs-6'>Ô trống</p>";
+                                    $detailHtml .= "<p class='text-white mb-0 text-center fs-6 py-2'>Ô trống</p>";
                                 } else {
                                     $groupedShoes = array_count_values($shoesInSlot);
                                     foreach ($groupedShoes as $v_id => $qty) {
                                         $shoeData = $vDict[$v_id] ?? null;
                                         if ($shoeData) {
                                             $imgPath = "assets/img_product/" . htmlspecialchars($shoeData['product_image']);
+                                            $proId = $shoeData['product_id'] ?? 0;
+                                            $catId = $shoeData['category_id'] ?? 0;
+                                            $targetLink = "index.php?page=products&category_id={$catId}&open_modal={$proId}&highlight_vid={$v_id}";
+
                                             $detailHtml .= "
-                                                <div class='d-flex align-items-center mb-3 border-bottom pb-3' style='border-color: rgba(255,255,255,0.1) !important;'>
-                                                    <img src='{$imgPath}' class='popover-shoe-img rounded me-3 border border-secondary' style='width: 45px; height: 45px; object-fit: cover;'>
-                                                    <div class='text-start lh-sm text-white flex-grow-1'>
-                                                        <strong class='d-block text-truncate' style='max-width: 150px;'>{$shoeData['product_name']}</strong>
-                                                        <span class='d-block mt-1' style='font-size: 0.8rem; opacity: 0.7;'>Size: {$shoeData['size']} | {$shoeData['color']}</span>
+                                                <div class='d-flex align-items-center mb-3 border-bottom pb-2' style='border-color: rgba(255,255,255,0.1) !important;'>
+                                                    <a href='{$targetLink}' class='flex-shrink-0 me-2'>
+                                                        <img src='{$imgPath}' class='popover-shoe-img rounded border border-secondary' 
+                                                            style='width: 30px; height: 30px; object-fit: cover;'>
+                                                    </a>
+                                                    
+                                                    <div class='text-start lh-sm text-white flex-grow-1' style='min-width: 0;'>
+                                                        <a href='{$targetLink}' class='text-white text-decoration-none'>
+                                                            <strong class='d-block text-truncate' style='font-size: 13px; max-width: 140px;'>
+                                                                {$shoeData['product_name']}
+                                                            </strong>
+                                                        </a>
+                                                        <span class='d-block mt-1' style='font-size: 12px; opacity: 0.7;'>
+                                                            Sz: {$shoeData['size']} | {$shoeData['color']}
+                                                        </span>
                                                     </div>
-                                                    <div class='ms-2 fw-bold text-black bg-white rounded px-2 py-1'>x{$qty}</div>
+                                                    
+                                                    <div class='ms-2 fw-bold text-black bg-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0' 
+                                                        style='width: 25px; height: 25px; font-size: 12px;'>
+                                                        {$qty}
+                                                    </div>
                                                 </div>";
                                         }
                                     }
                                 }
                                 $detailHtml .= "</div>";
+                                // --- KẾT THÚC LOGIC CHI TIẾT ---
                         ?>
                                 <div class="shelf-cell"
                                     style="--fill: <?= $fillPercent ?>%;"
                                     data-code="<?= $slotCode ?>"
                                     data-occupancy="<?= $occupancy ?>"
-                                    data-max="<?= $slotMax ?>"
-                                    data-detail="<?= htmlspecialchars($detailHtml, ENT_QUOTES) ?>">
+                                    data-max="<?= $slotMax ?>">
                                     <span><?= $slotKey ?></span>
+
+                                    <?= $detailHtml ?>
                                 </div>
                         <?php
-                            endfor; // Hết lặp ô
-                        endfor; // Hết lặp tầng
+                            endfor;
+                        endfor;
                         ?>
                     </div>
                 </div>

@@ -455,31 +455,154 @@ class ProductModel
 
 
 
-// // Lấy toàn bộ dữ liệu kệ thô
-//     public function getAllShelves() {
-//         $res = pg_query($this->conn, "SELECT * FROM shelves ORDER BY shelf_name ASC");
-//         return $res ? pg_fetch_all($res) : [];
-//     }
+    // =========================================================================
+    // CHỨC NĂNG: ĐIỀU CHUYỂN NỘI BỘ 
+    // =========================================================================
 
-//     // Lấy Map ánh xạ: [variant_id => tên_hãng]
-//     public function getVariantBrandMap() {
-//         $sql = "SELECT v.variant_id, c.category_name 
-//                 FROM product_variants v 
-//                 JOIN products p ON v.product_id = p.product_id 
-//                 JOIN categories c ON p.category_id = c.category_id";
-//         $res = pg_query($this->conn, $sql);
-//         $map = [];
-//         if ($res) { while ($r = pg_fetch_assoc($res)) { $map[$r['variant_id']] = $r['category_name']; } }
-//         return $map;
-//     }
+    /**
+     * Lấy danh sách vị trí kệ của tất cả biến thể thuộc 1 sản phẩm
+     */
+    /**
+     * Quét toàn bộ kho và trả về Map vị trí của tất cả biến thể
+     * Định dạng: [variant_id => [['loc' => 'A1-01', 'qty' => 2], ...]]
+     */
+    public function getAllShelvesLocationsMap()
+    {
+        $sql = "SELECT shelf_name, layout FROM shelves";
+        $shelves = pg_fetch_all(pg_query($this->conn, $sql)) ?: [];
+        
+        $locationMap = []; 
+        
+        foreach ($shelves as $shelf) {
+            $shelfName = $shelf['shelf_name'];
+            $layoutStr = $shelf['layout'];
+            
+            // Xử lý an toàn 100% chuỗi JSONB từ PostgreSQL (Chống lỗi double-encode)
+            $layout = is_string($layoutStr) ? json_decode($layoutStr, true) : $layoutStr;
+            if (is_string($layout)) $layout = json_decode($layout, true); 
+            
+            if (!is_array($layout)) continue;
+            
+            foreach ($layout as $tier => $slots) {
+                if (!is_array($slots)) continue;
+                foreach ($slots as $slotKey => $shoesArray) {
+                    if (!is_array($shoesArray) || empty($shoesArray)) continue;
+                    
+                    // Đếm số lượng từng loại giày trong ô
+                    $counts = array_count_values($shoesArray);
+                    foreach ($counts as $vid => $qty) {
+                        if (!isset($locationMap[$vid])) $locationMap[$vid] = [];
+                        $locationMap[$vid][] = [
+                            'loc' => "{$shelfName}{$tier}-{$slotKey}",
+                            'qty' => $qty,
+                            'str' => "{$shelfName}{$tier}-{$slotKey} (<b>{$qty}</b>)"
+                        ];
+                    }
+                }
+            }
+        }
+        return $locationMap;
+    }
 
-//     // Tìm Variant thô cho AJAX Search
-//     public function searchVariantsRaw($keyword) {
-//         $sql = "SELECT v.variant_id, p.product_name, p.product_image, v.size, v.color, c.category_name as brand
-//                 FROM product_variants v JOIN products p ON v.product_id = p.product_id
-//                 JOIN categories c ON p.category_id = c.category_id
-//                 WHERE (p.product_name ILIKE $1 OR c.category_name ILIKE $1) AND v.is_deleted = false";
-//         $res = pg_query_params($this->conn, $sql, ["%$keyword%"]);
-//         return $res ? pg_fetch_all($res) : [];
-//     }
+    /**
+     * Xử lý Di chuyển hoặc Hoán đổi vị trí (Update JSONB)
+     */
+    public function movePutawayLocation($variant_id, $from_loc, $to_loc, $qty)
+    {
+        // 1. Phân tích tọa độ
+        preg_match('/([A-Z])(\d)-(\d{2})/', $from_loc, $f_match);
+        preg_match('/([A-Z])(\d)-(\d{2})/', $to_loc, $t_match);
+        
+        if (count($f_match) != 4 || count($t_match) != 4) throw new Exception("Tọa độ không hợp lệ.");
+        
+        $f_shelf = $f_match[1]; $f_tier = $f_match[2]; $f_slot = $f_match[3];
+        $t_shelf = $t_match[1]; $t_tier = $t_match[2]; $t_slot = $t_match[3];
+
+        // 2. Lấy dữ liệu kệ Nguồn và Đích
+        $sql = "SELECT shelf_name, layout, max_capacity_per_slot FROM shelves WHERE shelf_name IN ($1, $2)";
+        $res = pg_query_params($this->conn, $sql, [$f_shelf, $t_shelf]);
+        $shelvesData = pg_fetch_all($res) ?: [];
+        
+        $shelves = [];
+        $maxCap = 4; // Mặc định
+        foreach ($shelvesData as $s) {
+            $shelves[$s['shelf_name']] = json_decode($s['layout'], true) ?: [];
+            $maxCap = (int)$s['max_capacity_per_slot'];
+        }
+
+        if (!isset($shelves[$f_shelf]) || !isset($shelves[$t_shelf])) throw new Exception("Không tìm thấy kệ.");
+
+        // 3. Khởi tạo mảng ô nếu chưa có
+        if (!isset($shelves[$f_shelf][$f_tier][$f_slot])) $shelves[$f_shelf][$f_tier][$f_slot] = [];
+        if (!isset($shelves[$t_shelf][$t_tier][$t_slot])) $shelves[$t_shelf][$t_tier][$t_slot] = [];
+
+        $sourceArr = &$shelves[$f_shelf][$f_tier][$f_slot];
+        $destArr = &$shelves[$t_shelf][$t_tier][$t_slot];
+
+        // 4. Đếm số lượng variant cần chuyển trong ô Nguồn
+        $sourceCounts = array_count_values($sourceArr);
+        $availableQty = $sourceCounts[$variant_id] ?? 0;
+
+        if ($availableQty < $qty) throw new Exception("Ô nguồn $from_loc chỉ có $availableQty đôi, không đủ $qty đôi để chuyển.");
+
+        $destOccupancy = count($destArr);
+        $freeSpace = $maxCap - $destOccupancy;
+
+        // ==========================================
+        // LOGIC DI CHUYỂN / HOÁN ĐỔI
+        // ==========================================
+        if ($freeSpace >= $qty) {
+            // TRƯỜNG HỢP 1: Đích CÒN ĐỦ CHỖ -> Di chuyển bình thường
+            // Rút từ Nguồn
+            $removed = 0;
+            foreach ($sourceArr as $idx => $vid) {
+                if ($vid == $variant_id && $removed < $qty) {
+                    unset($sourceArr[$idx]);
+                    $removed++;
+                }
+            }
+            $sourceArr = array_values($sourceArr); // Re-index
+
+            // Bơm vào Đích
+            for ($i = 0; $i < $qty; $i++) {
+                $destArr[] = (int)$variant_id;
+            }
+        } else {
+            // TRƯỜNG HỢP 2: Đích KHÔNG ĐỦ CHỖ -> Kích hoạt chế độ HOÁN ĐỔI (SWAP)
+            // Lấy những đôi giày ở ô Đích đang chiếm chỗ (Ưu tiên loại khác loại đang chuyển)
+            $shoesToEvict = array_slice($destArr, 0, $qty);
+            
+            // Rút từ Nguồn
+            $removed = 0;
+            foreach ($sourceArr as $idx => $vid) {
+                if ($vid == $variant_id && $removed < $qty) {
+                    unset($sourceArr[$idx]);
+                    $removed++;
+                }
+            }
+            $sourceArr = array_values($sourceArr);
+
+            // Rút từ Đích
+            array_splice($destArr, 0, $qty);
+
+            // Bơm vào chéo (Hoán đổi)
+            for ($i = 0; $i < $qty; $i++) $destArr[] = (int)$variant_id;
+            foreach ($shoesToEvict as $evictedVid) $sourceArr[] = (int)$evictedVid;
+        }
+
+        // 5. Cập nhật DB
+        if ($f_shelf === $t_shelf) {
+            // Cùng kệ
+            $jsonb = json_encode($shelves[$f_shelf]);
+            pg_query_params($this->conn, "UPDATE shelves SET layout = $1::jsonb WHERE shelf_name = $2", [$jsonb, $f_shelf]);
+        } else {
+            // Khác kệ
+            $jsonb_f = json_encode($shelves[$f_shelf]);
+            $jsonb_t = json_encode($shelves[$t_shelf]);
+            pg_query_params($this->conn, "UPDATE shelves SET layout = $1::jsonb WHERE shelf_name = $2", [$jsonb_f, $f_shelf]);
+            pg_query_params($this->conn, "UPDATE shelves SET layout = $1::jsonb WHERE shelf_name = $2", [$jsonb_t, $t_shelf]);
+        }
+        
+        return true;
+    }
 }

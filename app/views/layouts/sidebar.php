@@ -24,9 +24,11 @@
                     <a href="index.php?page=employees">Quản lí Nhân viên</a>
                 </li>
             <?php endif; ?>
-            <li class="<?= $page === 'report' ? 'active' : '' ?>" style="margin-bottom: 15px;">
-                <a href="index.php?page=report">Thống kê báo cáo</a>
-            </li>
+            <?php if (isset($_SESSION['role']) && strtoupper($_SESSION['role']) === 'MANAGER'): ?>
+                <li class="<?= $page === 'report' ? 'active' : '' ?>" style="margin-bottom: 15px;">
+                    <a href="index.php?page=report">Xem thống kê kho</a>
+                </li>
+            <?php endif; ?>
 
             <?php if (isset($_SESSION['role']) && strtoupper($_SESSION['role']) === 'MANAGER'): ?>
                 <li class="<?= $page === 'history' ? 'active' : '' ?>" style="margin-bottom: 15px;">
@@ -34,8 +36,10 @@
                 </li>
             <?php endif; ?>
 
-           <li class="<?= $page === 'warehouse_map' ? 'active' : '' ?>" style="margin-bottom: 15px;">
-                <a href="index.php?page=warehouse_map">Quản lí vị trí kệ</a>
+            <li class="<?= $page === 'warehouse_map' ? 'active' : '' ?>" style="margin-bottom: 15px;">
+               <a href="index.php?page=warehouse_map">
+                    <?= ($_SESSION['role'] === 'MANAGER') ? 'Quản lý kệ hàng' : 'Xem vị trí kệ hàng' ?>
+                </a>
             </li>
 
             <li style="margin-bottom: 15px;">
@@ -227,9 +231,11 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ query: text })
+                    body: JSON.stringify({
+                        query: text
+                    })
                 });
-                
+
                 const data = await response.json();
 
                 const reply = data.status === 'success' ? data.answer : "Lỗi từ AI Server.";

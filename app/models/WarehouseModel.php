@@ -45,9 +45,11 @@ class WarehouseModel
 
     //Lấy Dictionary chi tiết của tất cả Variant (Dùng cho Popover Sơ đồ kho)
     public function getVariantDict() {
-        $sql = "SELECT v.variant_id, p.product_name, p.product_image, v.size, v.color 
+        // BỔ SUNG: Đã thêm p.product_id và p.category_id vào SELECT
+        $sql = "SELECT v.variant_id, p.product_id, p.category_id, p.product_name, p.product_image, v.size, v.color 
                 FROM product_variants v 
                 JOIN products p ON v.product_id = p.product_id";
+        
         $res = pg_query($this->conn, $sql);
         $dict = [];
         if ($res) {

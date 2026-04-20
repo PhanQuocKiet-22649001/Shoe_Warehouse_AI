@@ -75,6 +75,7 @@
     background: linear-gradient(to top, rgba(255, 255, 255, 0.95) var(--fill, 0%), rgba(0, 0, 0, 0.7) var(--fill, 0%));
     position: relative;
     overflow: hidden;
+    overflow: visible !important;
 }
 
 .shelf-cell:hover {
@@ -236,4 +237,49 @@
     border: 1px solid rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(5px);
     color: white;
+}
+/* Ẩn bảng chi tiết mặc định */
+.popover-inventory {
+    position: absolute;
+    bottom: 110%; /* Nằm trên ô vuông */
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    width: 300px;
+    background: rgba(20, 20, 20, 0.98);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 15px;
+    border-radius: 12px;
+    z-index: 9999;
+    
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none; /* Tránh việc bị cản chuột khi chưa hiện */
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* CẦU NỐI VÔ HÌNH: Lấp đầy khoảng trống 10% giữa ô và bảng */
+.popover-inventory::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    height: 20px;
+    background: transparent;
+}
+
+/* KHI RÊ CHUỘT VÀO Ô HOẶC CHÍNH CÁI BẢNG */
+.shelf-cell:hover .popover-inventory,
+.popover-inventory:hover {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto; /* Cho phép click vào link */
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Hiệu ứng link */
+.popover-inventory a:hover strong {
+    color: #ffc107 !important;
+    text-decoration: underline;
 }
