@@ -46,11 +46,6 @@ class ReportController
             $data['monthly_trend'] = $this->reportModel->getMonthlyTrend();
         }
 
-        // 3. GỌI LOGIC BẢN ĐỒ TỪ PRODUCT CONTROLLER
-        // Lưu ý: Đảm bảo ProductController của bồ có hàm getWarehouseMapData() trả về key 'processedShelves'
-        $productCtrl = new ProductController();
-        $data['warehouseMap'] = $productCtrl->getWarehouseMapData();
-
         return $data;
     }
 

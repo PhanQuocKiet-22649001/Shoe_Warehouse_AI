@@ -34,6 +34,10 @@
                 </li>
             <?php endif; ?>
 
+           <li class="<?= $page === 'warehouse_map' ? 'active' : '' ?>" style="margin-bottom: 15px;">
+                <a href="index.php?page=warehouse_map">Quản lí vị trí kệ</a>
+            </li>
+
             <li style="margin-bottom: 15px;">
                 <a href="#" id="btn-open-ai" class="<?= $page === 'ai-prediction' ? 'active' : '' ?>">Trợ lý AI</a>
             </li>

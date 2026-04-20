@@ -24,7 +24,7 @@ if (isset($_GET['page'])) {
     if ($_GET['page'] === 'products' && isset($_GET['action'])) {
         require_once '../config/database.php';
         require_once '../app/models/ProductModel.php';
-        require_once '../app/models/CategoryModel.php'; // ProductModel có thể gọi cái này
+        require_once '../app/models/CategoryModel.php'; 
         require_once '../app/controllers/ProductController.php';
 
         $productControllerAjax = new ProductController();
@@ -46,15 +46,23 @@ if (isset($_GET['page'])) {
             exit;
         }
         if ($_GET['action'] === 'get_mini_heatmap') {
-            $productControllerAjax->getMiniWarehouseMap();
+            require_once '../app/models/WarehouseModel.php';
+            require_once '../app/controllers/WarehouseController.php';
+            $warehouseAjax = new WarehouseController();
+            $warehouseAjax->getMiniWarehouseMap();
             exit;
         }
         if ($_GET['action'] === 'getPutawaySuggestions') {
             $productControllerAjax->getPutawaySuggestionsAjax();
             exit;
         }
+        
+        // FIX LỖI: Cần require và khởi tạo Warehouse riêng ở khối này vì nó tách biệt
         if ($_GET['action'] === 'search_map') {
-            $productControllerAjax->ajaxSearchMap();
+            require_once '../app/models/WarehouseModel.php';
+            require_once '../app/controllers/WarehouseController.php';
+            $warehouseAjax = new WarehouseController();
+            $warehouseAjax->ajaxSearchMap();
             exit;
         }
     }
@@ -67,6 +75,7 @@ require_once '../app/models/UserModel.php';
 require_once '../app/models/CategoryModel.php';
 require_once '../app/models/ProductModel.php';
 require_once '../app/models/ReportModel.php';
+require_once '../app/models/WarehouseModel.php'; // ĐÃ THÊM
 
 // 2. Gọi Controllers
 require_once '../app/controllers/AuthController.php';
@@ -74,16 +83,16 @@ require_once '../app/controllers/UserController.php';
 require_once '../app/controllers/CategoryController.php';
 require_once '../app/controllers/ProductController.php';
 require_once '../app/controllers/ReportController.php';
+require_once '../app/controllers/WarehouseController.php'; // ĐÃ THÊM
 
 // ===== XỬ LÝ LOGIN (Phải xử lý trước khi kiểm tra Session) =====
-$authController = new AuthController(); // Chỉ khởi tạo Auth trước
+$authController = new AuthController(); 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_SESSION['user_id'])) {
     $error = $authController->handleLogin();
 }
 
 // ===== KIỂM TRA ĐĂNG NHẬP =====
-// Nếu chưa có session, chỉ hiện trang login rồi dừng luôn tại đây
 if (!isset($_SESSION['user_id'])) {
     require_once __DIR__ . '/../app/views/pages/login.php';
     exit;
@@ -94,6 +103,7 @@ $userController = new UserController();
 $categoryController = new CategoryController();
 $productController = new ProductController();
 $reportController = new ReportController();
+$warehouse_mapController = new WarehouseController(); // BÂY GIỜ GỌI SẼ KHÔNG LỖI NỮA
 
 // ===== XỬ LÝ LOGOUT =====
 if (isset($_POST['logout'])) {
@@ -105,7 +115,7 @@ if (isset($_POST['logout'])) {
 
 $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
 
-// ===== XỬ LÝ AJAX =====
+// ===== XỬ LÝ AJAX KHÁC =====
 if ($page === 'search_ajax') {
     $productController->ajaxSearch();
     exit;
@@ -148,18 +158,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $productController->exportStock();
             exit;
         }
-        if (isset($_GET['action']) && $_GET['action'] === 'toggle_variant_status') {
-            $productController->toggleVariantStatus();
-            exit;
-        }
-        if (isset($_GET['action']) && $_GET['action'] === 'delete_variant') {
-            $productController->deleteVariant();
-            exit;
-        }
-        if (isset($_GET['action']) && $_GET['action'] === 'search_map') {
-            $productController->ajaxSearchMap();
-            exit;
-        }
     } elseif ($page === 'report') {
         if (isset($_POST['btn_filter_date'])) {
             $reportController->filterByDate($_POST['start_date'], $_POST['end_date']);
@@ -169,6 +167,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (isset($_POST['btn_update_profile'])) {
         $userController->UpdateProfile();
+        exit;
+    }
+}
+
+// CÁC URL GET ACTION XÓA/SỬA
+if ($page === 'products') {
+    if (isset($_GET['action']) && $_GET['action'] === 'toggle_variant_status') {
+        $productController->toggleVariantStatus();
+        exit;
+    }
+    if (isset($_GET['action']) && $_GET['action'] === 'delete_variant') {
+        $productController->deleteVariant();
         exit;
     }
 }
@@ -235,21 +245,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             require_once __DIR__ . '/../app/views/pages/report.php';
                             break;
 
-                        case 'dashboard':
-                        default:
-                            // Đổ dữ liệu thống kê vào dashboard
-                            $data = $reportController->index();
-                            extract($data);
-                            require_once __DIR__ . '/../app/views/pages/dashboard.php';
-                            break;
-
                         case 'history':
-
                             require_once __DIR__ . '/../app/controllers/TransactionController.php';
                             $controller = new TransactionController();
                             $data = $controller->index();
                             extract($data);
                             require_once __DIR__ . '/../app/views/pages/history.php';
+                            break;
+
+                        case 'warehouse_map':
+                            // GỌI HÀM TỪ WAREHOUSE CONTROLLER
+                            $warehouseData = $warehouse_mapController->index();
+                            extract($warehouseData);
+                            require_once __DIR__ . '/../app/views/pages/warehouse_map.php';
+                            break;
+                            
+                        case 'dashboard':
+                        default:
+                            $data = $reportController->index();
+                            extract($data);
+                            require_once __DIR__ . '/../app/views/pages/dashboard.php';
                             break;
                     }
                     ?>
