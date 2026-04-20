@@ -14,11 +14,6 @@
         <div class="d-flex gap-2 align-items-center">
             <form method="GET" action="index.php" class="d-flex gap-2 bg-white p-2 shadow-sm rounded border">
                 <input type="hidden" name="page" value="report">
-                <!-- <select name="period" class="form-select form-select-sm" onchange="this.form.submit()" style="width: 130px;">
-                    <option value="day" <?= ($filter['period'] == 'day') ? 'selected' : '' ?>>Hôm nay</option>
-                    <option value="week" <?= ($filter['period'] == 'week') ? 'selected' : '' ?>>7 ngày qua</option>
-                    <option value="month" <?= ($filter['period'] == 'month') ? 'selected' : '' ?>>30 ngày qua</option>
-                </select> -->
                 <input type="date" name="start_date" class="form-control form-control-sm" value="<?= $filter['start'] ?>">
                 <input type="date" name="end_date" class="form-control form-control-sm" value="<?= $filter['end'] ?>">
                 <button type="submit" class="btn btn-primary btn-sm px-3">Lọc</button>
@@ -56,11 +51,11 @@
         </div>
     </div>
 
-    <div class="card-custom mb-4">
+    <<div class="card-custom mb-4">
         <h6 class="section-title">Lưu Lượng Giao Dịch Chi Tiết Theo Ngày</h6>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
+        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light position-sticky top-0 shadow-sm" style="z-index: 10;">
                     <tr>
                         <th>Ngày hoạt động</th>
                         <th class="text-center">Tổng Nhập</th>
@@ -228,255 +223,44 @@
             <?php endforeach; ?>
         </div>
     </div>
+</div>
 
-    <!-- <div class="modal fade" id="modalReportDetail" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title"><i class="fas fa-list-alt me-2"></i>Chi tiết vận động hàng hóa</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+<div class="modal fade" id="modalReportDetail" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fw-bold" id="reportDetailDate">Chi tiết giao dịch</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-0">
-                <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
-                    <h6 id="reportDetailDate" class="fw-bold mb-0 text-primary"></h6>
-                    <span class="badge bg-primary px-3" id="totalItemsCount">0 sản phẩm</span>
+                <div class="p-3 bg-white border-bottom d-flex justify-content-between align-items-center">
+                    <span class="fw-bold text-primary" id="totalItemsCount"></span>
                 </div>
-                <div class="table-responsive" style="max-height: 400px;">
-                    <table class="table table-striped mb-0">
-                        <thead class="table-dark sticky-top">
+                <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light sticky-top">
                             <tr>
                                 <th>Thời gian</th>
                                 <th>Loại</th>
                                 <th>Hãng</th>
-                                <th>Tên sản phẩm</th>
+                                <th>Sản phẩm</th>
                                 <th>Biến thể</th>
                                 <th class="text-center">Số lượng</th>
                                 <th>Nhân viên</th>
                             </tr>
                         </thead>
-                        <tbody id="reportDetailBody"></tbody>
+                        <tbody id="reportDetailBody">
+                            </tbody>
                     </table>
                 </div>
             </div>
         </div>
     </div>
-</div> -->
+</div>
 
-    <script>
-        // 1. DATA VÀ CHART (Giữ nguyên logic của bồ)
-        const colorPrimary = '#4e73df';
-        const colorSuccess = '#1cc88a';
-        const dayData = <?= json_encode($top_5_days) ?>;
-        const brandData = <?= json_encode($brand_dist) ?>;
-        const flowData = <?= json_encode($product_flow) ?>;
-
-        // Tìm đến đoạn vẽ 'daysChart' và sửa lại như sau:
-        if (document.getElementById('daysChart') && dayData.length > 0) {
-            new Chart(document.getElementById('daysChart'), {
-                type: 'bar',
-                data: {
-                    // Nhãn là các ngày
-                    labels: dayData.map(d => new Date(d.work_date).toLocaleDateString('vi-VN')),
-                    datasets: [{
-                            label: 'Nhập kho',
-                            data: dayData.map(d => d.total_import),
-                            backgroundColor: '#4e73df', // Màu xanh dương
-                            borderRadius: 4,
-                            barPercentage: 0.8,
-                            categoryPercentage: 0.8
-                        },
-                        {
-                            label: 'Xuất kho',
-                            data: dayData.map(d => d.total_export),
-                            backgroundColor: '#1cc88a', // Màu xanh lá (hoặc đỏ #e74a3b tùy bồ chọn)
-                            borderRadius: 4,
-                            barPercentage: 0.8,
-                            categoryPercentage: 0.8
-                        }
-                    ]
-                },
-                options: {
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'bottom' // Hiện chú thích ở dưới cho dễ nhìn
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Số lượng (đôi)'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        if (document.getElementById('brandChart') && brandData.length > 0) {
-            new Chart(document.getElementById('brandChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: brandData.map(d => d.brand),
-                    datasets: [{
-                        data: brandData.map(d => d.total_stock),
-                        backgroundColor: [colorPrimary, colorSuccess, '#36b9cc', '#f6c23e', '#e74a3b']
-                    }]
-                },
-                options: {
-                    maintainAspectRatio: false,
-                    cutout: '70%'
-                }
-            });
-        }
-
-        if (document.getElementById('productFlowChart') && flowData.length > 0) {
-            new Chart(document.getElementById('productFlowChart'), {
-                type: 'bar',
-                data: {
-                    labels: flowData.map(p => p.product_name),
-                    datasets: [{
-                            label: 'Nhập',
-                            data: flowData.map(p => p.total_import),
-                            backgroundColor: colorPrimary
-                        },
-                        {
-                            label: 'Xuất',
-                            data: flowData.map(p => p.total_export),
-                            backgroundColor: colorSuccess
-                        }
-                    ]
-                },
-                options: {
-                    indexAxis: 'y',
-                    maintainAspectRatio: false
-                }
-            });
-        }
-
-        // 2. LOGIC AJAX CHO MODAL CHI TIẾT (NEW)
-        document.querySelectorAll('.btn-open-report-detail').forEach(btn => {
-            btn.addEventListener('click', async function() {
-                const date = this.dataset.date;
-                const modal = new bootstrap.Modal(document.getElementById('modalReportDetail'));
-                const tableBody = document.getElementById('reportDetailBody');
-
-                document.getElementById('reportDetailDate').innerText = "Chi tiết ngày: " + new Date(date).toLocaleDateString('vi-VN');
-                tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Đang tải dữ liệu...</td></tr>';
-                modal.show();
-
-                try {
-                    const response = await fetch(`index.php?page=report-detail&date=${date}`);
-                    const data = await response.json();
-                    if (data.length > 0) {
-                        let html = '';
-                        data.forEach(item => {
-                            const time = new Date(item.created_at).toLocaleTimeString('vi-VN', {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                            });
-                            html += `
-                        <tr>
-                            <td class="small text-muted">${time}</td>
-                            <td><span class="badge ${item.transaction_type === 'IMPORT' ? 'bg-success' : 'bg-danger'}">${item.transaction_type}</span></td>
-                            <td class="fw-bold">${item.brand}</td>
-                            <td>${item.product_name}</td>
-                            <td>Sz: ${item.size} | ${item.color}</td>
-                            <td class="text-center fw-bold text-dark">${item.quantity} đôi</td>
-                            <td class="small text-muted">${item.staff}</td>
-                        </tr>`;
-                        });
-                        tableBody.innerHTML = html;
-                        document.getElementById('totalItemsCount').innerText = data.length + " lượt giao dịch";
-                    } else {
-                        tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Không có chi tiết biến thể nào.</td></tr>';
-                    }
-                } catch (error) {
-                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Lỗi kết nối máy chủ hoặc dữ liệu không hợp lệ.</td></tr>';
-                }
-            });
-        });
-
-        // 3. BỘ LỌC BRAND (Giữ nguyên logic của bồ)
-        document.getElementById('brandFilter')?.addEventListener('change', function() {
-            const brand = this.value;
-            let count = 0;
-            document.querySelectorAll('.inv-product-card').forEach(card => {
-                const show = (brand === 'ALL' || card.dataset.brand === brand);
-                card.style.display = show ? '' : 'none';
-                if (show) count++;
-            });
-            document.getElementById('noDataMessage').style.display = count === 0 ? 'block' : 'none';
-        });
-
-
-
-        // hiện tồn kho theo brand
-        document.addEventListener('DOMContentLoaded', function() {
-            const brandFilter = document.getElementById('brandFilter');
-            const inventoryTitle = document.getElementById('inventoryTitle');
-            const productCards = document.querySelectorAll('.inv-product-card');
-
-            function updateInventoryDisplay() {
-                const selectedBrand = brandFilter.value;
-                let totalStock = 0;
-
-                productCards.forEach(card => {
-                    const cardBrand = card.getAttribute('data-brand');
-
-                    if (selectedBrand === 'ALL' || cardBrand === selectedBrand) {
-                        // Hiển thị card
-                        card.style.display = 'block';
-
-                        // Tính tổng tồn kho của các biến thể trong card này
-                        const variants = card.querySelectorAll('.variant-stock');
-                        variants.forEach(v => {
-                            totalStock += parseInt(v.innerText);
-                        });
-                    } else {
-                        // Ẩn card không thuộc hãng được chọn
-                        card.style.display = 'none';
-                    }
-                });
-
-                // Cập nhật nội dung tiêu đề
-                if (selectedBrand === 'ALL') {
-                    inventoryTitle.innerHTML = `
-        <i class="bi bi-box-seam me-2"></i>Phân Tích Tồn Kho 
-        <span class="ms-2 badge bg-primary-soft text-primary fw-bold" style="font-size: 0.9rem; padding: 5px 12px; border-radius: 50px; background-color: #e7f1ff;">
-            Tất cả: ${totalStock.toLocaleString()} đôi
-        </span>
-    `;
-                } else {
-                    inventoryTitle.innerHTML = `
-        Phân Tích Tồn Kho 
-        <span class="ms-2 text-muted fw-normal" style="font-size: 0.85rem;">|</span>
-        <span class="ms-2 badge bg-light text-dark border fw-medium" style="padding: 5px 12px; border-radius: 6px;">
-            Hãng: <b class="text-primary">${selectedBrand}</b>
-        </span>
-        <span class="ms-2 badge bg-light text-dark border fw-medium" style="padding: 5px 12px; border-radius: 6px;">
-            Tổng tồn: <b class="text-danger">${totalStock.toLocaleString()} đôi</b>
-        </span>
-    `;
-                }
-            }
-
-            // Chạy lần đầu khi load trang để hiện tổng số lượng ban đầu
-            updateInventoryDisplay();
-
-            // Lắng nghe sự kiện thay đổi bộ lọc
-            brandFilter.addEventListener('change', updateInventoryDisplay);
-        });
-    </script>
+<script>
+    window.dayData = <?= json_encode($top_5_days) ?>;
+    window.brandData = <?= json_encode($brand_dist) ?>;
+    window.flowData = <?= json_encode($product_flow) ?>;
+</script>
+<script src="assets/js/report.js"></script>
