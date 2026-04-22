@@ -275,12 +275,14 @@
 .highlight-variant-row td:first-child::before {
     content: "";
     position: absolute;
-    left: 0;           /* Chỉnh từ -2px về 0 */
+    left: 0;
+    /* Chỉnh từ -2px về 0 */
     top: 0;
-    width: 6px;        /* Tăng nhẹ độ rộng để bù cho phần blur */
+    width: 6px;
+    /* Tăng nhẹ độ rộng để bù cho phần blur */
     height: 100%;
     background: #fff;
-    filter: blur(4px); 
+    filter: blur(4px);
     z-index: 10;
     animation: blink-vinh-vien 1.5s infinite;
 }
@@ -289,7 +291,8 @@
 .highlight-variant-row td:last-child::after {
     content: "";
     position: absolute;
-    right: 0;          /* Chỉnh từ -2px về 0 */
+    right: 0;
+    /* Chỉnh từ -2px về 0 */
     top: 0;
     width: 10px;
     height: 100%;
@@ -303,11 +306,25 @@
 .highlight-variant-row td:first-child {
     padding-left: 10px !important;
 }
+
 .highlight-variant-row td:last-child {
     padding-right: 10px !important;
 }
 
 @keyframes blink-vinh-vien {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; } /* Đừng để 0 hẳn, để 0.3 nhìn nó sẽ mượt hơn */
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+
+    /* Đừng để 0 hẳn, để 0.3 nhìn nó sẽ mượt hơn */
+}
+
+.brand-card.card {
+    border: 2px solid #000000 !important;
 }

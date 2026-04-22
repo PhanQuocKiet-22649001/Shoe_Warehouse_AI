@@ -38,10 +38,10 @@
                 <div class="col">
                     <div class="card brand-card h-100 border-0 shadow-sm text-center <?= !$isActive ? 'opacity-75' : '' ?>">
 
-                        <div class="brand-logo-wrapper py-4 bg-light d-flex align-items-center justify-content-center position-relative" style="height: 160px; border-radius: 12px 12px 0 0;">
-                        <!-- trạng thái danh mục -->
+                        <div class="brand-logo-wrapper py-4  d-flex align-items-center justify-content-center position-relative" style="height: 160px; border-radius: 12px 12px 0 0;">
+                            <!-- trạng thái danh mục -->
                             <span class="position-absolute top-0 start-0 m-2 badge rounded-pill shadow-sm"
-                                style="background-color: <?= $isActive ? '#61839D' : '#6c757d' ?>; color: #ffffff; border: none;">
+                                style="background-color: <?= $isActive ? '#ffffff' : '#6c757d' ?>; color: #000000; border: 1px solid black;">
                                 <i class="fas <?= $isActive ? 'fa-check-circle' : 'fa-pause-circle' ?> me-1"></i>
                                 <?= $isActive ? 'Đang kinh doanh' : 'Tạm ngưng' ?>
                             </span>
@@ -52,7 +52,7 @@
                             ?>
                             <img src="<?= $logoPath ?>"
                                 alt="<?= htmlspecialchars($cat['category_name']) ?>"
-                                style="max-height: 100px; max-width: 80%; object-fit: contain; filter: <?= !$isActive ? 'grayscale(100%)' : 'none' ?>;"
+                               
                                 onerror="this.src='assets/img_logo/default_brand.png'">
                         </div>
 
@@ -63,10 +63,9 @@
 
                             <div class="d-flex justify-content-center align-items-center gap-2">
                                 <a href="index.php?page=products&category_id=<?= $cat['category_id'] ?>"
-                                    class="btn <?= $isActive ? 'btn-outline-dark' : 'btn-outline-secondary' ?> btn-sm px-3 rounded-pill fw-bold">
+                                    class="btn btn-glass-status btn-sm px-4 rounded-pill fw-bold">
                                     Kho hàng
                                 </a>
-
                                 <?php if ($_SESSION['role'] === 'MANAGER'): ?>
                                     <form action="index.php?page=categories" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn đổi trạng thái kinh doanh của hãng này?')">
                                         <input type="hidden" name="category_id" value="<?= $cat['category_id'] ?>">
@@ -74,13 +73,13 @@
 
                                         <!-- nút bật/tắt trang thái -->
                                         <button type="submit" name="toggle_status"
-                                            class="btn btn-link p-0 ms-2 shadow-none"
+                                            class="btn p-0 ms-2 shadow-none"
                                             style="color: <?= $isActive ? '#61839D' : '#adb5bd' ?>; text-decoration: none;"
                                             title="Đổi trạng thái">
                                             <i class="fas <?= $isActive ? 'fa-toggle-on' : 'fa-toggle-off' ?> fa-2x"></i>
                                         </button>
                                     </form>
-                                    
+
                                     <!-- nút xóa -->
                                     <form action="index.php?page=categories" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa danh mục này?')">
                                         <input type="hidden" name="category_id" value="<?= $cat['category_id'] ?>">

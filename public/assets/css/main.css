@@ -11,9 +11,9 @@ body {
     width: 100%;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
     background: linear-gradient(to bottom right,
-            rgba(0, 0, 0, 0.3),
+            rgba(122, 122, 122, 0.386),
             /* Đen mờ 60% ở góc trên trái */
-            rgba(255, 255, 255, 0.1)
+            rgb(255, 255, 255)
             /* Trắng mờ 20% ở góc dưới phải */
         );
     overflow: hidden;

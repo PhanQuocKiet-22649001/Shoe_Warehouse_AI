@@ -20,8 +20,6 @@ class MyVanna(ChromaDB_VectorStore, Ollama):
         # Trí nhớ của AI lưu tại thư mục vanna_db trong máy
         ChromaDB_VectorStore.__init__(self, config={"path": "./vanna_db"})
 
-        # Kết nối tới Ollama Local
-        # Khuyên dùng: qwen2.5-coder:3b (Rất mạnh về SQL và nhẹ cho RTX 3050 4GB)
         Ollama.__init__(self, config={
             "model": " qwen2.5-coder:3b", 
             "ollama_host": "http://localhost:11434"
