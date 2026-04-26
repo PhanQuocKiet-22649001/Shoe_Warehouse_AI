@@ -2,20 +2,28 @@
 <?php include __DIR__ . '/../layouts/topbar.php'; ?>
 
 <div class="container-fluid p-0">
-    <?php if (isset($_SESSION['success'])): ?>
-        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
-            <i class="fas fa-check-circle me-2"></i> <?= $_SESSION['success'];
-                                                        unset($_SESSION['success']); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+   <?php if (isset($_SESSION['success'])): ?>
+        <script>
+            // Đợi giao diện load xong hoàn toàn
+            document.addEventListener("DOMContentLoaded", function() {
+                // Delay 100ms để trình duyệt chắc chắn đã vẽ xong UI
+                setTimeout(function() {
+                    alert(<?= json_encode($_SESSION['success']) ?>);
+                }, 100);
+            });
+        </script>
+        <?php unset($_SESSION['success']); ?>
     <?php endif; ?>
 
     <?php if (isset($_SESSION['error'])): ?>
-        <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
-            <i class="fas fa-exclamation-triangle me-2"></i> <?= $_SESSION['error'];
-                                                                unset($_SESSION['error']); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                setTimeout(function() {
+                    alert(<?= json_encode($_SESSION['error']) ?>);
+                }, 100);
+            });
+        </script>
+        <?php unset($_SESSION['error']); ?>
     <?php endif; ?>
 
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -23,7 +31,7 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-1">
                     <li class="breadcrumb-item"><a href="index.php?page=categories" class="text-decoration-none text-muted">Danh mục</a></li>
-                    <li class="breadcrumb-item active fw-bold" style="color: #61839D;"><?= $categoryName ?></li>
+                    <li class="breadcrumb-item active fw-bold" style="color: #000000;"><?= $categoryName ?></li>
                 </ol>
             </nav>
             <h1 class="page-title fw-bold text-dark mb-0">Kho giày <?= $categoryName ?></h1>
@@ -47,7 +55,7 @@
                             <?php $isActive = ($pro['status'] == 't' || $pro['status'] === true || $pro['status'] == 1); ?>
 
                             <span class="position-absolute top-0 start-0 m-2 badge rounded-pill shadow-sm"
-                                style="background-color: <?= $isActive ? '#61839D' : '#6c757d' ?>; color: #ffffff; border: none; z-index: 2;">
+                                style="background-color: <?= $isActive ? '#ffffff' : '#000000' ?>; color: <?= $isActive ? '#000000' : '#ffffff' ?>; border: 1px solid black;">
                                 <i class="fas <?= $isActive ? 'fa-check-circle' : 'fa-pause-circle' ?> me-1"></i>
                                 <?= $isActive ? 'Đang kinh doanh' : 'Tạm ngưng' ?>
                             </span>
@@ -63,43 +71,41 @@
                                 onerror="this.src='https://via.placeholder.com/200x150?text=NO+IMAGE'">
                         </div>
 
-                        <div class="card-body p-4 text-center bg-white">
-                            <h5 class="fw-bold mb-1 <?= !$isActive ? 'text-muted' : 'text-dark' ?>">
-                                <?= htmlspecialchars($pro['product_name']) ?>
-                            </h5>
+                        <div class="card-body p-4 text-center d-flex flex-column">
+    
+                        <h5 class="fw-bold text-uppercase mb-3 <?= !$isActive ? 'text-muted' : 'text-dark' ?>">
+                            <?= htmlspecialchars($pro['product_name'] ?? $cat['category_name']) ?>
+                        </h5>
 
-                            <?php if (isset($pro['price'])): ?>
-                                <h5 class="fw-bold mb-3" style="color: #61839D;">
-                                    <?= number_format($pro['price'], 0, ',', '.') ?>đ
-                                </h5>
-                            <?php endif; ?>
-
-                            <div class="d-flex justify-content-center align-items-center gap-2">
-                                <button class="btn btn-outline-dark btn-sm px-3 rounded-pill fw-bold"
+                        <div class="mt-auto d-flex justify-content-center align-items-center gap-2">
+                            
+                            <button class="btn btn-outline-dark btn-sm px-3 rounded-pill fw-bold"
                                     data-bs-toggle="modal"
                                     data-bs-target="#detailModal<?= $pro['product_id'] ?>">
-                                    Chi tiết
-                                </button>
+                                Chi tiết
+                            </button>
 
-                                <?php if ($_SESSION['role'] === 'MANAGER'): ?>
-                                    <form action="index.php?page=products&category_id=<?= $pro['category_id'] ?>" method="POST" class="d-inline" onsubmit="return confirm('Đổi trạng thái kinh doanh của đôi này nhé bồ?')">
-                                        <input type="hidden" name="product_id" value="<?= $pro['product_id'] ?>">
-                                        <input type="hidden" name="category_id" value="<?= $pro['category_id'] ?>">
-                                        <input type="hidden" name="current_status" value="<?= $pro['status'] ?>">
-                                        <button type="submit" name="toggle_status" class="btn btn-link p-0 shadow-none ms-1"
-                                            style="color: <?= $isActive ? '#61839D' : '#adb5bd' ?>; text-decoration: none;" title="Đổi trạng thái">
-                                            <i class="fas <?= $isActive ? 'fa-toggle-on' : 'fa-toggle-off' ?> fa-2x"></i>
-                                        </button>
-                                    </form>
-                                    <form action="index.php?page=products&category_id=<?= $pro['category_id'] ?>" method="POST" class="d-inline" onsubmit="return confirm('Bồ chắc chắn muốn xóa đôi này không?')">
-                                        <input type="hidden" name="product_id" value="<?= $pro['product_id'] ?>">
-                                        <button type="submit" name="delete_product" class="btn btn-link" style="color: grey; margin-bottom: 3px;" title="Xóa sản phẩm">
-                                            <i class="fas fa-trash-alt fa-lg"></i>
-                                        </button>
-                                    </form>
-                                <?php endif; ?>
-                            </div>
+                            <?php if ($_SESSION['role'] === 'MANAGER'): ?>
+                                <form action="index.php?page=products&category_id=<?= $pro['category_id'] ?>" method="POST" class="d-inline" onsubmit="return confirm('Đổi trạng thái kinh doanh của đôi này nhé bồ?')">
+                                    <input type="hidden" name="product_id" value="<?= $pro['product_id'] ?>">
+                                    <input type="hidden" name="category_id" value="<?= $pro['category_id'] ?>">
+                                    <input type="hidden" name="current_status" value="<?= $pro['status'] ?>">
+                                    <button type="submit" name="toggle_status" class="btn btn-link p-0 shadow-none ms-1"
+                                            style="color: <?= $isActive ? '#000000' : '#adb5bd' ?>; text-decoration: none;" title="Đổi trạng thái">
+                                        <i class="fas <?= $isActive ? 'fa-toggle-on' : 'fa-toggle-off' ?> fa-2x"></i>
+                                    </button>
+                                </form>
+
+                                <form action="index.php?page=products&category_id=<?= $pro['category_id'] ?>" method="POST" class="d-inline" onsubmit="return confirm('Bồ chắc chắn muốn xóa đôi này không?')">
+                                    <input type="hidden" name="product_id" value="<?= $pro['product_id'] ?>">
+                                    <button type="submit" name="delete_product" class="btn btn-link" style="color: grey; margin-bottom: 3px;" title="Xóa sản phẩm">
+                                        <i class="fas fa-trash-alt fa-lg"></i>
+                                    </button>
+                                </form>
+                            <?php endif; ?>
+
                         </div>
+                    </div>
                     </div>
                 </div>
 

@@ -1,20 +1,27 @@
 <?php include __DIR__ . '/../layouts/topbar.php'; ?>
 
-<div class="container-fluid p-0">
     <?php if (isset($_SESSION['success'])): ?>
-        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
-            <i class="fas fa-check-circle me-2"></i> <?= $_SESSION['success'];
-                                                        unset($_SESSION['success']); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+        <script>
+            // Đợi giao diện load xong hoàn toàn
+            document.addEventListener("DOMContentLoaded", function() {
+                // Delay 100ms để trình duyệt chắc chắn đã vẽ xong UI
+                setTimeout(function() {
+                    alert(<?= json_encode($_SESSION['success']) ?>);
+                }, 100);
+            });
+        </script>
+        <?php unset($_SESSION['success']); ?>
     <?php endif; ?>
 
     <?php if (isset($_SESSION['error'])): ?>
-        <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
-            <i class="fas fa-exclamation-triangle me-2"></i> <?= $_SESSION['error'];
-                                                                unset($_SESSION['error']); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                setTimeout(function() {
+                    alert(<?= json_encode($_SESSION['error']) ?>);
+                }, 100);
+            });
+        </script>
+        <?php unset($_SESSION['error']); ?>
     <?php endif; ?>
 
     <div class="category-header d-flex justify-content-between align-items-center mb-4">
@@ -23,7 +30,7 @@
             <p class="page-subtitle text-muted mb-0">Điều chỉnh thương hiệu và trạng thái kinh doanh</p>
         </div>
         <?php if ($_SESSION['role'] === 'MANAGER'): ?>
-            <button class="btn btn-dark px-4 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+            <button class="btn btn-add-brand px-4 fw-bold text-dark border border-dark" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
                 <i class="fas fa-plus me-2"></i> Thêm hãng mới
             </button>
         <?php endif; ?>
@@ -41,7 +48,7 @@
                         <div class="brand-logo-wrapper py-4  d-flex align-items-center justify-content-center position-relative" style="height: 160px; border-radius: 12px 12px 0 0;">
                             <!-- trạng thái danh mục -->
                             <span class="position-absolute top-0 start-0 m-2 badge rounded-pill shadow-sm"
-                                style="background-color: <?= $isActive ? '#ffffff' : '#6c757d' ?>; color: #000000; border: 1px solid black;">
+                                style="background-color: <?= $isActive ? '#ffffff' : '#000000' ?>; color: <?= $isActive ? '#000000' : '#ffffff' ?>; border: 1px solid black;">
                                 <i class="fas <?= $isActive ? 'fa-check-circle' : 'fa-pause-circle' ?> me-1"></i>
                                 <?= $isActive ? 'Đang kinh doanh' : 'Tạm ngưng' ?>
                             </span>
@@ -74,7 +81,7 @@
                                         <!-- nút bật/tắt trang thái -->
                                         <button type="submit" name="toggle_status"
                                             class="btn p-0 ms-2 shadow-none"
-                                            style="color: <?= $isActive ? '#61839D' : '#adb5bd' ?>; text-decoration: none;"
+                                            style="color: <?= $isActive ? '#000000' : '#adb5bd' ?>; text-decoration: none;"
                                             title="Đổi trạng thái">
                                             <i class="fas <?= $isActive ? 'fa-toggle-on' : 'fa-toggle-off' ?> fa-2x"></i>
                                         </button>
@@ -115,17 +122,19 @@
                         <input type="text" name="category_name" class="form-control form-control-lg border-2" placeholder="Ví dụ: Nike, Adidas..." required>
                     </div>
 
-                    <div class="mb-2">
-                        <label class="form-label fw-bold text-dark">Logo thương hiệu (Tùy chọn)</label>
-                        <input type="file" name="logo" class="form-control border-2" accept="image/*">
-                        <div class="form-text mt-2">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-white">Logo thương hiệu (Tùy chọn)</label>
+                        
+                        <input type="file" name="logo" class="form-control input-glass border-2" accept="image/*">
+                        
+                        <div class="form-text mt-2 text-white">
                             <i class="fas fa-info-circle me-1"></i> Để trống để dùng logo mặc định.
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-4 pt-0">
-                    <button type="button" class="btn btn-light px-4 fw-bold" data-bs-dismiss="modal">Hủy</button>
-                    <button type="submit" name="add_category" class="btn btn-dark px-5 fw-bold shadow">
+                    <button type="button" class="btn btn-glass px-4 fw-bold" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" name="add_category" class="btn btn-glass px-5 fw-bold">
                         Lưu lại ngay
                     </button>
                 </div>
