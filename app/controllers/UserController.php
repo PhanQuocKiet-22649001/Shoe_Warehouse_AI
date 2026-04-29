@@ -14,7 +14,11 @@ class UserController
     // Hiển thị trang danh sách nhân viên
     public function loadEmployees()
     {
-        return $users = $this->userModel->getAllUsers();
+        // Lấy dữ liệu từ GET request
+        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+        $role = isset($_GET['role']) ? trim($_GET['role']) : '';
+        
+        return $users = $this->userModel->getAllUsers($search, $role);
     }
 
     // Hàm kiểm tra quyền 

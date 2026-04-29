@@ -30,4 +30,61 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+
+    // ========================================================
+    // TÍNH NĂNG TÌM KIẾM REAL-TIME (TÌM TỚI ĐÂU HIỆN TỚI ĐÓ)
+    // ========================================================
+    const searchInput = document.getElementById('searchInput');
+    const roleFilter = document.getElementById('roleFilter');
+    const btnResetFilter = document.getElementById('btnResetFilter');
+    const employeeRows = document.querySelectorAll('.employee-row');
+    const noResultRow = document.getElementById('noResultRow');
+
+    function filterEmployees() {
+        if (!searchInput || !roleFilter) return;
+
+        // Lấy từ khóa và vai trò, xóa sạch khoảng trắng dư thừa
+        const keyword = searchInput.value.toLowerCase().trim();
+        const role = roleFilter.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        employeeRows.forEach(row => {
+            // Lấy dữ liệu và làm sạch ngay lập tức
+            const id = row.querySelector('.col-id').textContent.toLowerCase().trim();
+            const name = row.querySelector('.col-name').textContent.toLowerCase().trim();
+            const username = row.querySelector('.col-username').textContent.toLowerCase().trim();
+            const rowRole = row.querySelector('.col-role').textContent.toLowerCase().trim();
+
+            // Kiểm tra khớp từ khóa
+            const matchKeyword = keyword === "" || id.includes(keyword) || name.includes(keyword) || username.includes(keyword);
+            
+            // Kiểm tra khớp vai trò (Lưu ý quan trọng ở đây)
+            const matchRole = role === "" || rowRole === role;
+
+            if (matchKeyword && matchRole) {
+                row.style.display = ''; // Hiện dòng
+                visibleCount++;
+            } else {
+                row.style.display = 'none'; // Ẩn dòng
+            }
+        });
+
+        // Xử lý hiện dòng "Không tìm thấy" nếu không có kết quả nào
+        if (noResultRow) {
+            noResultRow.style.display = visibleCount === 0 ? '' : 'none';
+        }
+    }
+
+    // Gắn sự kiện (Lắng nghe khi người dùng gõ chữ hoặc đổi Option)
+    if (searchInput) searchInput.addEventListener('keyup', filterEmployees);
+    if (roleFilter) roleFilter.addEventListener('change', filterEmployees);
+
+    // Xử lý nút Reset
+    if (btnResetFilter) {
+        btnResetFilter.addEventListener('click', function() {
+            searchInput.value = '';
+            roleFilter.value = '';
+            filterEmployees(); // Trả lại bảng nguyên trạng
+        });
+    }
 });

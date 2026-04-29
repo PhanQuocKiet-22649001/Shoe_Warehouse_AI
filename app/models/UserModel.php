@@ -33,19 +33,38 @@ class UserModel
         return null;
     }
 
-    // Lấy tất cả nhân viên chưa bị xóa
-    public function getAllUsers()
+   // Lấy tất cả nhân viên chưa bị xóa (Có hỗ trợ Tìm kiếm & Lọc)
+    public function getAllUsers($keyword = '', $role = '')
     {
-
         $sql = "SELECT user_id, full_name, username, role, status, created_at 
-            FROM users 
-            WHERE is_deleted = false 
-            ORDER BY user_id ASC";
+                FROM users 
+                WHERE is_deleted = false";
+        $params = [];
+        $paramIndex = 1;
 
-        $result = pg_query($this->conn, $sql);
-        return pg_fetch_all($result);
+        // Xử lý tìm kiếm theo ID hoặc Tên (không phân biệt hoa thường)
+        if (!empty($keyword)) {
+            $sql .= " AND (user_id::text ILIKE $" . $paramIndex . " OR full_name ILIKE $" . $paramIndex . ")";
+            $params[] = "%" . $keyword . "%";
+            $paramIndex++;
+        }
+
+        // Xử lý lọc theo Vai trò
+        if (!empty($role)) {
+            $sql .= " AND role = $" . $paramIndex;
+            $params[] = strtoupper($role);
+        }
+
+        $sql .= " ORDER BY user_id ASC";
+
+        if (empty($params)) {
+            $result = pg_query($this->conn, $sql);
+        } else {
+            $result = pg_query_params($this->conn, $sql, $params);
+        }
+
+        return $result ? pg_fetch_all($result) : [];
     }
-
     // Thêm nhân viên mới
     public function addUser($data)
     {

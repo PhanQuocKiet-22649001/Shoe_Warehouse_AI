@@ -263,3 +263,16 @@
     color: #000000 !important;
     box-shadow: 0 0 10px 100px #cccccc inset !important;
 }
+
+
+/* --- HIỆU ỨNG CHO FORM LỌC VÀ Ô TÌM KIẾM --- */
+#searchInput:hover,
+#roleFilter:hover {
+   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+#searchInput,
+#roleFilter{
+    
+    border: 1px solid black;
+}

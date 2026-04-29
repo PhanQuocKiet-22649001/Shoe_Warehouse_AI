@@ -1,6 +1,12 @@
 <link rel="stylesheet" href="assets/css/product.css">
 <?php include __DIR__ . '/../layouts/topbar.php'; ?>
-
+<?php
+// Khai báo giá trị mặc định để báo cho VS Code biết biến này có tồn tại.
+// Khi chạy thật, Controller sẽ truyền dữ liệu vào và ghi đè các giá trị này.
+$categoryName = $categoryName ?? 'Chưa rõ danh mục';
+$products = $products ?? [];
+$cat = $cat ?? ['category_name' => 'Chưa rõ']; 
+?>
 <div class="container-fluid p-0">
    <?php if (isset($_SESSION['success'])): ?>
         <script>
