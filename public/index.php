@@ -5,6 +5,24 @@ session_start();
 // 1. XỬ LÝ AJAX TẠI ĐÂY (TRƯỚC KHI HIỆN GIAO DIỆN)
 
 if (isset($_GET['page'])) {
+
+    if ($_GET['page'] === 'tickets' && isset($_GET['action'])) {
+        require_once '../config/database.php';
+        require_once '../app/models/TicketModel.php';
+        require_once '../app/controllers/TicketController.php';
+        $ticketAjax = new TicketController();
+
+        if ($_GET['action'] === 'get_products') {
+            $ticketAjax->getProductsByBrandAjax();
+            exit;
+        }
+        if ($_GET['action'] === 'get_variants') {
+            $ticketAjax->getVariantsByProductAjax();
+            exit;
+        }
+    }
+
+
     if ($_GET['page'] === 'history-detail') {
         require_once __DIR__ . '/../app/controllers/TransactionController.php';
         $controller = new TransactionController();
@@ -24,7 +42,7 @@ if (isset($_GET['page'])) {
     if ($_GET['page'] === 'products' && isset($_GET['action'])) {
         require_once '../config/database.php';
         require_once '../app/models/ProductModel.php';
-        require_once '../app/models/CategoryModel.php'; 
+        require_once '../app/models/CategoryModel.php';
         require_once '../app/controllers/ProductController.php';
 
         $productControllerAjax = new ProductController();
@@ -56,7 +74,7 @@ if (isset($_GET['page'])) {
             $productControllerAjax->getPutawaySuggestionsAjax();
             exit;
         }
-        
+
         // FIX LỖI: Cần require và khởi tạo Warehouse riêng ở khối này vì nó tách biệt
         if ($_GET['action'] === 'search_map') {
             require_once '../app/models/WarehouseModel.php';
@@ -87,10 +105,13 @@ require_once '../app/controllers/UserController.php';
 require_once '../app/controllers/CategoryController.php';
 require_once '../app/controllers/ProductController.php';
 require_once '../app/controllers/ReportController.php';
-require_once '../app/controllers/WarehouseController.php'; // ĐÃ THÊM
+require_once '../app/controllers/WarehouseController.php';
+require_once '../app/models/TicketModel.php';
+require_once '../app/controllers/TicketController.php';
+
 
 // ===== XỬ LÝ LOGIN (Phải xử lý trước khi kiểm tra Session) =====
-$authController = new AuthController(); 
+$authController = new AuthController();
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_SESSION['user_id'])) {
     $error = $authController->handleLogin();
@@ -108,6 +129,7 @@ $categoryController = new CategoryController();
 $productController = new ProductController();
 $reportController = new ReportController();
 $warehouse_mapController = new WarehouseController(); // BÂY GIỜ GỌI SẼ KHÔNG LỖI NỮA
+$ticketController = new TicketController();
 
 // ===== XỬ LÝ LOGOUT =====
 if (isset($_POST['logout'])) {
@@ -165,6 +187,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($page === 'report') {
         if (isset($_POST['btn_filter_date'])) {
             $reportController->filterByDate($_POST['start_date'], $_POST['end_date']);
+            exit;
+        }
+    } elseif ($page === 'ticket_create') {
+        if (isset($_POST['save_ticket'])) {
+            $ticketController->saveTicket();
             exit;
         }
     }
@@ -263,12 +290,24 @@ if ($page === 'products') {
                             extract($warehouseData);
                             require_once __DIR__ . '/../app/views/pages/warehouse_map.php';
                             break;
-                            
+
                         case 'dashboard':
                         default:
                             $data = $reportController->index();
                             extract($data);
                             require_once __DIR__ . '/../app/views/pages/dashboard.php';
+                            break;
+
+                        case 'ticket_create':
+                            $data = $ticketController->create($_GET['type'] ?? 'IMPORT');
+                            extract($data);
+                            require_once __DIR__ . '/../app/views/pages/create_tickets.php';
+                            break;
+
+                        case 'ticket_list':
+                            $data = $ticketController->index();
+                            extract($data);
+                            require_once __DIR__ . '/../app/views/pages/list_tickets.php';
                             break;
                     }
                     ?>

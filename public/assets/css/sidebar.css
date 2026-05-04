@@ -1,4 +1,6 @@
-/* 1. Khung Sidebar - Đen sâu Matte */
+/* =========================================
+   1. KHUNG SIDEBAR - ĐEN SÂU MATTE
+   ========================================= */
 aside.sidebar {
     width: 260px;
     min-width: 260px;
@@ -15,7 +17,6 @@ aside.sidebar {
     border-right: 1px solid #1a1d24;
 }
 
-/* 2. Logo */
 .logo {
     font-weight: bold;
     font-size: 1.4rem;
@@ -24,10 +25,19 @@ aside.sidebar {
     line-height: 1.2;
 }
 
-/* 3. Phần Menu */
+/* =========================================
+   2. PHẦN MENU CHÍNH VÀ SCROLLBAR
+   ========================================= */
 .menu {
     flex-grow: 1;
+    overflow-y: auto; /* Cho phép cuộn khi menu quá dài */
+    overflow-x: hidden;
 }
+
+/* Ẩn thanh cuộn mặc định (nếu muốn sidebar trông đẹp hơn) */
+.menu::-webkit-scrollbar { width: 6px; }
+.menu::-webkit-scrollbar-track { background: transparent; }
+.menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
 
 .menu-title {
     font-size: 11px;
@@ -37,34 +47,29 @@ aside.sidebar {
     letter-spacing: 1.5px;
 }
 
-/* 4. Xử lý 2 thẻ UL lồng nhau */
-.menu ul,
-.menu ul ul {
+/* =========================================
+   3. STYLING CHO CÁC MỤC (LI) VÀ LINK (A)
+   ========================================= */
+.menu ul, .menu ul ul {
     padding: 0 !important;
     margin: 0 !important;
     list-style: none !important;
 }
 
-/* 5. Từng mục Li */
 .menu ul li {
     width: 100%;
     margin-bottom: 15px !important;
 }
 
-/* 6. Thẻ A và Link */
 .menu ul li a {
     display: block !important;
     padding: 12px 15px !important;
     border-radius: 8px;
     transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-    /* Hiệu ứng mượt hơn */
-    color: rgba(255, 255, 255, 0.5) !important;
-    /* Chữ mặc định mờ hơn tí */
+    color: rgba(255, 255, 255, 0.5) !important; /* Chữ mặc định mờ hơn tí */
     text-decoration: none !important;
-    white-space: nowrap !important;
     text-align: left !important;
     border: 1px solid transparent;
-    /* Sẵn sàng cho viền mờ khi active */
 }
 
 /* Hiệu ứng Hover */
@@ -74,26 +79,34 @@ aside.sidebar {
     padding-left: 20px !important;
 }
 
-/* --- TRẠNG THÁI ACTIVE: CHỮ TRẮNG + VIỀN MỜ + ĐỔ BÓNG BLUR --- */
-.menu ul li.active a {
+/* Trạng thái Active cho mục chính */
+.menu ul li.active > a {
     background-color: rgba(255, 255, 255, 0.05) !important;
-    /* Background cực mỏng xuyên thấu */
     color: #ffffff !important;
-    /* Chữ trắng tinh khiết như bồ muốn */
     font-weight: bold;
-
-    /* Viền hơi mờ (màu xanh Neon mờ) */
     border: 1px solid rgba(165, 165, 165, 0.3) !important;
-
-    /* Hiệu ứng đổ bóng Blur nhẹ xung quanh (Glow effect) */
-    box-shadow: 0 0 15px rgba(122, 122, 122, 0.15),
-        inset 0 0 5px rgba(255, 255, 255, 0.05);
-
+    box-shadow: 0 0 15px rgba(122, 122, 122, 0.15), inset 0 0 5px rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(5px);
-    /* Tăng thêm độ sang chảnh của kính */
 }
 
-/* 7. Nút Đăng xuất */
+/* Style riêng cho các link con trong Dropdown Phiếu Kho */
+a.ticket-link {
+    font-size: 0.9em;
+    padding: 8px 15px !important;
+}
+a.ticket-active {
+    color: #0d6efd !important;
+    font-weight: bold;
+}
+
+/* =========================================
+   4. NÚT ĐĂNG XUẤT
+   ========================================= */
+#logout-form {
+    margin-top: auto;
+    padding-bottom: 15px;
+}
+
 .logout {
     padding: 12px;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -103,14 +116,78 @@ aside.sidebar {
     font-weight: bold;
     cursor: pointer;
     transition: 0.3s;
-    margin-top: auto;
 }
 
 .logout:hover {
     background-color: rgba(255, 255, 255, 0.1) !important;
     border-color: rgba(255, 255, 255, 0.8) !important;
     color: #ffffff !important;
-
-    /* Đổ bóng sâu tạo chiều sâu */
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
 }
+
+/* =========================================
+   5. AI CHATBOT CONTAINER STYLES
+   ========================================= */
+#ai-chat-container {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    width: 380px;
+    height: 500px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform-origin: bottom right;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+#ai-chat-container.ai-chat-minimized {
+    transform: scale(0);
+    opacity: 0;
+    pointer-events: none;
+}
+
+#ai-chat-body {
+    flex-grow: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background-color: #fcfcfc;
+}
+
+.user-msg, .bot-msg {
+    max-width: 85%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+.user-msg {
+    align-self: flex-end;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.bot-msg {
+    align-self: flex-start;
+    background-color: white;
+    color: #2c3e50;
+    border: 1px solid #eee;
+    border-bottom-left-radius: 4px;
+}
+
+.animate-pulse { animation: pulse-green 2s infinite; }
+@keyframes pulse-green {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(40, 167, 69, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+}
+
+.typing { font-style: italic; color: #999; font-size: 12px; }
