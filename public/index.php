@@ -20,6 +20,10 @@ if (isset($_GET['page'])) {
             $ticketAjax->getVariantsByProductAjax();
             exit;
         }
+        if ($_GET['action'] === 'get_ticket_details') {
+            $ticketAjax->getTicketDetailsAjax();
+            exit;
+        }
     }
 
 
@@ -194,6 +198,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ticketController->saveTicket();
             exit;
         }
+        // Xử lý Xóa mềm (từ form nút Xóa thùng rác)
+        elseif (isset($_POST['delete_ticket'])) {
+            $ticketController->deleteTicket();
+            exit;
+        }
+    } elseif ($page === 'ticket_reassign') {
+        // Xử lý Đổi nhân viên (từ form của Modal)
+        $ticketController->reassignStaff();
+        exit;
     }
 
     if (isset($_POST['btn_update_profile'])) {
@@ -302,12 +315,6 @@ if ($page === 'products') {
                             $data = $ticketController->create($_GET['type'] ?? 'IMPORT');
                             extract($data);
                             require_once __DIR__ . '/../app/views/pages/create_tickets.php';
-                            break;
-
-                        case 'ticket_list':
-                            $data = $ticketController->index();
-                            extract($data);
-                            require_once __DIR__ . '/../app/views/pages/list_tickets.php';
                             break;
                     }
                     ?>

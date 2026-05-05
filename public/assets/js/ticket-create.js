@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // 2. Alert Confirm trước khi submit
+    // 2. Alert Confirm trước khi submit form tạo phiếu
     const ticketForm = document.getElementById('ticketForm');
     if (ticketForm) {
         ticketForm.addEventListener('submit', function (e) {
@@ -117,5 +117,90 @@ document.addEventListener('DOMContentLoaded', function () {
     let firstRow = document.querySelector('#detailTable tbody tr');
     if (firstRow) {
         attachEvents(firstRow);
+    }
+
+    // =========================================================
+    // 4. XỬ LÝ MODAL ĐỔI NHÂN VIÊN TRONG BẢNG LỊCH SỬ PHIẾU
+    // =========================================================
+    const staffButtons = document.querySelectorAll('.btn-change-staff');
+    if (staffButtons.length > 0) {
+        staffButtons.forEach(btn => {
+            btn.addEventListener('click', function () {
+                // Lấy data từ nút bấm
+                const ticketId = this.getAttribute('data-ticket-id');
+                const ticketCode = this.getAttribute('data-ticket-code');
+                const staffName = this.getAttribute('data-staff-name'); // Lấy tên NV
+
+                // Đổ data vào các input ẩn/hiện trong Modal
+                document.getElementById('modal_ticket_id').value = ticketId;
+                document.getElementById('modal_ticket_code').value = ticketCode;
+                document.getElementById('modal_current_staff').value = staffName; // Gán tên vào ô readonly
+            });
+        });
+    }
+
+
+
+    // =========================================================
+    // 5. XỬ LÝ MODAL XEM CHI TIẾT PHIẾU BẰNG AJAX
+    // =========================================================
+    const viewButtons = document.querySelectorAll('.btn-view-details');
+    if (viewButtons.length > 0) {
+        viewButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const ticketId = this.getAttribute('data-ticket-id');
+                const ticketCode = this.getAttribute('data-ticket-code');
+                
+                // Gán mã phiếu lên tiêu đề Modal
+                document.getElementById('view_ticket_code').textContent = ticketCode;
+                
+                // Reset bảng trước khi load dữ liệu mới
+                const tbody = document.getElementById('detailModalBody');
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><br>Đang tải dữ liệu...</td></tr>';
+                
+                // Gọi AJAX fetch dữ liệu
+                fetch(`index.php?page=tickets&action=get_ticket_details&ticket_id=${ticketId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        tbody.innerHTML = ''; // Xóa chữ "Đang tải"
+                        
+                        if (data.status === 'error') {
+                            tbody.innerHTML = `<tr><td colspan="5" class="text-danger fw-bold">${data.message}</td></tr>`;
+                            return;
+                        }
+
+                        if (data.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="5" class="text-muted fst-italic">Phiếu này không có sản phẩm nào!</td></tr>';
+                            return;
+                        }
+
+                        // Đổ dữ liệu vào bảng
+                        data.forEach(item => {
+                            const imgSrc = item.product_image ? `assets/img_product/${item.product_image}` : 'assets/images/placeholder.png';
+                            
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td class="p-2">
+                                        <img src="${imgSrc}" class="rounded shadow-sm" style="width: 50px; height: 50px; object-fit: cover;">
+                                    </td>
+                                    <td class="fw-bold">${item.brand}</td>
+                                    <td class="text-start fw-bold text-primary">${item.product_name}</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border"><i class="fas fa-palette text-info"></i> ${item.color}</span>
+                                        <span class="badge bg-light text-dark border ms-1"><i class="fas fa-ruler text-warning"></i> Size ${item.size}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success fs-6 px-3">${item.quantity}</span>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                    })
+                    .catch(err => {
+                        tbody.innerHTML = '<tr><td colspan="5" class="text-danger fw-bold">Lỗi kết nối máy chủ! Không thể tải dữ liệu.</td></tr>';
+                        console.error(err);
+                    });
+            });
+        });
     }
 });
