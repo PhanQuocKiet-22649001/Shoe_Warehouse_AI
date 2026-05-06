@@ -87,8 +87,11 @@ document.addEventListener('DOMContentLoaded', function () {
             let prodId = this.value;
             varSelect.innerHTML = '<option value="">Đang tải...</option>';
 
+            // Lấy loại phiếu từ input hidden trong form
+            let ticketType = document.querySelector('input[name="ticket_type"]').value;
+
             if (prodId) {
-                fetch(`index.php?page=tickets&action=get_variants&product_id=${prodId}`)
+                fetch(`index.php?page=tickets&action=get_variants&product_id=${prodId}&type=${ticketType}`)
                     .then(res => res.json())
                     .then(data => {
                         varSelect.disabled = false;
@@ -101,10 +104,16 @@ document.addEventListener('DOMContentLoaded', function () {
                             imgPreview.src = 'assets/images/placeholder.png';
                         }
 
-                        data.forEach(v => {
-                            let stockInfo = `(Tồn: ${v.stock})`;
-                            varSelect.innerHTML += `<option value="${v.variant_id}">${v.color} - Size ${v.size} ${stockInfo}</option>`;
-                        });
+                        // Hiển thị danh sách
+                        if (data.length === 0) {
+                            varSelect.innerHTML = '<option value="">(Tạm hết hàng)</option>';
+                            varSelect.disabled = true;
+                        } else {
+                            data.forEach(v => {
+                                let stockInfo = `(Tồn: ${v.stock})`;
+                                varSelect.innerHTML += `<option value="${v.variant_id}">${v.color} - Size ${v.size} ${stockInfo}</option>`;
+                            });
+                        }
                     });
             } else {
                 varSelect.disabled = true;
@@ -126,20 +135,16 @@ document.addEventListener('DOMContentLoaded', function () {
     if (staffButtons.length > 0) {
         staffButtons.forEach(btn => {
             btn.addEventListener('click', function () {
-                // Lấy data từ nút bấm
                 const ticketId = this.getAttribute('data-ticket-id');
                 const ticketCode = this.getAttribute('data-ticket-code');
-                const staffName = this.getAttribute('data-staff-name'); // Lấy tên NV
+                const staffName = this.getAttribute('data-staff-name'); 
 
-                // Đổ data vào các input ẩn/hiện trong Modal
                 document.getElementById('modal_ticket_id').value = ticketId;
                 document.getElementById('modal_ticket_code').value = ticketCode;
-                document.getElementById('modal_current_staff').value = staffName; // Gán tên vào ô readonly
+                document.getElementById('modal_current_staff').value = staffName;
             });
         });
     }
-
-
 
     // =========================================================
     // 5. XỬ LÝ MODAL XEM CHI TIẾT PHIẾU BẰNG AJAX
@@ -151,18 +156,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 const ticketId = this.getAttribute('data-ticket-id');
                 const ticketCode = this.getAttribute('data-ticket-code');
                 
-                // Gán mã phiếu lên tiêu đề Modal
                 document.getElementById('view_ticket_code').textContent = ticketCode;
-                
-                // Reset bảng trước khi load dữ liệu mới
                 const tbody = document.getElementById('detailModalBody');
                 tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><br>Đang tải dữ liệu...</td></tr>';
                 
-                // Gọi AJAX fetch dữ liệu
                 fetch(`index.php?page=tickets&action=get_ticket_details&ticket_id=${ticketId}`)
                     .then(res => res.json())
                     .then(data => {
-                        tbody.innerHTML = ''; // Xóa chữ "Đang tải"
+                        tbody.innerHTML = ''; 
                         
                         if (data.status === 'error') {
                             tbody.innerHTML = `<tr><td colspan="5" class="text-danger fw-bold">${data.message}</td></tr>`;
@@ -174,10 +175,8 @@ document.addEventListener('DOMContentLoaded', function () {
                             return;
                         }
 
-                        // Đổ dữ liệu vào bảng
                         data.forEach(item => {
                             const imgSrc = item.product_image ? `assets/img_product/${item.product_image}` : 'assets/images/placeholder.png';
-                            
                             tbody.innerHTML += `
                                 <tr>
                                     <td class="p-2">
@@ -201,6 +200,54 @@ document.addEventListener('DOMContentLoaded', function () {
                         console.error(err);
                     });
             });
+        });
+    }
+
+    // =========================================================
+    // 6. XỬ LÝ REAL-TIME PUSHER: TỰ ĐỘNG CẬP NHẬT BẢNG LỊCH SỬ
+    // =========================================================
+    if (typeof Pusher !== 'undefined') {
+        const pusherManager = new Pusher('24a79cb74cfa666e1831', { cluster: 'ap1', forceTLS: true });
+        const channelManager = pusherManager.subscribe('warehouse-channel');
+
+        channelManager.bind('ticket-status-changed', function(data) {
+            console.log("Đã nhận tín hiệu Pusher:", data); // Bật để soi lỗi
+
+            // Tìm đúng dòng của phiếu vừa bị thay đổi
+            const row = document.getElementById('row-ticket-' + data.ticket_id);
+            if (row) {
+                // 1. Cập nhật nhãn trạng thái (Đổi màu Badge)
+                const statusCell = row.querySelector('.ticket-status-cell');
+                if (statusCell) {
+                    let bgClass = 'bg-secondary';
+                    if (data.status === 'PENDING') bgClass = 'bg-warning text-dark';
+                    if (data.status === 'PROCESSING') bgClass = 'bg-info text-dark';
+                    if (data.status === 'PAUSED') bgClass = 'bg-danger';
+                    if (data.status === 'COMPLETED') bgClass = 'bg-success';
+                    statusCell.innerHTML = `<span class="badge ${bgClass}">${data.status}</span>`;
+                }
+
+                // 2. Cập nhật thời gian hoàn thành (NẾU CÓ)
+                if (data.status === 'COMPLETED' && data.completed_at) {
+                    const timeCell = row.querySelector('.ticket-time-cell');
+                    if (timeCell) {
+                        timeCell.innerHTML = `<span class="text-success fw-bold">${data.completed_at}</span>`;
+                    }
+                }
+
+                // 3. Ẩn/Hiện nút Sửa NV và Xóa tùy theo trạng thái
+                const btnChange = row.querySelector('.btn-change-staff');
+                const formDelete = row.querySelector('.form-delete-ticket');
+                
+                // Trạng thái không phải PENDING thì "Tàng hình" 2 nút này
+                if (data.status !== 'PENDING') {
+                    if (btnChange) btnChange.classList.add('d-none');
+                    if (formDelete) formDelete.classList.add('d-none');
+                } else {
+                    if (btnChange) btnChange.classList.remove('d-none');
+                    if (formDelete) formDelete.classList.remove('d-none');
+                }
+            }
         });
     }
 });

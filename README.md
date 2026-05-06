@@ -88,11 +88,11 @@ python ai_bridge.py
 
 
 
-
+- composer install (tải vendor của composer dùng pusher bắn tín hiệu)
 
 ollama pull qwen2.5-coder:7b-instruct-q4_K_M
 
-## ĐÃ LÀM (17/19)
+## ĐÃ LÀM (17/20)
 1. login
 2. logout
 3. thêm danh mục sản phẩm
@@ -107,13 +107,15 @@ ollama pull qwen2.5-coder:7b-instruct-q4_K_M
 12. tìm kiếm (tên, size, màu sắc)
 13. xem thông tin cá nhân
 14. cập nhật thông tin cá nhân
-15. chatbot AI
-16. xuất kho
-17. xem lịch sử xuất nhập kho
+15. xuất kho
+16. xem lịch sử xuất nhập kho
+17. Quản lí vị trí kệ
+18. Tạo phiếu xuất nhập
 
 ## CHƯA LÀM
-1. Quản lí vị trí kệ (heatmap)
+1. chatbot AI
 2. Dự đoán xu hướng tiêu thụ (AI)
+
 
 
 ## Đang làm 

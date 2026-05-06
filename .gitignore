@@ -1,7 +1,9 @@
 # File: .gitignore
 .env
 
-# Chặn thư mục chứa bộ não AI (Nặng, không đẩy lên Git)
+# Chặn thư mục chứa bộ não AI 
 ai_services/models/
 
 public/assets/img_temp
+
+/vendor/

@@ -1,3 +1,5 @@
+<!-- Dòng này cực kỳ quan trọng để JS lấy được ID nhân viên -->
+<div id="user-context" data-user-id="<?= $_SESSION['user_id'] ?? 0 ?>" class="d-none"></div>
 <link rel="stylesheet" href="assets/css/topbar.css">
 
 <?php
@@ -22,16 +24,16 @@ $allCategories = $cModel->getAll();
 
     <div class="user-info d-flex align-items-center">
         <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'STAFF'): ?>
-            <button class="btn me-3 fw-bold"
-                data-bs-toggle="modal" data-bs-target="#addProductModal"
-                style="border-radius: 7px; border: 1px solid #000000;">
+            <button class="btn me-3 fw-bold position-relative" data-bs-toggle="modal" data-bs-target="#addProductModal" style="border-radius: 7px; border: 1px solid #000000;">
                 Nhập Kho (AI)
+                <!-- Badge Nhập -->
+                <span id="badge-import" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none">0</span>
             </button>
 
-            <button class="btn me-3 fw-bold"
-                data-bs-toggle="modal" data-bs-target="#exportAIModal"
-                style="border-radius: 7px; border: 1px solid #000000;">
+            <button class="btn me-3 fw-bold position-relative" data-bs-toggle="modal" data-bs-target="#exportAIModal" style="border-radius: 7px; border: 1px solid #000000;">
                 Xuất Kho (AI)
+                <!-- Badge Xuất -->
+                <span id="badge-export" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none">0</span>
             </button>
         <?php endif; ?>
 
@@ -127,86 +129,120 @@ $allCategories = $cModel->getAll();
 </div>
 
 
+
+<!-- modal xuất kho -->
 <div class="modal fade" id="exportAIModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content shadow rounded-1">
             <div class="modal-header border-bottom flex-column align-items-start">
                 <div class="d-flex w-100 justify-content-between align-items-center mb-2">
-                    <h5 class="modal-title fw-bold text-white text-uppercase">Xuất Kho Với AI </h5>
+                    <h5 class="modal-title fw-bold text-white text-uppercase">XUẤT KHO THEO PHIẾU CHỈ ĐỊNH</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
             </div>
-
             <div class="modal-body p-0">
-                <div class="row g-0 d-flex">
-                    <div class="col-md-6 p-4 border-end-glass">
-                        <div class="text-start mb-4">
-                            <h6 class="fw-bold text-white pb-2 mb-3 border-bottom-glass">1. QUÉT ẢNH SẢN PHẨM CẦN XUẤT</h6>
+                <div class="row g-0 d-flex" style="min-height: 550px;">
 
-                            <div class="upload-zone p-3 rounded-1 mb-2" id="export_upload_zone">
-                                <input type="file" id="export_ai_file" class="d-none" accept="image/*" multiple onchange="previewExportImages(this)">
-                                <button type="button" class="btn btn-glass-confirm fw-bold w-100 mb-2 shadow-sm rounded-1" onclick="document.getElementById('export_ai_file').click()">
-                                    <i class="fas fa-camera me-2"></i> CHỌN/CHỤP ẢNH SẢN PHẨM (TỐI ĐA 3)
-                                </button>
-                                <p class="text-white-50 mb-3" style="font-size: 12px; line-height: 1.4;">
-                                    *Lưu ý: Để chọn nhiều ảnh, vui lòng giữ phím Ctrl và click chọn các ảnh cùng lúc.
-                                </p>
-                                <button type="button" class="btn btn-glass-confirm w-100 fw-bold shadow-sm rounded-1" id="btn-export-scan" onclick="executeExportScan()">
-                                    BẮT ĐẦU XỬ LÝ
+                    <!-- CỘT TRÁI: ĐIỀU HƯỚNG (DANH SÁCH PHIẾU -> DANH SÁCH GIÀY) -->
+                    <div class="col-md-5 p-4 border-end-glass" style="background: rgba(0,0,0,0.2); max-height: 650px; overflow-y: auto;">
+
+                        <!-- Màn hình 1: Danh sách phiếu -->
+                        <div id="export_step_1">
+                            <h6 class="fw-bold text-white pb-2 mb-3 border-bottom-glass">
+                                <i class="fas fa-clipboard-list me-2"></i>PHIẾU CHỜ XỬ LÝ
+                            </h6>
+                            <div id="export_ticket_list" class="list-group gap-2">
+                                <!-- Trống -->
+                            </div>
+                        </div>
+
+                        <!-- Màn hình 2: Danh sách giày trong phiếu -->
+                        <div id="export_step_2" class="d-none">
+                            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom-glass pb-2">
+                                <h6 class="fw-bold text-info mb-0" id="export_current_ticket_code">MÃ PHIẾU: ...</h6>
+                                <button class="btn btn-sm btn-outline-light py-0" onclick="backToExportTickets()">
+                                    <i class="fas fa-arrow-left me-1"></i>Đổi phiếu
                                 </button>
                             </div>
-
-                            <div id="export_pre_scan_preview" class="d-flex flex-wrap gap-2 mt-2 mb-3"></div>
-
-                            <div id="export_post_scan_area" class="text-start d-none">
-                                <h6 class="fw-bold text-white pb-2 mb-3 border-bottom-glass">DANH SÁCH ĐÃ NHẬN DIỆN</h6>
-                                <p class="text-white-50 small fw-bold mb-2">Click vào từng ảnh để khai báo số lượng xuất:</p>
-                                <div id="export_scanned_thumbnails" class="d-flex flex-wrap gap-3 p-3 rounded-1 glass-inner-box"></div>
+                            <p class="text-white-50 small mb-2">Vui lòng bấm <strong class="text-white">CHỌN</strong> để xem vị trí và xuất kho:</p>
+                            <div id="export_ticket_items" class="d-flex flex-column gap-2 mb-3">
+                                <!-- Trống -->
                             </div>
+                            <button id="btn_complete_export" class="btn btn-success fw-bold w-100 py-2 d-none" onclick="completeExportTicket()">
+                                XÁC NHẬN HOÀN TẤT PHIẾU NÀY
+                            </button>
                         </div>
                     </div>
 
-                    <div class="col-md-6 p-4 position-relative">
-                        <h6 class="fw-bold text-white pb-2 mb-3 text-uppercase border-bottom-glass">2. Khai Báo Biểu Mẫu Xuất Kho</h6>
+                    <!-- CỘT PHẢI: FORM XUẤT KHO AUTO-FILL -->
+                    <div class="col-md-7 p-4 d-flex flex-column border-start border-secondary border-opacity-25 position-relative">
+                        <h6 class="fw-bold text-white pb-2 mb-3 text-uppercase border-bottom-glass">Biểu mẫu chi tiết</h6>
 
-                        <div id="export_default_screen" class="rounded-1 p-4 shadow-sm glass-inner-box d-flex flex-column justify-content-center" style="min-height: 400px;">
-                            <div class="text-center text-white-50">
-                                <h4 class="mb-3 opacity-50 fw-bold">CHƯA CÓ DỮ LIỆU</h4>
-                                <p class="mb-0">Hệ thống đang chờ lệnh. Vui lòng quét ảnh để tiếp tục.</p>
-                            </div>
+                        <div id="export_right_default" class="text-center text-white-50 m-auto">
+                            <i class="fas fa-file-invoice fa-3x mb-3 opacity-25"></i>
+                            <p>Chọn sản phẩm để điền dữ liệu tự động</p>
                         </div>
 
-                        <div id="export_loading" class="rounded-1 p-4 shadow-sm glass-inner-box d-none flex-column justify-content-center align-items-center" style="min-height: 400px;">
-                            <div class="spinner-border text-light mb-3"></div>
-                            <h6 class="text-white fw-bold">AI ĐANG PHÂN TÍCH...</h6>
-                        </div>
-
-                        <div id="export_ai_form" class="rounded-1 p-4 shadow-sm glass-inner-box d-none" style="min-height: 400px;">
-                            <div class="alert py-2 rounded-1 small mb-3 bg-transparent border border-success text-success" id="export_ai_alert"></div>
-
-                            <h5 id="exp_product_name" class="fw-bold text-white mb-1">...</h5>
-                            <p id="exp_brand_name" class="small mb-3 fw-bold text-uppercase">...</p>
-                            <hr class="border-secondary">
-
-                            <form id="final_export_form" onsubmit="executeExportStockAI(event)">
-                                <input type="hidden" name="product_id" id="exp_product_id">
-
-                                <div id="export_variants_container">
+                        <div id="export_right_action" class="d-none flex-grow-1 flex-column">
+                            <div class="row g-3">
+                                <div class="col-md-4 text-center">
+                                    <label class="small text-white-50 fw-bold d-block mb-2 text-start">ẢNH MINH HỌA</label>
+                                    <img id="autofill_image" src="" class="img-fluid rounded border border-secondary p-1 bg-white" style="max-height: 120px;">
                                 </div>
+                                <div class="col-md-8">
+                                    <div class="mb-2">
+                                        <label class="small text-white-50 fw-bold">MÃ PHIẾU</label>
+                                        <input type="text" id="autofill_ticket_code" class="form-control form-control-sm bg-dark text-info fw-bold" readonly>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="small text-white-50 fw-bold">HÃNG SẢN XUẤT</label>
+                                        <input type="text" id="autofill_brand" class="form-control form-control-sm bg-dark text-white" readonly>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="small text-white-50 fw-bold">TÊN SẢN PHẨM</label>
+                                    <input type="text" id="autofill_name" class="form-control form-control-sm bg-dark text-white fw-bold" readonly>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="small text-white-50 fw-bold">MÀU SẮC</label>
+                                    <input type="text" id="autofill_color" class="form-control form-control-sm bg-dark text-white" readonly>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="small text-white-50 fw-bold">KÍCH THƯỚC (SIZE)</label>
+                                    <input type="text" id="autofill_size" class="form-control form-control-sm bg-dark text-white text-center" readonly>
+                                </div>
+                            </div>
 
-                                <button type="button" class="btn btn-glass-confirm fw-bold w-100 mb-4 shadow-sm rounded-1 border-dashed" onclick="addExportVariantRow()" style="border-style: dashed;">
-                                    + THÊM PHÂN LOẠI XUẤT CÙNG MẪU NÀY
-                                </button>
+                            <div id="other_variants_area" class="mt-3 p-2 rounded bg-black bg-opacity-25 border border-secondary d-none">
+                                <label class="small text-info fw-bold mb-1"><i class="fas fa-layer-group me-1"></i>SẢN PHẨM CÙNG MẪU TRONG PHIẾU:</label>
+                                <div id="other_variants_list" class="small text-white-50"></div>
+                            </div>
 
-                                <button type="submit" class="btn btn-glass-confirm fw-bold w-100 mb-2" style="letter-spacing: 1px;">XÁC NHẬN TRỪ KHO MẪU NÀY</button>
-                            </form>
+                            <div class="mt-3 p-3 rounded bg-dark border border-warning shadow-sm">
+                                <h6 class="fw-bold text-warning mb-2 small"><i class="fas fa-map-marker-alt me-1"></i>VỊ TRÍ LẤY HÀNG:</h6>
+                                <div id="pick_locations_container" class="d-flex flex-wrap gap-2"></div>
+                            </div>
+
+                            <div class="mt-auto pt-3 border-top border-secondary">
+                                <label class="fw-bold small text-white-50 mb-1">XÁC NHẬN SỐ LƯỢNG LẤY:</label>
+                                <div class="input-group">
+                                    <input type="number" id="pick_qty_input" class="form-control form-control-lg bg-dark text-white text-center fw-bold border-info" value="1" min="1">
+                                    <span class="input-group-text bg-info text-dark fw-bold" id="pick_qty_max">/ 0</span>
+                                </div>
+                                <input type="hidden" id="pick_detail_id">
+                                <input type="hidden" id="pick_variant_id">
+
+                                <button class="btn btn-glass-confirm w-100 fw-bold py-2 mt-3" onclick="confirmPickItem()">XÁC NHẬN LẤY HÀNG</button>
+                            </div>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>
     </div>
 </div>
+
 
 <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -369,7 +405,8 @@ $allCategories = $cModel->getAll();
             if (!searchInput.contains(e.target) && !resultsBox.contains(e.target)) resultsBox.classList.add('d-none');
         });
     });
-
 </script>
+<script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
 <script src="assets/js/import_export_product.js"></script>
 <script src="assets/js/profile.js"></script>
+<script src="assets/js/topbar.js"></script>

@@ -19,18 +19,42 @@ foreach ($suggestions as $s) {
 <?php if (isset($_GET['msg'])): ?>
     <?php
     $msgText = '';
-    if ($_GET['msg'] === 'create_success') $msgText = 'Tạo phiếu thành công!';
-    if ($_GET['msg'] === 'reassign_success') $msgText = 'Đổi nhân viên thành công!';
-    if ($_GET['msg'] === 'delete_success') $msgText = 'Xóa phiếu thành công!';
-    if ($_GET['msg'] === 'error') $msgText = 'Có lỗi xảy ra, vui lòng kiểm tra lại!';
+    $msgType = 'info'; // Biến để biết là báo lỗi hay báo thành công
+
+    if ($_GET['msg'] === 'create_success') {
+        $msgText = 'Tạo phiếu thành công!';
+        $msgType = 'success';
+    }
+    if ($_GET['msg'] === 'reassign_success') {
+        $msgText = 'Đổi nhân viên thành công!';
+        $msgType = 'success';
+    }
+    if ($_GET['msg'] === 'delete_success') {
+        $msgText = 'Xóa phiếu thành công!';
+        $msgType = 'success';
+    }
+    if ($_GET['msg'] === 'error') {
+        $msgText = 'Có lỗi xảy ra, vui lòng kiểm tra lại!';
+        $msgType = 'error';
+    }
+
+    // BỔ SUNG THÔNG BÁO LỖI HẾT HÀNG
+    if ($_GET['msg'] === 'out_of_stock') {
+        $msgText = 'LỖI: Số lượng xuất vượt quá số lượng hàng có sẵn (Tồn khả dụng) trong kho!';
+        $msgType = 'error';
+    }
     ?>
     <?php if ($msgText): ?>
         <script>
             document.addEventListener("DOMContentLoaded", function() {
-                // Đợi load giao diện xong mới báo
                 setTimeout(function() {
-                    alert("<?= $msgText ?>");
-                    // Xóa tham số msg khỏi URL để F5 không bị báo lại
+                    // Cải tiến: Báo lỗi thì có icon cảnh báo, thành công thì bt
+                    <?php if ($msgType === 'error'): ?>
+                        alert("⚠️ " + "<?= $msgText ?>");
+                    <?php else: ?>
+                        alert("<?= $msgText ?>");
+                    <?php endif; ?>
+
                     window.history.replaceState(null, null, window.location.pathname + "?page=ticket_create&type=<?= $type ?>");
                 }, 100);
             });
@@ -234,10 +258,11 @@ foreach ($suggestions as $s) {
                             </tr>
                         <?php else: ?>
                             <?php foreach ($tickets as $t): ?>
-                                <tr>
+                                <tr id="row-ticket-<?= $t['ticket_id'] ?>">
                                     <td class="ps-3 fw-bold text-primary text-start"><?= htmlspecialchars($t['ticket_code']) ?></td>
                                     <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($t['batch_code'] ?? 'N/A') ?></span></td>
-                                    <td>
+
+                                    <td class="ticket-status-cell">
                                         <?php
                                         $bgClass = 'bg-secondary';
                                         if ($t['status'] == 'PENDING') $bgClass = 'bg-warning text-dark';
@@ -247,6 +272,7 @@ foreach ($suggestions as $s) {
                                         ?>
                                         <span class="badge <?= $bgClass ?>"><?= $t['status'] ?></span>
                                     </td>
+
                                     <td><?= date('d/m/Y H:i', strtotime($t['created_at'])) ?></td>
 
                                     <?php if (!empty($t['staff_name'])): ?>
@@ -256,14 +282,22 @@ foreach ($suggestions as $s) {
                                     <?php endif; ?>
 
                                     <?php if ($t['status'] === 'COMPLETED' && !empty($t['completed_at'])): ?>
-                                        <td class="text-success fw-bold"><?= date('d/m/Y H:i', strtotime($t['completed_at'])) ?></td>
+                                        <td class="text-success fw-bold ticket-time-cell"><?= date('d/m/Y H:i', strtotime($t['completed_at'])) ?></td>
                                     <?php else: ?>
-                                        <td class="text-muted fst-italic">-</td>
+                                        <td class="text-muted fst-italic ticket-time-cell">-</td>
                                     <?php endif; ?>
-                                    <!-- CỘT THAO TÁC THEO LOGIC -->
+
                                     <td>
+                                        <button type="button" class="btn btn-sm btn-outline-info btn-view-details"
+                                            data-bs-toggle="modal" data-bs-target="#ticketDetailModal"
+                                            data-ticket-id="<?= $t['ticket_id'] ?>"
+                                            data-ticket-code="<?= $t['ticket_code'] ?>"
+                                            title="Xem chi tiết">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+
                                         <?php if (in_array($t['status'], ['PENDING', 'PAUSED'])): ?>
-                                            <!-- 1. Dùng chung nút Đổi NV cho cả PENDING và PAUSED -->
+
                                             <button type="button" class="btn btn-sm btn-warning btn-change-staff"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#changeStaffModal"
@@ -271,10 +305,9 @@ foreach ($suggestions as $s) {
                                                 data-ticket-code="<?= $t['ticket_code'] ?>"
                                                 data-staff-name="<?= htmlspecialchars($t['staff_name'] ?? 'Chưa chỉ định') ?>"
                                                 title="Chỉ định nhân viên khác">
-                                                <i class="fas fa-user-edit"></i> Đổi NV
+                                                <i class="fas fa-user-edit"></i>
                                             </button>
 
-                                            <!-- 2. Nút Xóa CHỈ HIỆN khi PENDING (Nhớ action có page=ticket_create để không văng) -->
                                             <?php if ($t['status'] === 'PENDING'): ?>
                                                 <form action="index.php?page=ticket_create" method="POST" class="d-inline" onsubmit="return confirm('Chắc chắn xóa phiếu này?');">
                                                     <input type="hidden" name="ticket_id" value="<?= $t['ticket_id'] ?>">
@@ -285,17 +318,8 @@ foreach ($suggestions as $s) {
                                                 </form>
                                             <?php endif; ?>
 
-
-                                            <button type="button" class="btn btn-sm btn-outline-info btn-view-details"
-                                                data-bs-toggle="modal" data-bs-target="#ticketDetailModal"
-                                                data-ticket-id="<?= $t['ticket_id'] ?>"
-                                                data-ticket-code="<?= $t['ticket_code'] ?>"
-                                                title="Xem chi tiết">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-
                                         <?php else: ?>
-                                            <span class="text-muted small"><i class="fas fa-lock"></i> Đã khóa</span>
+                                            <span class="text-muted small ms-1"><i class="fas fa-lock"></i> Khóa sửa</span>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
@@ -389,5 +413,5 @@ foreach ($suggestions as $s) {
         </div>
     </div>
 </div>
-
+<script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
 <script src="assets/js/ticket-create.js?v=<?= time() ?>"></script>

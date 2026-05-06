@@ -24,6 +24,32 @@ if (isset($_GET['page'])) {
             $ticketAjax->getTicketDetailsAjax();
             exit;
         }
+        if ($_GET['action'] === 'get_pending_counts') {
+            $ticketAjax->getPendingCountsAjax();
+            exit;
+        }if ($_GET['action'] === 'get_pending_counts') {
+            $ticketAjax->getPendingCountsAjax();
+            exit;
+        }
+
+        // --- BỔ SUNG ROUTE MỚI CHO XUẤT KHO ---
+        if ($_GET['action'] === 'get_my_exports') {
+            $ticketAjax->getMyExportsAjax();
+            exit;
+        }
+        if ($_GET['action'] === 'update_status') {
+            $ticketAjax->updateStatusAjax();
+            exit;
+        }
+        if ($_GET['action'] === 'update_export_progress') {
+            $ticketAjax->updateExportProgressAjax();
+            exit;
+        }
+        if ($_GET['action'] === 'complete_export') {
+            $ticketAjax->completeExportAjax(); 
+            exit;
+        }
+        // -------------------------------------
     }
 
 
@@ -76,6 +102,12 @@ if (isset($_GET['page'])) {
         }
         if ($_GET['action'] === 'getPutawaySuggestions') {
             $productControllerAjax->getPutawaySuggestionsAjax();
+            exit;
+        }
+        if ($_GET['action'] === 'get_locations') {
+            require_once '../app/controllers/TicketController.php';
+            $ticketLocAjax = new TicketController();
+            $ticketLocAjax->getLocationsAjax();
             exit;
         }
 
@@ -188,6 +220,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $productController->exportStock();
             exit;
         }
+        
     } elseif ($page === 'report') {
         if (isset($_POST['btn_filter_date'])) {
             $reportController->filterByDate($_POST['start_date'], $_POST['end_date']);
