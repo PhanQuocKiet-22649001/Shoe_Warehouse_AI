@@ -1,5 +1,5 @@
 <?php
-$page = $page ?? 'dashboard'; 
+$page = $page ?? 'dashboard';
 ?>
 
 <aside class="sidebar">
@@ -26,7 +26,7 @@ $page = $page ?? 'dashboard';
                     <a href="index.php?page=employees">Quản lí Nhân viên</a>
                 </li>
             <?php endif; ?>
-            
+
             <?php if (isset($_SESSION['role']) && strtoupper($_SESSION['role']) === 'MANAGER'): ?>
                 <li class="<?= $page === 'report' ? 'active' : '' ?>">
                     <a href="index.php?page=report">Xem thống kê kho</a>
@@ -57,11 +57,6 @@ $page = $page ?? 'dashboard';
                                 + Tạo phiếu xuất
                             </a>
                         </li>
-                        <li>
-                            <a href="index.php?page=ticket_list" class="ticket-link <?= $page === 'ticket_list' ? 'ticket-active' : '' ?>">
-                                Xem lịch sử phiếu
-                            </a>
-                        </li>
                     </ul>
                 </li>
             <?php endif; ?>
@@ -71,6 +66,14 @@ $page = $page ?? 'dashboard';
                     <?= ($_SESSION['role'] === 'MANAGER') ? 'Quản lý kệ hàng' : 'Xem vị trí kệ hàng' ?>
                 </a>
             </li>
+
+            <?php if (isset($_SESSION['role']) && strtoupper($_SESSION['role']) === 'STAFF'): ?>
+                <li class="<?= $page === 'staff_ticket_history' ? 'active' : '' ?>">
+                    <a href="index.php?page=staff_ticket_history">
+                        Lịch sử công việc
+                    </a>
+                </li>
+            <?php endif; ?>
 
             <li>
                 <a href="#" id="btn-open-ai" class="<?= $page === 'ai-prediction' ? 'active' : '' ?>">Trợ lý AI</a>

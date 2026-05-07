@@ -16,6 +16,31 @@ class TicketController
         date_default_timezone_set('Asia/Ho_Chi_Minh');
     }
 
+
+    /**
+     * Chức năng: Middleware kiểm tra quyền Quản lý.
+     */
+    private function checkManager()
+    {
+        if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'MANAGER') {
+            $_SESSION['error'] = "Bạn không có quyền thực hiện chức năng này!";
+            header("Location: index.php?page=dashboard");
+            exit;
+        }
+    }
+
+    /**
+     * Chức năng: Middleware kiểm tra quyền Nhân viên.
+     */
+    private function checkStaff()
+    {
+        if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'STAFF') {
+            $_SESSION['error'] = "Bạn không có quyền truy cập trang này!";
+            header("Location: index.php?page=dashboard");
+            exit;
+        }
+    }
+
     // ======================================================
     // 0. CÁC HÀM GỌI BỘ ĐÀM (PUSHER) - REALTIME
     // ======================================================
@@ -173,6 +198,30 @@ class TicketController
                 exit;
             }
         }
+    }
+
+
+    /**
+     * Chức năng: Hiển thị trang Lịch sử phiếu của riêng Nhân viên (Staff).
+     * Tác dụng: Hứng bộ lọc ngày tháng/trạng thái và gọi Model lấy dữ liệu.
+     */
+    public function staffHistory()
+    {
+        $this->checkStaff();
+
+        $staff_id = $_SESSION['user_id'];
+        $status = $_GET['filter_status'] ?? '';
+        $start_date = $_GET['start_date'] ?? '';
+        $end_date = $_GET['end_date'] ?? '';
+
+        $tickets = $this->model->getStaffTickets($staff_id, $status, $start_date, $end_date);
+
+        return [
+            'tickets' => $tickets,
+            'filter_status' => $status,
+            'start_date' => $start_date,
+            'end_date' => $end_date
+        ];
     }
 
     /**

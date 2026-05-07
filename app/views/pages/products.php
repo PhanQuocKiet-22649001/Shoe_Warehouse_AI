@@ -5,10 +5,10 @@
 // Khi chạy thật, Controller sẽ truyền dữ liệu vào và ghi đè các giá trị này.
 $categoryName = $categoryName ?? 'Chưa rõ danh mục';
 $products = $products ?? [];
-$cat = $cat ?? ['category_name' => 'Chưa rõ']; 
+$cat = $cat ?? ['categoryName' => 'Chưa rõ'];
 ?>
 <div class="container-fluid p-0">
-   <?php if (isset($_SESSION['success'])): ?>
+    <?php if (isset($_SESSION['success'])): ?>
         <script>
             // Đợi giao diện load xong hoàn toàn
             document.addEventListener("DOMContentLoaded", function() {
@@ -44,9 +44,9 @@ $cat = $cat ?? ['category_name' => 'Chưa rõ'];
         </div>
 
         <?php if ($_SESSION['role'] === 'MANAGER'): ?>
-            <a href="index.php?page=categories" class="btn btn-dark px-4 rounded-pill fw-bold shadow-sm">
-                <i class="fas fa-arrow-left me-2"></i> Quay lại
-            </a>
+            <button class="btn btn-outline-dark btn-sm px-2 rounded-1 fw-bold" data-bs-toggle="modal" data-bs-target="#managerAddProductModal">
+                <i class="fas fa-plus-circle me-2"></i> Khai báo mẫu mới (AI)
+            </button>
         <?php endif; ?>
     </div>
 
@@ -78,40 +78,49 @@ $cat = $cat ?? ['category_name' => 'Chưa rõ'];
                         </div>
 
                         <div class="card-body p-4 text-center d-flex flex-column">
-    
-                        <h5 class="fw-bold text-uppercase mb-3 <?= !$isActive ? 'text-muted' : 'text-dark' ?>">
-                            <?= htmlspecialchars($pro['product_name'] ?? $cat['category_name']) ?>
-                        </h5>
 
-                        <div class="mt-auto d-flex justify-content-center align-items-center gap-2">
-                            
-                            <button class="btn btn-outline-dark btn-sm px-3 rounded-pill fw-bold"
+                            <h5 class="fw-bold text-uppercase mb-3 <?= !$isActive ? 'text-muted' : 'text-dark' ?>">
+                                <?= htmlspecialchars($pro['product_name'] ?? $cat['categoryName']) ?>
+                            </h5>
+
+                            <div class="mt-auto d-flex flex-row justify-content-center align-items-center gap-2 flex-nowrap w-100">
+
+                                <button class="btn btn-outline-dark btn-sm px-2 rounded-1 fw-bold"
                                     data-bs-toggle="modal"
                                     data-bs-target="#detailModal<?= $pro['product_id'] ?>">
-                                Chi tiết
-                            </button>
+                                    Chi tiết
+                                </button>
 
-                            <?php if ($_SESSION['role'] === 'MANAGER'): ?>
-                                <form action="index.php?page=products&category_id=<?= $pro['category_id'] ?>" method="POST" class="d-inline" onsubmit="return confirm('Đổi trạng thái kinh doanh của đôi này nhé bồ?')">
-                                    <input type="hidden" name="product_id" value="<?= $pro['product_id'] ?>">
-                                    <input type="hidden" name="category_id" value="<?= $pro['category_id'] ?>">
-                                    <input type="hidden" name="current_status" value="<?= $pro['status'] ?>">
-                                    <button type="submit" name="toggle_status" class="btn btn-link p-0 shadow-none ms-1"
+                                <?php if ($_SESSION['role'] === 'MANAGER'): ?>
+
+                                    <button type="button" class="btn btn-outline-dark btn-sm px-2 rounded-1 fw-bold"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#managerAddVariantModal<?= $pro['product_id'] ?>"
+                                        title="Khai báo biến thể mới">
+                                        + Biến thể
+                                    </button>
+
+                                    <form action="index.php?page=products&category_id=<?= $pro['category_id'] ?>" method="POST" class="m-0 d-flex align-items-center" onsubmit="return confirm('Đổi trạng thái kinh doanh của đôi này nhé bồ?')">
+                                        <input type="hidden" name="product_id" value="<?= $pro['product_id'] ?>">
+                                        <input type="hidden" name="category_id" value="<?= $pro['category_id'] ?>">
+                                        <input type="hidden" name="current_status" value="<?= $pro['status'] ?>">
+                                        <button type="submit" name="toggle_status" class="btn btn-link p-0 shadow-none"
                                             style="color: <?= $isActive ? '#000000' : '#adb5bd' ?>; text-decoration: none;" title="Đổi trạng thái">
-                                        <i class="fas <?= $isActive ? 'fa-toggle-on' : 'fa-toggle-off' ?> fa-2x"></i>
-                                    </button>
-                                </form>
+                                            <i class="fas <?= $isActive ? 'fa-toggle-on' : 'fa-toggle-off' ?> fa-xl"></i>
+                                        </button>
+                                    </form>
 
-                                <form action="index.php?page=products&category_id=<?= $pro['category_id'] ?>" method="POST" class="d-inline" onsubmit="return confirm('Bồ chắc chắn muốn xóa đôi này không?')">
-                                    <input type="hidden" name="product_id" value="<?= $pro['product_id'] ?>">
-                                    <button type="submit" name="delete_product" class="btn btn-link" style="color: grey; margin-bottom: 3px;" title="Xóa sản phẩm">
-                                        <i class="fas fa-trash-alt fa-lg"></i>
-                                    </button>
-                                </form>
-                            <?php endif; ?>
+                                    <form action="index.php?page=products&category_id=<?= $pro['category_id'] ?>" method="POST" class="m-0 d-flex align-items-center" onsubmit="return confirm('Bồ chắc chắn muốn xóa đôi này không?')">
+                                        <input type="hidden" name="product_id" value="<?= $pro['product_id'] ?>">
+                                        <button type="submit" name="delete_product" class="btn btn-link p-0 shadow-none" style="color: grey;" title="Xóa sản phẩm">
+                                            <i class="fas fa-trash-alt fa-lg"></i>
+                                        </button>
+                                    </form>
 
+                                <?php endif; ?>
+
+                            </div>
                         </div>
-                    </div>
                     </div>
                 </div>
 
@@ -152,7 +161,7 @@ $cat = $cat ?? ['category_name' => 'Chưa rõ'];
                                                         <td><?= htmlspecialchars($var['color']) ?></td>
                                                         <td class="text-center fw-bold"><span><?= $var['size'] ?></span></td>
                                                         <td class="text-center text-primary fw-bold"><?= $var['stock'] ?></td>
-                                                        
+
                                                         <td class="text-center">
                                                             <?php if (empty($locs)): ?>
                                                                 <span class="badge bg-secondary">Chưa cất</span>
@@ -219,13 +228,15 @@ $cat = $cat ?? ['category_name' => 'Chưa rõ'];
                                                                         <h6 class="fw-bold mb-0 text-primary"><i class="fas fa-map-marked-alt me-2"></i> Điều chuyển nội bộ: <?= $var['sku'] ?></h6>
                                                                         <button type="button" class="btn-close btn-sm" onclick="closeMoveMap(<?= $vid ?>)"></button>
                                                                     </div>
-                                                                    
+
                                                                     <div id="moveMapStatus-<?= $vid ?>" class="mb-3 position-sticky top-0 shadow-sm" style="z-index: 100;"></div>
-                                                                    
+
                                                                     <div id="moveMapContainer-<?= $vid ?>" class="dynamic-map-container p-3 bg-light rounded border shadow-inner">
-                                                                        <div class="text-center py-4 text-muted"><div class="spinner-border text-primary" role="status"></div> Đang tải bản đồ...</div>
+                                                                        <div class="text-center py-4 text-muted">
+                                                                            <div class="spinner-border text-primary" role="status"></div> Đang tải bản đồ...
+                                                                        </div>
                                                                     </div>
-                                                                    
+
                                                                     <div class="text-end mt-3 border-top pt-3">
                                                                         <button type="button" class="btn btn-secondary btn-sm rounded-pill px-4 me-2" onclick="closeMoveMap(<?= $vid ?>)">Hủy</button>
                                                                         <button type="button" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold" id="btnConfirmMove-<?= $vid ?>" onclick="executeVisualMove(<?= $vid ?>)" disabled>
@@ -252,6 +263,46 @@ $cat = $cat ?? ['category_name' => 'Chưa rõ'];
                         </div>
                     </div>
                 </div>
+
+                <div class="modal fade" id="managerAddVariantModal<?= $pro['product_id'] ?>" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow-lg">
+                            <div class="modal-header bg-success text-white border-bottom-0">
+                                <h5 class="modal-title fw-bold"><i class="fas fa-tags me-2"></i> Khai báo Màu/Size mới</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <form action="index.php?page=products&action=manager_add_variant" method="POST"
+                                onsubmit="return confirm('Bạn có chắc chắn muốn khai báo thêm biến thể Màu/Size mới cho mẫu giày này không?');">
+                                <div class="modal-body p-4">
+                                    <p class="text-muted small mb-3">Thêm biến thể cho mẫu: <strong class="text-dark"><?= htmlspecialchars($pro['product_name']) ?></strong></p>
+
+                                    <input type="hidden" name="product_id" value="<?= $pro['product_id'] ?>">
+                                    <input type="hidden" name="category_id" value="<?= $pro['category_id'] ?>">
+                                    <input type="hidden" name="brand_name" value="<?= htmlspecialchars($categoryName) ?>">
+                                    <input type="hidden" name="product_name" value="<?= htmlspecialchars($pro['product_name']) ?>">
+
+                                    <div class="row">
+                                        <div class="col-6 mb-3">
+                                            <label class="fw-bold mb-1 small">Màu sắc *</label>
+                                            <input type="text" name="color" class="form-control" placeholder="VD: Trắng" required>
+                                        </div>
+                                        <div class="col-6 mb-3">
+                                            <label class="fw-bold mb-1 small">Size *</label>
+                                            <input type="number" name="size" class="form-control text-center" placeholder="VD: 40" required>
+                                        </div>
+                                    </div>
+                                    <div class="alert alert-warning py-2 mb-0 small">
+                                        <i class="fas fa-exclamation-triangle me-1"></i> Tồn kho ban đầu sẽ là 0. Staff sẽ là người quét ảnh để nhập số lượng thực tế.
+                                    </div>
+                                </div>
+                                <div class="modal-footer p-3 pt-0 border-top-0">
+                                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                                    <button type="submit" name="btn_add_variant" class="btn btn-success rounded-pill px-4 fw-bold">Xác nhận tạo</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             <?php endforeach; ?>
         <?php else: ?>
             <div class="col-12 text-center py-5">
@@ -269,6 +320,82 @@ $cat = $cat ?? ['category_name' => 'Chưa rõ'];
         }, 100);
     </script>
     <?php unset($_SESSION['browser_alert']); ?>
+<?php endif; ?>
+
+<?php if ($_SESSION['role'] === 'MANAGER'): ?>
+    <div class="modal fade" id="managerAddProductModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-md modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white border-bottom-0 p-4">
+                    <h5 class="modal-title fw-bold">
+                        <i class="fas fa-robot text-info me-2"></i> Khai báo mẫu gốc (Sinh Vector)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="index.php?page=products&action=manager_add" method="POST" enctype="multipart/form-data"
+                    onsubmit="return confirm('Hệ thống sẽ gửi ảnh lên AI để trích xuất Vector chuẩn. Bồ có chắc chắn muốn lưu mẫu này không?')">
+                    <div class="modal-body p-4">
+
+                        <div class="mb-3">
+                            <label class="fw-bold mb-1 small">Hãng sản xuất (Brand) *</label>
+                            <select name="category_id" class="form-select fw-bold shadow-sm" required>
+                                <option value="">-- Chọn hãng --</option>
+                                <?php if (!empty($allCategories)): ?>
+                                    <?php foreach ($allCategories as $catItem): ?>
+                                        <option value="<?= $catItem['category_id'] ?>"
+                                            <?= (isset($_GET['category_id']) && $_GET['category_id'] == $catItem['category_id']) ? 'selected' : '' ?>>
+                                            <?= strtoupper($catItem['category_name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="fw-bold mb-1 small">Tên dòng sản phẩm (Model Name) *</label>
+                            <input type="text" name="product_name" class="form-control fw-bold" placeholder="VD: Air Force 1 '07" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="fw-bold mb-1 small">Hình ảnh chuẩn của Hãng (Gốc) *</label>
+                            <input type="file" name="master_image" id="master_image_input" class="form-control" accept="image/*" required
+                                onchange="previewManagerImage(this)">
+
+                            <div class="mt-3 text-center p-2 border rounded bg-light d-none" id="manager_preview_container">
+                                <p class="small text-muted mb-1">Ảnh đã chọn:</p>
+                                <img id="manager_img_preview" src="#" alt="Preview" class="img-fluid rounded shadow-sm" style="max-height: 200px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top-0 p-4 pt-0">
+                        <button type="button" class="btn btn-secondary px-4 rounded-pill fw-bold" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" name="btn_manager_add" class="btn btn-primary px-4 rounded-pill fw-bold">
+                            <i class="fas fa-microchip me-1"></i> Lưu Mẫu & Sinh Vector
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Hàm xử lý hiện ảnh preview cho Manager
+        function previewManagerImage(input) {
+            const container = document.getElementById('manager_preview_container');
+            const preview = document.getElementById('manager_img_preview');
+
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    container.classList.remove('d-none');
+                }
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                container.classList.add('d-none');
+            }
+        }
+    </script>
 <?php endif; ?>
 
 <script src="assets/js/product.js"></script>

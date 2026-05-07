@@ -77,6 +77,16 @@ if (isset($_GET['page'])) {
 
         $productControllerAjax = new ProductController();
 
+        // 1. Action dành cho Manager (Thêm mẫu & Biến thể)
+        if ($_GET['action'] === 'manager_add') {
+            $productControllerAjax->managerAddProduct();
+            exit;
+        }
+        if ($_GET['action'] === 'manager_add_variant') {
+            $productControllerAjax->managerAddVariant();
+            exit;
+        }
+
         if ($_GET['action'] === 'getColorsAjax') {
             $productControllerAjax->getColorsAjax();
             exit;
@@ -208,8 +218,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
     } elseif ($page === 'products') {
+        // Nút của Staff (Nhập kho qua AI - Chỉ cộng dồn)
         if (isset($_POST['add_product'])) {
             $productController->add();
+            exit;
+        }
+        // Nút của Manager (Khai báo mẫu mới)
+        if (isset($_POST['btn_manager_add'])) {
+            $productController->managerAddProduct();
+            exit;
+        }
+        // Nút của Manager (Thêm biến thể Màu/Size)
+        if (isset($_POST['btn_add_variant'])) {
+            $productController->managerAddVariant();
             exit;
         }
         if (isset($_POST['toggle_status'])) {
@@ -348,6 +369,16 @@ if ($page === 'products') {
                             $data = $ticketController->create($_GET['type'] ?? 'IMPORT');
                             extract($data);
                             require_once __DIR__ . '/../app/views/pages/create_tickets.php';
+                            break;
+
+                        case 'staff_ticket_history':
+                            if ($_SESSION['role'] !== 'STAFF') {
+                                header("Location: index.php?page=dashboard");
+                                exit;
+                            }
+                            $data = $ticketController->staffHistory();
+                            extract($data);
+                            require_once __DIR__ . '/../app/views/pages/history_ticket_staff.php';
                             break;
                     }
                     ?>

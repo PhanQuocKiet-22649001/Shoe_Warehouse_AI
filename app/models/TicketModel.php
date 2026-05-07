@@ -398,4 +398,31 @@ class TicketModel
             }
         }
     }
+
+
+    //lấy danh sách phiếu của riêng nhân viên đang đăng nhập, có hỗ trợ truy vấn theo bộ lọc
+    public function getStaffTickets($staff_id, $status = '', $start_date = '', $end_date = '')
+    {
+        $sql = "SELECT * FROM tickets WHERE staff_id = $1 AND is_deleted = false";
+        $params = [$staff_id];
+        $pIdx = 2;
+
+        if (!empty($status)) {
+            $sql .= " AND status = $" . $pIdx++;
+            $params[] = $status;
+        }
+        if (!empty($start_date)) {
+            $sql .= " AND DATE(created_at) >= $" . $pIdx++;
+            $params[] = $start_date;
+        }
+        if (!empty($end_date)) {
+            $sql .= " AND DATE(created_at) <= $" . $pIdx++;
+            $params[] = $end_date;
+        }
+
+        $sql .= " ORDER BY created_at DESC";
+
+        $result = pg_query_params($this->conn, $sql, $params);
+        return $result ? (pg_fetch_all($result) ?: []) : [];
+    }
 }

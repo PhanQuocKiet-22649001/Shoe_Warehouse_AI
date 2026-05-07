@@ -276,13 +276,12 @@ function loadFormForIndex(index) {
                 item.colors.forEach(c => {
                     opts += `<option value="${c.color}">${c.color}</option>`;
                 });
-                opts += `<option value="new" class="fw-bold"">+ TẠO MÀU MỚI KHÁC...</option>`;
 
                 colorContainerHtml = `
                         <select name="color" class="form-select fw-bold rounded-1 shadow-sm" onchange="toggleNewColorInput(this)" required>
                             ${opts}
                         </select>
-                        <input type="text" name="new_color" id="input_color_new" class="form-control fw-bold rounded-1 mt-2 d-none" placeholder="Gõ tên màu mới...">
+                      
                     `;
             }
 
@@ -421,14 +420,14 @@ async function fillFormFromSuggestion(brandName, productName, productId) {
                 opts += `<option value="${c.color}">${c.color}</option>`;
             });
         }
-        opts += `<option value="new" class="fw-bold" style="color: #00d2ff;">+ TẠO MÀU MỚI KHÁC...</option>`;
+
 
         // Render lại ô Select
         colorWrapper.innerHTML = `
                 <select name="color" id="input_color_select" class="form-select fw-bold rounded-1 shadow-sm" onchange="toggleNewColorInput(this)" required>
                     ${opts}
                 </select>
-                <input type="text" name="new_color" id="input_color_new" class="form-control fw-bold rounded-1 mt-2 d-none" placeholder="Gõ tên màu mới...">
+               
             `;
 
         // Highlight combo màu
@@ -438,21 +437,6 @@ async function fillFormFromSuggestion(brandName, productName, productId) {
     } catch (e) {
         // Lỗi mạng thì trả về ô text bình thường cho người dùng tự gõ
         colorWrapper.innerHTML = '<input type="text" name="color" class="form-control fw-bold rounded-1" placeholder="Màu sắc" required>';
-    }
-}
-
-function toggleNewColorInput(selectObj) {
-    const newColorInput = document.getElementById('input_color_new');
-    if (selectObj.value === 'new') {
-        // Bật ô text lên, ép buộc phải gõ
-        newColorInput.classList.remove('d-none');
-        newColorInput.setAttribute('required', 'true');
-        newColorInput.focus();
-    } else {
-        // Tắt đi nếu chọn màu có sẵn
-        newColorInput.classList.add('d-none');
-        newColorInput.removeAttribute('required');
-        newColorInput.value = ''; // Xóa rác
     }
 }
 

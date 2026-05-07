@@ -1,3 +1,4 @@
+<?php include __DIR__ . '/../layouts/topbar.php'; ?>
 <?php
 $type = $type ?? 'IMPORT';
 $staffs = $staffs ?? [];
@@ -8,7 +9,6 @@ $tickets = $tickets ?? [];
 $filter_status = $filter_status ?? '';
 $start_date = $start_date ?? '';
 $end_date = $end_date ?? '';
-
 // Nhóm đề xuất theo Brand
 $groupedSuggestions = [];
 foreach ($suggestions as $s) {
