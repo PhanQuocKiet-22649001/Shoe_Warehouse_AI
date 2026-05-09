@@ -27,7 +27,8 @@ if (isset($_GET['page'])) {
         if ($_GET['action'] === 'get_pending_counts') {
             $ticketAjax->getPendingCountsAjax();
             exit;
-        }if ($_GET['action'] === 'get_pending_counts') {
+        }
+        if ($_GET['action'] === 'get_pending_counts') {
             $ticketAjax->getPendingCountsAjax();
             exit;
         }
@@ -46,7 +47,19 @@ if (isset($_GET['page'])) {
             exit;
         }
         if ($_GET['action'] === 'complete_export') {
-            $ticketAjax->completeExportAjax(); 
+            $ticketAjax->completeExportAjax();
+            exit;
+        }
+        if ($_GET['action'] === 'get_my_imports') {
+            $ticketAjax->getMyImportsAjax();
+            exit;
+        }
+        if ($_GET['action'] === 'save_temp_import') {
+            $ticketAjax->saveTempImportAjax();
+            exit;
+        }
+        if ($_GET['action'] === 'complete_import') {
+            $ticketAjax->completeImportAjax();
             exit;
         }
         // -------------------------------------
@@ -241,7 +254,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $productController->exportStock();
             exit;
         }
-        
     } elseif ($page === 'report') {
         if (isset($_POST['btn_filter_date'])) {
             $reportController->filterByDate($_POST['start_date'], $_POST['end_date']);

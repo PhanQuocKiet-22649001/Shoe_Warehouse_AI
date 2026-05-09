@@ -485,4 +485,154 @@ class TicketController
         }
         exit;
     }
+
+
+    // ======================================================
+    // CÁC HÀM AJAX XỬ LÝ NHẬP KHO AI
+    // ======================================================
+
+    public function getMyImportsAjax()
+    {
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/json; charset=utf-8');
+        
+        $staff_id = $_SESSION['user_id'];
+        
+        // Gọi thẳng Model, không dính líu đến SQL nữa
+        $data = $this->model->getMyImports($staff_id);
+        
+        echo json_encode($data);
+        exit;
+    }
+
+    public function saveTempImportAjax()
+    {
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/json; charset=utf-8');
+
+        $ticket_id = $_POST['ticket_id'];
+        $detail_id = $_POST['detail_id'];
+        $variant_id = $_POST['variant_id'];
+        $actual_qty = $_POST['actual_qty'];
+        $status = 'SCANNED';
+        $disc_type = $_POST['discrepancy_type'];
+        $note = $_POST['note'];
+        $image = $_POST['scanned_image'];
+        $staff_id = $_SESSION['user_id'];
+
+        // Đẩy toàn bộ cục data xuống Model xử lý Transaction
+        $result = $this->model->saveTempImport(
+            $ticket_id, $detail_id, $variant_id, $actual_qty, $image, $status, $disc_type, $note, $staff_id
+        );
+
+        if ($result === true) {
+            echo json_encode(['status' => 'success']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => $result]); // Trả về mã lỗi DB nếu có
+        }
+        exit;
+    }
+
+    public function completeImportAjax()
+    {
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/json; charset=utf-8');
+        
+        $ticket_id = $_POST['ticket_id'];
+        $user_id = $_SESSION['user_id'];
+
+        if ($this->model->completeImportTicket($ticket_id, $user_id)) {
+            // Nếu Model báo thành công -> Bắn Pusher về cho Manager
+            $this->triggerManagerSync($ticket_id, 'COMPLETED', date('d/m/Y H:i'));
+            echo json_encode(['status' => 'success']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Lỗi chốt sổ kho.']);
+        }
+        exit;
+    }
+
+
+    // ======================================================
+    // CÁC HÀM AJAX XỬ LÝ NHẬP KHO AI (BẢNG TẠM)
+    // ======================================================
+
+    /**
+     * Chức năng: Khởi tạo quy trình nhập kho và chuẩn bị bảng tạm.
+     * Tác dụng: Chuyển trạng thái phiếu sang PROCESSING và đổ dữ liệu dự kiến vào staging area (ticket_import_temp) để bắt đầu quét AI.
+     */
+    public function startImportProcessAjax() 
+    {
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/json; charset=utf-8');
+
+        $ticket_id = $_POST['ticket_id'] ?? 0;
+        $res = $this->model->startImportProcess($ticket_id);
+        
+        echo json_encode(['success' => $res]);
+        exit;
+    }
+
+    /**
+     * Chức năng: Cập nhật số lượng thực nhập từ kết quả nhận diện AI vào bảng tạm.
+     * Tác dụng: Ghi nhận tăng số lượng thực tế, lưu vết ảnh quét và chặn các sản phẩm không nằm trong danh sách phiếu nhập.
+     */
+    public function updateTempImportAjax() 
+    {
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/json; charset=utf-8');
+
+        $ticket_id = $_POST['ticket_id'];
+        $variant_id = $_POST['variant_id'];
+        $image_url = $_POST['image_url'];
+
+        $res = $this->model->updateImportTemp($ticket_id, $variant_id, $image_url);
+        
+        if($res) {
+            echo json_encode(['success' => true, 'actual_qty' => $res['actual_qty']]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Sản phẩm này không có trong phiếu nhập!']);
+        }
+        exit;
+    }
+
+    /**
+     * Chức năng: Giảm số lượng thực nhập trong bảng tạm khi xóa ảnh lỗi.
+     * Tác dụng: Hỗ trợ tính năng "Undo" khi quét nhầm, đảm bảo đồng bộ số lượng thực tế giữa giao diện và Database bảng tạm.
+     */
+    public function decreaseTempImportAjax() 
+    {
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/json; charset=utf-8');
+
+        $ticket_id = $_POST['ticket_id'];
+        $variant_id = $_POST['variant_id'];
+        
+        $res = $this->model->decreaseImportTemp($ticket_id, $variant_id);
+        echo json_encode(['success' => (bool)$res]);
+        exit;
+    }
+
+    /**
+     * Chức năng: Chốt sổ phiếu nhập kho và cập nhật tồn kho chính thức.
+     * Tác dụng: Đồng bộ dữ liệu từ bảng tạm sang bảng chính, cộng kho vật lý, giải phóng bảng tạm và bắn tín hiệu Pusher Real-time cho Quản lý.
+     */
+    public function finalizeImportAjax() 
+    {
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/json; charset=utf-8');
+
+        $ticket_id = $_POST['ticket_id'];
+        $user_id = $_SESSION['user_id'];
+
+        $res = $this->model->finalizeImport($ticket_id, $user_id);
+        
+        if($res) {
+            // Bắn tín hiệu đồng bộ về màn hình Manager ngay khi hoàn tất
+            $completed_at = date('d/m/Y H:i');
+            $this->triggerManagerSync($ticket_id, 'COMPLETED', $completed_at);
+        }
+
+        echo json_encode(['success' => $res]);
+        exit;
+    }
 }

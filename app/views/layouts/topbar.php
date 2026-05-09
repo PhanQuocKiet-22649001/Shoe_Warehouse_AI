@@ -59,76 +59,130 @@ $allCategories = $cModel->getAll();
     </div>
 </div>
 
+<!-- modal nhập kho -->
 <div class="modal fade" id="addProductModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content shadow rounded-1">
             <div class="modal-header border-bottom flex-column align-items-start">
-                <div class="d-flex w-100 justify-content-between align-items-center mb-2">
-                    <h5 class="modal-title fw-bold text-white text-uppercase">Nhập kho với AI</h5>
+                <div class="d-flex w-100 justify-content-between align-items-center">
+                    <h5 class="modal-title fw-bold text-white text-uppercase">NHẬP KHO BẰNG TRÍ TUỆ NHÂN TẠO (AI)</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-
-                <ul class="nav nav-pills w-100 glass-tabs" id="importTabs" role="tablist">
-                    <li class="nav-item flex-fill text-center" role="presentation">
-                        <button class="nav-link active w-100 fw-bold" data-mode="ai" type="button">
-                            <i class="fas fa-robot me-2"></i>QUÉT AI (TỰ ĐỘNG)
-                        </button>
-                    </li>
-                    <li class="nav-item flex-fill text-center ms-2" role="presentation">
-                        <button class="nav-link w-100 fw-bold" data-mode="manual" type="button">
-                            <i class="fas fa-keyboard me-2"></i>NHẬP THỦ CÔNG
-                        </button>
-                    </li>
-                </ul>
             </div>
 
             <div class="modal-body p-0">
-                <div class="row g-0 d-flex">
+                <div class="row g-0 d-flex" style="min-height: 550px;">
 
-                    <div class="col-md-6 p-4 border-end-glass">
-                        <div class="text-start mb-4">
-                            <h6 class="fw-bold text-white pb-2 mb-3 border-bottom-glass">1. TẢI DỮ LIỆU ĐẦU VÀO</h6>
-                            <div class="upload-zone p-3 rounded-1 mb-2">
-                                <input type="file" id="ai_multi_files" class="d-none" multiple accept="image/*" onchange="previewSelectedImages(this)">
-
-                                <button type="button" class="btn btn-glass-confirm fw-bold w-100 mb-2 shadow-sm rounded-1" onclick="document.getElementById('ai_multi_files').click()">
-                                    CHỌN TỆP HÌNH ẢNH (TỐI ĐA 3)
-                                </button>
-                                <p class="text-white-50 mb-3" style="font-size: 12px; line-height: 1.4;">
-                                    *Lưu ý: Để chọn nhiều ảnh, vui lòng giữ phím Ctrl và click chọn các ảnh cùng lúc.
-                                </p>
-
-                                <button type="button" class="btn btn-glass-confirm w-100 fw-bold shadow-sm rounded-1" id="btn-scan-batch" onclick="executeBatchScan()">
-                                    BẮT ĐẦU XỬ LÝ
-                                </button>
-                            </div>
-                            <div id="pre_scan_preview" class="d-flex flex-wrap gap-2 mt-2"></div>
+                    <div class="col-md-5 p-4 border-end-glass" style="background: rgba(0,0,0,0.2); max-height: 650px; overflow-y: auto;">
+                        
+                        <div id="import_step_1">
+                            <h6 class="fw-bold text-white pb-2 mb-3 border-bottom-glass">
+                                <i class="fas fa-clipboard-list me-2"></i>PHIẾU NHẬP ĐANG CHỜ
+                            </h6>
+                            <div id="import_ticket_list" class="list-group gap-2"></div>
                         </div>
 
-                        <div id="post_scan_area" class="text-start d-none">
-                            <h6 class="fw-bold text-white pb-2 mb-3 border-bottom-glass">2. DANH SÁCH ĐÃ XỬ LÝ</h6>
-                            <p class="text-white-50 small fw-bold mb-2">Vui lòng click vào từng ảnh để thao tác:</p>
-                            <div id="scanned_thumbnails" class="d-flex flex-wrap gap-3 p-3 rounded-1"></div>
+                        <div id="import_step_2" class="d-none">
+                            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom-glass pb-2">
+                                <h6 class="fw-bold text-info mb-0" id="import_current_ticket_code">MÃ PHIẾU: ...</h6>
+                                <button class="btn btn-sm btn-outline-light py-0" onclick="backToImportTickets()">
+                                    <i class="fas fa-arrow-left me-1"></i>Đổi phiếu
+                                </button>
+                            </div>
+                            <p class="text-white-50 small mb-2">Hệ thống sẽ highlight dòng tương ứng khi AI nhận diện thành công:</p>
+                            <div id="import_ticket_items" class="d-flex flex-column gap-2 mb-3"></div>
+                            
+                            <button id="btn_complete_import" class="btn btn-success fw-bold w-100 py-2 d-none" onclick="completeImportTicket()">
+                                XÁC NHẬN HOÀN TẤT PHIẾU NÀY
+                            </button>
                         </div>
                     </div>
 
-                    <div class="col-md-6 p-4">
-                        <h6 class="fw-bold text-white pb-2 mb-3 text-uppercase border-bottom-glass">3. Khai Báo Biểu Mẫu Nhập Kho</h6>
-                        <div id="active_form_container" class="rounded-1 p-4 shadow-sm glass-inner-box" style="min-height: 400px;">
-                            <div class="text-center text-white-50 py-5 mt-4">
-                                <h4 class="mb-3 opacity-50 fw-bold">CHƯA CÓ DỮ LIỆU</h4>
-                                <p class="mb-0">Hệ thống đang chờ lệnh. Vui lòng tải tệp để tiếp tục.</p>
+                    <div class="col-md-7 p-4 d-flex flex-column position-relative">
+                        <div id="import_ai_upload_zone" class="mb-3 d-none">
+                            <h6 class="fw-bold text-white pb-2 mb-2 border-bottom-glass">1. TẢI ẢNH ĐẠI DIỆN THÙNG HÀNG</h6>
+                            <div class="d-flex gap-2">
+                                <input type="file" id="ai_import_files" class="d-none" multiple accept="image/*" onchange="previewImportImages(this)">
+                                <button type="button" class="btn btn-outline-info fw-bold btn-sm" onclick="document.getElementById('ai_import_files').click()">
+                                    <i class="fas fa-upload me-1"></i>CHỌN ẢNH (CTRL ĐỂ CHỌN NHIỀU)
+                                </button>
+                                <button type="button" id="btn-scan-import" class="btn btn-info text-dark fw-bold btn-sm d-none" onclick="executeImportScan()">
+                                    <i class="fas fa-magic me-1"></i>QUÉT AI
+                                </button>
                             </div>
+                            <div id="import_pre_scan_preview" class="d-flex flex-wrap gap-2 mt-2"></div>
+                            <div id="import_post_scan_area" class="d-flex flex-wrap gap-2 mt-2"></div>
                         </div>
-                    </div>
 
+                        <div id="import_form_zone" class="d-none flex-grow-1 flex-column p-3 rounded bg-dark border border-secondary">
+                            <h6 class="fw-bold text-warning pb-2 mb-3 border-bottom border-secondary text-uppercase">2. KẾT QUẢ SO KHỚP & NHẬP LIỆU</h6>
+                            <form id="form_temp_import" onsubmit="saveTempImport(event)">
+                                <div class="row g-2 mb-2">
+                                    <div class="col-6">
+                                        <label class="small text-white-50 fw-bold">HÃNG (AI NHẬN DIỆN)</label>
+                                        <input type="text" id="import_brand" class="form-control form-control-sm bg-black text-white" readonly>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="small text-white-50 fw-bold">MẪU GIÀY (AI NHẬN DIỆN)</label>
+                                        <input type="text" id="import_name" class="form-control form-control-sm bg-black text-white fw-bold" readonly>
+                                    </div>
+                                </div>
+
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label class="small text-info fw-bold">CHỌN MÀU (THEO PHIẾU)</label>
+                                        <select id="import_color" class="form-select form-select-sm fw-bold border-info" onchange="updateImportSizeDropdown()" required></select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="small text-info fw-bold">CHỌN SIZE (THEO PHIẾU)</label>
+                                        <select id="import_size" class="form-select form-select-sm fw-bold border-info" onchange="autoFillImportQty()" required disabled>
+                                            <option value="">-- Chọn màu trước --</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="p-2 bg-black rounded mb-3 border border-secondary">
+                                    <div class="row align-items-center">
+                                        <div class="col-4">
+                                            <label class="small text-white-50 fw-bold mb-1">SỐ LƯỢNG YÊU CẦU</label>
+                                            <input type="number" id="import_expected_qty" class="form-control form-control-sm bg-dark text-warning fw-bold text-center" readonly>
+                                        </div>
+                                        <div class="col-4">
+                                            <label class="small text-white fw-bold mb-1">THỰC TẾ ĐẾM ĐƯỢC</label>
+                                            <input type="number" id="import_actual_qty" name="actual_qty" class="form-control form-control-sm text-center fw-bold" required min="0" oninput="checkImportDiscrepancy()">
+                                        </div>
+                                        <div class="col-4">
+                                            <label class="small text-white-50 fw-bold mb-1">TÌNH TRẠNG LÔ HÀNG</label>
+                                            <div id="import_status_badge" class="badge bg-secondary w-100 p-2">CHƯA NHẬP DỮ LIỆU</div>
+                                            <input type="hidden" id="import_discrepancy_type" name="discrepancy_type" value="MATCH">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="small text-white-50 fw-bold">GHI CHÚ (NẾU CÓ SAI LỆCH)</label>
+                                    <textarea name="note" id="import_note" class="form-control form-control-sm bg-dark text-white" rows="2" placeholder="Ví dụ: Rách hộp, thiếu hàng do NSX..."></textarea>
+                                </div>
+
+                                <input type="hidden" id="import_variant_id" name="variant_id">
+                                <input type="hidden" id="import_detail_id" name="detail_id">
+                                <input type="hidden" id="import_temp_image" name="scanned_image">
+
+                                <button type="submit" id="btn_save_temp" class="btn btn-info text-dark fw-bold w-100 py-2">LƯU NHÁP BIẾN THỂ NÀY</button>
+                            </form>
+                        </div>
+                        
+                        <div id="import_right_default" class="text-center text-white-50 m-auto">
+                            <i class="fas fa-boxes fa-3x mb-3 opacity-25"></i>
+                            <p>Chọn phiếu nhập để bắt đầu quy trình AI</p>
+                        </div>
+
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-
 
 <!-- modal xuất kho -->
 <div class="modal fade" id="exportAIModal" tabindex="-1" aria-hidden="true">

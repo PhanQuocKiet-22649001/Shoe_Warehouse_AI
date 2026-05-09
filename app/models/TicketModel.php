@@ -181,20 +181,20 @@ class TicketModel
     }
 
     public function updateStaffInTicket($ticket_id, $new_staff_id)
-{
-    // BỔ SUNG: Lấy ID nhân viên hiện tại trước khi ghi đè người mới
-    $sqlGet = "SELECT staff_id FROM tickets WHERE ticket_id = $1";
-    $resGet = pg_query_params($this->conn, $sqlGet, [$ticket_id]);
-    $old_staff_id = pg_fetch_result($resGet, 0, 'staff_id');
+    {
+        // BỔ SUNG: Lấy ID nhân viên hiện tại trước khi ghi đè người mới
+        $sqlGet = "SELECT staff_id FROM tickets WHERE ticket_id = $1";
+        $resGet = pg_query_params($this->conn, $sqlGet, [$ticket_id]);
+        $old_staff_id = pg_fetch_result($resGet, 0, 'staff_id');
 
-    $sql = "UPDATE tickets 
+        $sql = "UPDATE tickets 
             SET staff_id = $1 
             WHERE ticket_id = $2 AND status = 'PENDING' AND is_deleted = false";
-    $result = pg_query_params($this->conn, $sql, [$new_staff_id, $ticket_id]);
-    
-    // TRẢ VỀ ID CŨ thay vì true
-    return $result ? $old_staff_id : false;
-}
+        $result = pg_query_params($this->conn, $sql, [$new_staff_id, $ticket_id]);
+
+        // TRẢ VỀ ID CŨ thay vì true
+        return $result ? $old_staff_id : false;
+    }
 
     // ĐÃ NÂNG CẤP: Giải phóng reserved_stock khi Hủy Phiếu
     public function softDeleteTicket($ticket_id)
@@ -272,11 +272,12 @@ class TicketModel
         return $items;
     }
 
+    //đếm số lượng phiếu bắn thông báo
     public function getPendingCounts($staff_id)
     {
         $sql = "SELECT ticket_type, COUNT(*) as total 
             FROM tickets 
-            WHERE staff_id = $1 AND status IN ('PENDING', 'PAUSED') AND is_deleted = false 
+            WHERE staff_id = $1 AND status IN ('PENDING', 'PAUSED', 'PROCESSING') AND is_deleted = false 
             GROUP BY ticket_type";
 
         $result = pg_query_params($this->conn, $sql, [$staff_id]);
@@ -424,5 +425,158 @@ class TicketModel
 
         $result = pg_query_params($this->conn, $sql, $params);
         return $result ? (pg_fetch_all($result) ?: []) : [];
+    }
+
+
+
+    // ======================================================
+    // CÁC HÀM XỬ LÝ NHẬP KHO AI (BẢNG TẠM)
+    // ======================================================
+
+    public function getMyImports($staff_id)
+    {
+        $sql = "SELECT ticket_id, ticket_code, status, created_at 
+                FROM tickets 
+                WHERE staff_id = $1 AND ticket_type = 'IMPORT' AND status IN ('PENDING', 'PROCESSING', 'PAUSED') AND is_deleted = false 
+                ORDER BY created_at DESC";
+
+        $res = pg_query_params($this->conn, $sql, [$staff_id]);
+        return $res ? (pg_fetch_all($res) ?: []) : [];
+    }
+
+    public function saveTempImport($ticket_id, $detail_id, $variant_id, $actual_qty, $image, $status, $disc_type, $note, $staff_id)
+    {
+        pg_query($this->conn, "BEGIN");
+        try {
+            // Lấy expected_qty từ phiếu gốc
+            $sqlGetQty = "SELECT quantity FROM ticket_details WHERE detail_id = $1";
+            $resQty = pg_query_params($this->conn, $sqlGetQty, [$detail_id]);
+            $expected_qty = pg_fetch_result($resQty, 0, 'quantity');
+
+            // Lưu vào bảng tạm ticket_import_temp
+            $sqlTemp = "INSERT INTO ticket_import_temp 
+                        (ticket_id, variant_id, expected_qty, actual_qty, scanned_image, status, discrepancy_type, note, staff_id) 
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)";
+            pg_query_params($this->conn, $sqlTemp, [
+                $ticket_id,
+                $variant_id,
+                $expected_qty,
+                $actual_qty,
+                $image,
+                $status,
+                $disc_type,
+                $note,
+                $staff_id
+            ]);
+
+            // Cập nhật CỘNG DỒN processed_qty ở ticket_details để thanh tiến trình chạy
+            $sqlUpdateDetail = "UPDATE ticket_details SET processed_qty = COALESCE(processed_qty, 0) + $1 WHERE detail_id = $2";
+            pg_query_params($this->conn, $sqlUpdateDetail, [$actual_qty, $detail_id]);
+
+            pg_query($this->conn, "COMMIT");
+            return true;
+        } catch (Exception $e) {
+            pg_query($this->conn, "ROLLBACK");
+            return $e->getMessage();
+        }
+    }
+
+    public function completeImportTicket($ticket_id, $user_id)
+    {
+        pg_query($this->conn, "BEGIN");
+        try {
+            // 1. Đọc dữ liệu từ bảng tạm để cộng vô kho thực tế
+            $sqlTemp = "SELECT variant_id, SUM(actual_qty) as total_act FROM ticket_import_temp WHERE ticket_id = $1 GROUP BY variant_id";
+            $resTemp = pg_query_params($this->conn, $sqlTemp, [$ticket_id]);
+
+            if ($resTemp) {
+                while ($row = pg_fetch_assoc($resTemp)) {
+                    $v_id = $row['variant_id'];
+                    $qty = $row['total_act'];
+
+                    // Cập nhật tồn kho bảng product_variants
+                    pg_query_params($this->conn, "UPDATE product_variants SET stock = stock + $1 WHERE variant_id = $2", [$qty, $v_id]);
+
+                    // Ghi log Transaction
+                    pg_query_params($this->conn, "INSERT INTO transactions (transaction_type, variant_id, quantity, user_id, reference_id) VALUES ('IMPORT', $1, $2, $3, $4)", [$v_id, $qty, $user_id, "TICKET-$ticket_id"]);
+                }
+            }
+
+            // 2. Chốt phiếu và xóa bảng tạm
+            pg_query_params($this->conn, "UPDATE tickets SET status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP WHERE ticket_id = $1", [$ticket_id]);
+            pg_query_params($this->conn, "DELETE FROM ticket_import_temp WHERE ticket_id = $1", [$ticket_id]);
+
+            pg_query($this->conn, "COMMIT");
+            return true;
+        } catch (Exception $e) {
+            pg_query($this->conn, "ROLLBACK");
+            return false;
+        }
+    }
+
+
+    // 1. Khởi tạo bảng tạm khi nhấn "Bắt đầu"
+    public function startImportProcess($ticket_id)
+    {
+        pg_query($this->conn, "BEGIN");
+        try {
+            // Đổi trạng thái phiếu chính
+            pg_query_params($this->conn, "UPDATE tickets SET status = 'PROCESSING' WHERE ticket_id = $1", [$ticket_id]);
+
+            // Đổ dữ liệu dự kiến vào bảng temp (Dùng ON CONFLICT để nếu bấm lại không bị lỗi trùng)
+            $sql = "INSERT INTO ticket_import_temp (ticket_id, variant_id, expected_qty, actual_qty)
+                SELECT ticket_id, variant_id, quantity, 0 
+                FROM ticket_details WHERE ticket_id = $1
+                ON CONFLICT (ticket_id, variant_id) DO NOTHING";
+            pg_query_params($this->conn, $sql, [$ticket_id]);
+
+            pg_query($this->conn, "COMMIT");
+            return true;
+        } catch (Exception $e) {
+            pg_query($this->conn, "ROLLBACK");
+            return false;
+        }
+    }
+
+    // 2. AI quét trúng -> Cập nhật actual_qty (Chỉ update nếu variant_id có trong phiếu)
+    public function updateImportTemp($ticket_id, $variant_id, $image_url)
+    {
+        $sql = "UPDATE ticket_import_temp 
+            SET actual_qty = actual_qty + 1, scanned_image = $3
+            WHERE ticket_id = $1 AND variant_id = $2 
+            RETURNING actual_qty";
+        $res = pg_query_params($this->conn, $sql, [$ticket_id, $variant_id, $image_url]);
+        return $res ? pg_fetch_assoc($res) : false; // Trả về false nếu hàng không có trong phiếu
+    }
+
+    // 3. Nhấn X -> Trừ bớt 1 số lượng trong bảng tạm
+    public function decreaseImportTemp($ticket_id, $variant_id)
+    {
+        $sql = "UPDATE ticket_import_temp 
+            SET actual_qty = GREATEST(actual_qty - 1, 0)
+            WHERE ticket_id = $1 AND variant_id = $2";
+        return pg_query_params($this->conn, $sql, [$ticket_id, $variant_id]);
+    }
+
+    // 4. Chốt phiếu (Xóa bảng tạm, cập nhật tồn kho thật)
+    public function finalizeImport($ticket_id, $user_id)
+    {
+        pg_query($this->conn, "BEGIN");
+        try {
+            $res = pg_query_params($this->conn, "SELECT variant_id, actual_qty FROM ticket_import_temp WHERE ticket_id = $1", [$ticket_id]);
+            while ($row = pg_fetch_assoc($res)) {
+                // Cộng kho thật
+                pg_query_params($this->conn, "UPDATE product_variants SET stock = stock + $1 WHERE variant_id = $2", [$row['actual_qty'], $row['variant_id']]);
+                // Cập nhật số lượng thực tế vào phiếu chính
+                pg_query_params($this->conn, "UPDATE ticket_details SET processed_qty = $1 WHERE ticket_id = $2 AND variant_id = $3", [$row['actual_qty'], $ticket_id, $row['variant_id']]);
+            }
+            pg_query_params($this->conn, "UPDATE tickets SET status = 'COMPLETE', completed_at = CURRENT_TIMESTAMP WHERE ticket_id = $1", [$ticket_id]);
+            pg_query_params($this->conn, "DELETE FROM ticket_import_temp WHERE ticket_id = $1", [$ticket_id]);
+            pg_query($this->conn, "COMMIT");
+            return true;
+        } catch (Exception $e) {
+            pg_query($this->conn, "ROLLBACK");
+            return false;
+        }
     }
 }
