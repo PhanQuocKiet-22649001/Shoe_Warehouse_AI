@@ -281,7 +281,7 @@ foreach ($suggestions as $s) {
                                         <td class="text-muted fst-italic">Trống</td>
                                     <?php endif; ?>
 
-                                    <?php if ($t['status'] === 'COMPLETED' && !empty($t['completed_at'])): ?>
+                                   <?php if (in_array($t['status'], ['COMPLETED', 'MISSING', 'EXCESS']) && !empty($t['completed_at'])): ?>
                                         <td class="text-success fw-bold ticket-time-cell"><?= date('d/m/Y H:i', strtotime($t['completed_at'])) ?></td>
                                     <?php else: ?>
                                         <td class="text-muted fst-italic ticket-time-cell">-</td>

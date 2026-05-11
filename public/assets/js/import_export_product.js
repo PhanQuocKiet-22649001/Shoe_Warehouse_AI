@@ -4,10 +4,10 @@
 
 let currentImportTicketId = null;
 let currentImportTicketCode = "";
-let importTicketItems = []; // Danh sách giày trong phiếu nhập
-let importScannedData = []; // Kết quả AI trả về
+let importTicketItems = []; 
+let importScannedData = []; 
 let importSelectedFiles = [];
-let activeScannedIndex = -1; // Tấm ảnh đang được thao tác
+let activeScannedIndex = -1; 
 
 document.getElementById('addProductModal').addEventListener('show.bs.modal', loadMyImportTickets);
 
@@ -80,31 +80,52 @@ function renderImportItemsUI() {
     container.innerHTML = importTicketItems.map(item => {
         const qty = parseInt(item.quantity);
         const processed = parseInt(item.processed_qty) || 0;
+        
+        let badgeClass = 'bg-danger'; 
+        let statusTag = '';
+
+        if (processed > 0) {
+            if (processed === qty) {
+                badgeClass = 'bg-success';
+                statusTag = '<span class="text-success small fw-bold"><i class="fas fa-check-circle"></i> ĐỦ HÀNG</span>';
+            } else if (processed < qty) {
+                badgeClass = 'bg-warning text-dark';
+                statusTag = '<span class="text-warning small fw-bold"><i class="fas fa-exclamation-triangle"></i> THIẾU HÀNG</span>';
+            } else {
+                badgeClass = 'bg-info text-dark';
+                statusTag = '<span class="text-info small fw-bold"><i class="fas fa-exclamation-circle"></i> DƯ HÀNG</span>';
+            }
+        }
+
         const isDone = processed >= qty;
         if (!isDone) allDone = false;
 
+        // Chỉ cho phép click nếu đôi giày đó ĐÃ ĐƯỢC QUÉT (processed > 0)
+        let rowClass = processed > 0 ? 'bg-success bg-opacity-10 border-secondary cursor-pointer' : 'bg-dark border-secondary';
+        let clickEvent = processed > 0 ? `onclick="editImportItem(${item.variant_id})"` : '';
+
         return `
-            <div id="import_row_${item.variant_id}" class="p-3 rounded border ${isDone ? 'bg-success bg-opacity-25 border-success' : 'bg-dark border-secondary'} transition-all">
+            <div id="import_row_${item.variant_id}" class="p-3 rounded border ${rowClass} transition-all" ${clickEvent}>
                 <div class="d-flex align-items-center">
                     <img src="assets/img_product/${item.product_image || 'default_shoe.png'}" class="rounded me-3 border border-secondary bg-white" style="width: 50px; height: 50px; object-fit: contain;">
                     <div class="flex-grow-1">
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="fw-bold small ${isDone ? 'text-success' : 'text-white'}">${item.product_name}</span>
-                            <span class="badge ${isDone ? 'bg-success' : 'bg-danger'}">${processed} / ${qty}</span>
+                            <span class="fw-bold small ${processed > 0 ? 'text-success' : 'text-white'}">${item.product_name}</span>
+                            <span class="badge ${badgeClass}">${processed} / ${qty}</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-end">
                             <div class="small text-white-50">
                                 Size: <strong class="text-white">${item.size}</strong> | Màu: <strong class="text-white">${item.color}</strong>
                             </div>
-                            ${isDone ? '<span class="text-success small fw-bold"><i class="fas fa-check-circle"></i> Xong</span>' : ''}
+                            ${statusTag}
                         </div>
                     </div>
                 </div>
             </div>
         `;
     }).join('');
-
-    if (allDone && importTicketItems.length > 0) {
+// thêm if (allDone && importTicketItems.length > 0) nếu muốn nhập hết mới  hiện nút
+    if (importTicketItems.length > 0) {
         document.getElementById('btn_complete_import').classList.remove('d-none');
     } else {
         document.getElementById('btn_complete_import').classList.add('d-none');
@@ -168,7 +189,17 @@ function renderImportPostScan() {
     }).join('');
 }
 
+
+// =========================================================================
 // 4. SO KHỚP AI, ĐÁNH GIÁ % VÀ HIGHLIGHT PHIẾU
+// =========================================================================
+
+function getNormalizedScore(match) {
+    let s = parseFloat(match.similarity_score || match.score || 0);
+    if (isNaN(s)) return 0;
+    return s <= 1 ? s * 100 : s;
+}
+
 function processAIResult(index) {
     activeScannedIndex = index;
     renderImportPostScan(); 
@@ -178,7 +209,7 @@ function processAIResult(index) {
     if (matches.length === 0) return alert("AI không nhận diện được bất kỳ mẫu giày nào!");
 
     // ÉP SẮP XẾP GIẢM DẦN BẢO ĐẢM TỈ LỆ CAO NHẤT NẰM TRÊN CÙNG
-    matches.sort((a, b) => (parseFloat(b.similarity_score || b.score || 0)) - (parseFloat(a.similarity_score || a.score || 0)));
+    matches.sort((a, b) => getNormalizedScore(b) - getNormalizedScore(a));
 
     // Ẩn Form điền và xóa vùng gợi ý cũ (nếu có)
     document.getElementById('import_form_zone').classList.remove('d-flex');
@@ -192,8 +223,7 @@ function processAIResult(index) {
     });
 
     const topMatch = matches[0]; 
-    
-    const topScore = parseFloat(topMatch.similarity_score || 0) * 100;
+    const topScore = getNormalizedScore(topMatch);
 
     // Dưới 80% -> Từ chối
     if (topScore < 80) {
@@ -204,22 +234,13 @@ function processAIResult(index) {
     // Từ 95% trở lên -> Khớp 100%
     if (topScore >= 95) {
         let isSuccess = autoProcessMatch(topMatch, aiItem.temp_image);
-        if (isSuccess) {
-            alert(`Thành công! Khớp ảnh kho 100% (Gốc: ${topScore.toFixed(1)}%)`);
-        }
-    } 
-    // Gợi ý (80% - 94.9%)
-    else {
+        if (isSuccess) alert(`Thành công! Khớp ảnh kho (Gốc: ${topScore.toFixed(1)}%)`);
+    } else {
         renderSuggestionDropdown(matches, aiItem.temp_image);
     }
 }
 
-// =========================================================================
-// BỔ SUNG: 3 HÀM HỖ TRỢ XỬ LÝ % KHỚP ẢNH BỊ THIẾU
-// Tác dụng: Xử lý điền form tự động và render danh sách gợi ý
-// =========================================================================
-
-// 4.1 HÀM TỰ ĐỘNG ĐIỀN FORM VÀ HIGHLIGHT (Có chặn hàng ngoài phiếu)
+// 4.1 Hàm điền dữ liệu (Có chặn hàng ngoài phiếu)
 function autoProcessMatch(matchData, tempImage) {
     const aiBrand = (matchData.brand || "").toLowerCase();
     const aiName = (matchData.product_name || matchData.model || matchData.name || "").toLowerCase();
@@ -241,6 +262,15 @@ function autoProcessMatch(matchData, tempImage) {
     document.getElementById('import_brand').value = matchData.brand || "";
     document.getElementById('import_name').value = matchData.product_name || matchData.model || matchData.name || "";
 
+    // Quét dọn sạch sẽ Ghi chú và Form của lần trước
+    if (document.getElementById('import_note')) document.getElementById('import_note').value = '';
+    document.getElementById('import_actual_qty').value = '';
+    document.getElementById('import_expected_qty').value = '';
+    const badge = document.getElementById('import_status_badge');
+    badge.className = 'badge bg-secondary w-100 p-2';
+    badge.innerText = 'CHƯA NHẬP DỮ LIỆU';
+    document.getElementById('import_discrepancy_type').value = 'MATCH';
+
     matchedTicketItems.forEach(item => {
         let row = document.getElementById(`import_row_${item.variant_id}`);
         if(row) row.classList.add('bg-info', 'bg-opacity-25', 'border-info');
@@ -260,10 +290,10 @@ function autoProcessMatch(matchData, tempImage) {
     return true; 
 }
 
-// 4.2 HÀM TẠO MENU DROPDOWN VÀ SHOW TOÀN BỘ ẢNH BÊN TRONG DROPDOWN (BOOTSTRAP CUSTOM)
+// 4.2 HÀM TẠO MENU DROPDOWN VÀ SHOW TOÀN BỘ ẢNH BÊN TRONG DROPDOWN
 function renderSuggestionDropdown(matches, tempImage) {
-    let validMatches = matches.filter(m => (parseFloat(m.similarity_score || m.score || 0) * 100) >= 80);
-    validMatches.sort((a, b) => (parseFloat(b.similarity_score || b.score || 0)) - (parseFloat(a.similarity_score || a.score || 0)));
+    let validMatches = matches.filter(m => getNormalizedScore(m) >= 80);
+    validMatches.sort((a, b) => getNormalizedScore(b) - getNormalizedScore(a));
     
     let container = document.getElementById('import_suggestion_container');
     if (!container) {
@@ -277,7 +307,7 @@ function renderSuggestionDropdown(matches, tempImage) {
     let listItemsHtml = '';
 
     validMatches.forEach((m, idx) => {
-        let score = (parseFloat(m.similarity_score || m.score || 0) * 100).toFixed(1);
+        let score = getNormalizedScore(m).toFixed(1);
         let mBrand = (m.brand || "").toLowerCase();
         let mName = (m.product_name || m.model || m.name || "").toLowerCase();
         
@@ -286,7 +316,7 @@ function renderSuggestionDropdown(matches, tempImage) {
         
         let cleanObj = { brand: m.brand, product_name: m.product_name || m.model || m.name, product_image: m.product_image || 'default_shoe.png' };
         let valStr = JSON.stringify(cleanObj).replace(/'/g, "&#39;"); 
-        let displayText = `[${score}%] - ${m.brand} ${cleanObj.product_name} (${mark})`;
+        let displayText = `[${score}%] - ${m.brand} ${cleanObj.product_name}`;
 
         // TẠO HTML CÁC DÒNG BÊN TRONG DROPDOWN (CÓ KÈM HÌNH ẢNH)
         listItemsHtml += `
@@ -297,7 +327,10 @@ function renderSuggestionDropdown(matches, tempImage) {
                    data-val='${valStr}'
                    onclick="selectCustomSuggestion(this)">
                     <img src="assets/img_product/${cleanObj.product_image}" class="rounded bg-white me-3 border border-secondary" style="width: 45px; height: 45px; object-fit: contain;">
-                    <span class="text-wrap small fw-bold" style="white-space: normal;">${displayText}</span>
+                    <div class="d-flex flex-column">
+                        <span class="small fw-bold text-wrap" style="white-space: normal;">${displayText}</span>
+                        <span class="text-warning small" style="font-size: 0.7rem;">${mark}</span>
+                    </div>
                 </a>
             </li>
         `;
@@ -312,57 +345,71 @@ function renderSuggestionDropdown(matches, tempImage) {
         `;
     });
 
-    // Thêm CSS hover cho dropdown item cho đẹp
+    let actualScanImgUrl = URL.createObjectURL(importSelectedFiles[activeScannedIndex]);
     const customStyle = `<style>.custom-hover-dropdown:hover { background-color: #343a40 !important; }</style>`;
 
     container.innerHTML = customStyle + `
     <div class="p-3 bg-black border border-warning rounded" style="border-style: dashed !important;">
-        <div class="text-warning small fw-bold mb-2"><i class="fas fa-exclamation-triangle me-1"></i> AI phân vân. Danh sách ảnh gần giống (Xếp % giảm dần):</div>
+        <div class="text-warning small fw-bold mb-3"><i class="fas fa-exclamation-triangle me-1"></i> AI phân vân. Vui lòng chọn mẫu khớp nhất:</div>
         
         <div class="d-flex flex-wrap align-items-center mb-3 pb-2 border-bottom border-secondary">
             ${imagesHtml}
         </div>
 
-        <div class="dropdown w-100 mb-3">
-            <button class="btn btn-dark border-secondary w-100 dropdown-toggle d-flex justify-content-between align-items-center text-start px-3 py-2" type="button" id="customSuggestionBtn" data-bs-toggle="dropdown" aria-expanded="false">
-                <span class="text-white-50">-- Bấm vào đây để chọn mẫu gần giống --</span>
-            </button>
-            <ul class="dropdown-menu w-100 bg-dark border border-secondary p-0 shadow" style="max-height: 250px; overflow-y: auto;">
-                ${listItemsHtml}
-            </ul>
+        <div class="d-flex align-items-center mb-3">
+   
+            <div class="flex-grow-1">
+                <div class="dropdown w-100">
+                    <button class="btn btn-dark border-secondary w-100 dropdown-toggle d-flex justify-content-between align-items-center text-start px-3 py-2" type="button" id="customSuggestionBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span id="customSuggestionBtnText" class="text-white-50">-- Bấm chọn mẫu --</span>
+                    </button>
+                    <ul class="dropdown-menu w-100 bg-dark border border-secondary p-0 shadow" style="max-height: 250px; overflow-y: auto;">
+                        ${listItemsHtml}
+                    </ul>
+                </div>
+                <input type="hidden" id="import_suggestion_value" value="">
+            </div>
         </div>
-        
-        <input type="hidden" id="import_suggestion_value" value="">
-
         <button class="btn btn-warning btn-sm w-100 fw-bold" onclick="confirmSuggestedMatch('${tempImage}')">XÁC NHẬN MẪU ĐÃ CHỌN</button>
     </div>`;
 }
 
-// 4.3 CÁC HÀM XỬ LÝ LỰA CHỌN DROPDOWN
+// 4.3 CÁC HÀM XỬ LÝ LỰA CHỌN DROPDOWN (ĐÃ FIX LỖI TÌM ẢNH)
 window.selectCustomSuggestion = function(element) {
-    const btn = document.getElementById('customSuggestionBtn');
     const hiddenInput = document.getElementById('import_suggestion_value');
+    if (hiddenInput) {
+        hiddenInput.value = element.getAttribute('data-val');
+    }
     
-    // Lưu value JSON vào ô ẩn
-    hiddenInput.value = element.getAttribute('data-val');
+    // Đổi ảnh preview an toàn
+    const parsedData = JSON.parse(element.getAttribute('data-val'));
+    const previewImg = document.getElementById('import_suggestion_preview_img');
+    if (previewImg) {
+        previewImg.src = `assets/img_product/${parsedData.product_image}`;
+    }
     
-    // Copy luôn nguyên cục HTML (ảnh + chữ) từ option được chọn bỏ lên mặt Nút Dropdown
-    btn.innerHTML = `<div class="d-flex align-items-center w-100 pe-3">${element.innerHTML}</div>`;
+    // Cập nhật text trên nút bấm
+    const textSpan = element.querySelector('span.fw-bold');
+    const btnText = document.getElementById('customSuggestionBtnText');
+    if (textSpan && btnText) {
+        btnText.innerText = textSpan.innerText;
+        btnText.className = "text-white fw-bold text-truncate";
+    }
 };
 
 window.selectSuggestionImage = function(index) {
-    // Khi bấm vào cái hình nhỏ ở trên thì tự động kích hoạt cái Dropdown ở dưới luôn
     const targetItem = document.getElementById(`suggestion_item_${index}`);
     if(targetItem) targetItem.click();
 };
 
 window.confirmSuggestedMatch = function(tempImage) {
     const hiddenInput = document.getElementById('import_suggestion_value');
-    if (!hiddenInput.value) return alert("Vui lòng chọn 1 mẫu từ danh sách hoặc click vào hình!");
+    if (!hiddenInput || !hiddenInput.value) return alert("Vui lòng chọn 1 mẫu từ danh sách hoặc click vào hình!");
     
     let isSuccess = autoProcessMatch(JSON.parse(hiddenInput.value), tempImage); 
     if(isSuccess) {
-        document.getElementById('import_suggestion_container').innerHTML = ''; 
+        let container = document.getElementById('import_suggestion_container');
+        if (container) container.innerHTML = ''; 
     }
 }
 // =========================================================================
@@ -398,7 +445,7 @@ function updateImportSizeDropdown() {
     });
 }
 
-// 6. AUTO FILL SỐ LƯỢNG & THU HẸP HIGHLIGHT (3 YẾU TỐ)
+// 6. AUTO FILL SỐ LƯỢNG & THU HẸP HIGHLIGHT
 function autoFillImportQty() {
     const sizeSelect = document.getElementById('import_size');
     const selectedOption = sizeSelect.options[sizeSelect.selectedIndex];
@@ -412,9 +459,6 @@ function autoFillImportQty() {
         document.getElementById('import_detail_id').value = selectedOption.getAttribute('data-detail-id');
         document.getElementById('import_variant_id').value = targetVariantId;
 
-        // --- LOGIC TẮT SÁNG CÁC DÒNG KHÔNG KHỚP TUYỆT ĐỐI ---
-        
-        // 1. Tắt hết highlight của cả mẫu này trước
         window.currentMatchedItems.forEach(item => {
             let row = document.getElementById(`import_row_${item.variant_id}`);
             if(row) {
@@ -422,7 +466,6 @@ function autoFillImportQty() {
             }
         });
 
-        // 2. Chỉ cho dòng khớp tuyệt đối 3 yếu tố sáng lên
         let activeRow = document.getElementById(`import_row_${targetVariantId}`);
         if(activeRow) {
             activeRow.classList.add('bg-info', 'bg-opacity-25', 'border-info');
@@ -454,9 +497,18 @@ function checkImportDiscrepancy() {
     }
 }
 
-// 7. LƯU BẢNG TẠM
+// 7. LƯU BẢNG TẠM (CÓ ALERT CONFIRM NẾU DƯ/THIẾU HÀNG)
 async function saveTempImport(e) {
     e.preventDefault();
+    
+    const exp = parseInt(document.getElementById('import_expected_qty').value) || 0;
+    const act = parseInt(document.getElementById('import_actual_qty').value) || 0;
+    
+    if (act !== exp) {
+        let msg = act < exp ? `Phát hiện THIẾU ${exp - act} đôi.` : `Phát hiện DƯ ${act - exp} đôi.`;
+        if (!confirm(`${msg}\nBạn có chắc chắn muốn ghi nhận số lượng thực tế là ${act} không?`)) return;
+    }
+
     const form = e.target;
     const btn = document.getElementById('btn_save_temp');
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ĐANG LƯU...';
@@ -470,31 +522,35 @@ async function saveTempImport(e) {
         const data = await res.json();
         
         if(data.status === 'success') {
-            // Cập nhật mảng local và UI bên trái
             loadImportTicketItems(); 
             
-            // Đánh dấu ảnh này đã nhập xong nếu không còn size/màu nào của model này
-            window.currentMatchedItems = window.currentMatchedItems.filter(i => i.detail_id != fd.get('detail_id'));
-            if(window.currentMatchedItems.length === 0) {
-                importScannedData[activeScannedIndex].is_done = true;
+            // ĐÃ FIX: Chỉ đánh dấu "Ảnh quét xong" nếu là dữ liệu quét từ AI (activeScannedIndex > -1)
+            if (window.currentMatchedItems && activeScannedIndex !== -1) {
+                window.currentMatchedItems = window.currentMatchedItems.filter(i => i.detail_id != fd.get('detail_id'));
+                if(window.currentMatchedItems.length === 0 && importScannedData[activeScannedIndex]) {
+                    importScannedData[activeScannedIndex].is_done = true;
+                }
             }
             
-            // Xóa form, ép chọn ảnh tiếp
             document.getElementById('import_form_zone').classList.remove('d-flex');
             document.getElementById('import_form_zone').classList.add('d-none');
-            renderImportPostScan();
+            
+            // Trả lại vùng hiển thị ảnh AI nếu đang xài AI
+            if (activeScannedIndex !== -1) renderImportPostScan();
             
         } else { alert("Lỗi: " + data.message); }
-    } catch(err) { alert("Lỗi mạng!"); }
-    finally {
+    } catch(err) { 
+        alert("Lỗi kết nối ngầm!"); 
+        console.error(err);
+    } finally {
         btn.innerHTML = 'LƯU NHÁP BIẾN THỂ NÀY';
         btn.disabled = false;
     }
 }
 
-// 8. CHỐT SỔ CUỐI CÙNG
+// 8. CHỐT SỔ CUỐI CÙNG (CÓ CONFIRM GHI NHẬN TRẠNG THÁI)
 async function completeImportTicket() {
-    if (!confirm("Hệ thống sẽ cộng tồn kho chính thức, đóng phiếu và xóa bảng tạm. Bạn chắc chắn chứ?")) return;
+    if (!confirm("Hệ thống sẽ cập nhật kho theo SỐ LƯỢNG THỰC TẾ và ghi nhận trạng thái (KHỚP / THIẾU / DƯ). Bạn chắc chắn chốt phiếu?")) return;
 
     const btn = document.getElementById('btn_complete_import');
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ĐANG XỬ LÝ...';
@@ -508,7 +564,8 @@ async function completeImportTicket() {
         const data = await res.json();
 
         if (data.status === 'success') {
-            alert("NHẬP KHO THÀNH CÔNG!");
+            // Sửa lại alert để hứng final_status nếu phía Server có trả về
+            alert(`NHẬP KHO THÀNH CÔNG!\nTrạng thái phiếu: ${data.final_status || 'Hoàn tất'}`);
             window.location.reload();
         } else {
             alert("Lỗi: " + data.message);
@@ -813,4 +870,51 @@ async function completeExportTicket() {
     } catch (e) {
         alert("Lỗi hệ thống.");
     }
+}
+
+
+// =========================================================================
+// HÀM MỚI: BẤM VÀO DANH SÁCH BÊN TRÁI ĐỂ SỬA TAY 
+// =========================================================================
+function editImportItem(variantId) {
+    const item = importTicketItems.find(i => i.variant_id == variantId);
+    
+    // ĐÃ FIX (CHỐT CHẶN BẢO MẬT): Nếu không tìm thấy, HOẶC chưa từng quét (processed = 0) thì CẤM SỬA TAY!
+    if (!item || parseInt(item.processed_qty || 0) === 0) {
+        return; 
+    }
+
+    window.currentMatchedItems = [item];
+    activeScannedIndex = -1; 
+
+    document.getElementById('import_form_zone').classList.remove('d-none');
+    document.getElementById('import_form_zone').classList.add('d-flex');
+    
+    document.getElementById('import_brand').value = item.brand || "";
+    document.getElementById('import_name').value = item.product_name || "";
+    document.getElementById('import_temp_image').value = item.product_image || "default_shoe.png"; 
+
+    const colorDropdown = document.getElementById('import_color');
+    const sizeDropdown = document.getElementById('import_size');
+    
+    colorDropdown.innerHTML = `<option value="${item.color}">${item.color}</option>`;
+    sizeDropdown.innerHTML = `<option value="${item.size}" data-detail-id="${item.detail_id}" data-variant-id="${item.variant_id}" data-qty="${item.quantity}">Size ${item.size}</option>`;
+    sizeDropdown.disabled = false;
+
+    document.getElementById('import_expected_qty').value = item.quantity;
+    document.getElementById('import_actual_qty').value = item.processed_qty || 0; 
+    document.getElementById('import_detail_id').value = item.detail_id;
+    document.getElementById('import_variant_id').value = item.variant_id;
+    
+    if (document.getElementById('import_note')) {
+        document.getElementById('import_note').value = item.note || '';
+    }
+
+    document.querySelectorAll('[id^="import_row_"]').forEach(el => {
+        el.classList.remove('bg-info', 'bg-opacity-25', 'border-info');
+    });
+    const activeRow = document.getElementById(`import_row_${variantId}`);
+    if (activeRow) activeRow.classList.add('bg-info', 'bg-opacity-25', 'border-info');
+
+    checkImportDiscrepancy();
 }

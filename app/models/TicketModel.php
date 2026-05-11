@@ -244,9 +244,10 @@ class TicketModel
                     td.variant_id,      
                     td.quantity, 
                     COALESCE(td.processed_qty, 0) as processed_qty, 
+                    td.note,  -- ĐÃ FIX: Phải Select cột này thì JS mới có ghi chú để hiện lại
                     pv.color, 
                     pv.size, 
-                    p.product_id,       -- Bổ sung để truy tìm anh em
+                    p.product_id,       
                     p.product_name, 
                     p.product_image, 
                     c.category_name as brand
@@ -259,7 +260,6 @@ class TicketModel
         $result = pg_query_params($this->conn, $sql, [$ticket_id]);
         $items = $result ? (pg_fetch_all($result) ?: []) : [];
 
-        // Lấy thêm các biến thể khác cùng mẫu ĐANG CÓ TRONG PHIẾU NÀY
         foreach ($items as &$item) {
             $sqlOthers = "SELECT pv.size, pv.color, td.quantity 
                           FROM ticket_details td 
@@ -444,6 +444,7 @@ class TicketModel
         return $res ? (pg_fetch_all($res) ?: []) : [];
     }
 
+    // lưu tiến trình phiếu nhập vào bảng tạm
     public function saveTempImport($ticket_id, $detail_id, $variant_id, $actual_qty, $image, $status, $disc_type, $note, $staff_id)
     {
         pg_query($this->conn, "BEGIN");
@@ -453,25 +454,20 @@ class TicketModel
             $resQty = pg_query_params($this->conn, $sqlGetQty, [$detail_id]);
             $expected_qty = pg_fetch_result($resQty, 0, 'quantity');
 
-            // Lưu vào bảng tạm ticket_import_temp
+            // ĐÃ FIX LỖI SỐ 1: XÓA DỮ LIỆU CŨ TRONG BẢNG TẠM ĐỂ CHUẨN BỊ GHI ĐÈ
+            pg_query_params($this->conn, "DELETE FROM ticket_import_temp WHERE ticket_id = $1 AND variant_id = $2", [$ticket_id, $variant_id]);
+
+            // Lưu mới vào bảng tạm
             $sqlTemp = "INSERT INTO ticket_import_temp 
                         (ticket_id, variant_id, expected_qty, actual_qty, scanned_image, status, discrepancy_type, note, staff_id) 
                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)";
             pg_query_params($this->conn, $sqlTemp, [
-                $ticket_id,
-                $variant_id,
-                $expected_qty,
-                $actual_qty,
-                $image,
-                $status,
-                $disc_type,
-                $note,
-                $staff_id
+                $ticket_id, $variant_id, $expected_qty, $actual_qty, $image, $status, $disc_type, $note, $staff_id
             ]);
 
-            // Cập nhật CỘNG DỒN processed_qty ở ticket_details để thanh tiến trình chạy
-            $sqlUpdateDetail = "UPDATE ticket_details SET processed_qty = COALESCE(processed_qty, 0) + $1 WHERE detail_id = $2";
-            pg_query_params($this->conn, $sqlUpdateDetail, [$actual_qty, $detail_id]);
+            // ĐÃ FIX LỖI SỐ 1: GHI ĐÈ SỐ LƯỢNG MỚI (Bỏ "+ $1" thay bằng "= $1")
+            $sqlUpdateDetail = "UPDATE ticket_details SET processed_qty = $1, note = $3 WHERE detail_id = $2";
+            pg_query_params($this->conn, $sqlUpdateDetail, [$actual_qty, $detail_id, $note]);
 
             pg_query($this->conn, "COMMIT");
             return true;
@@ -485,7 +481,7 @@ class TicketModel
     {
         pg_query($this->conn, "BEGIN");
         try {
-            // 1. Đọc dữ liệu từ bảng tạm để cộng vô kho thực tế
+            // 1. Đọc dữ liệu từ bảng tạm để CHỈ cộng số lượng thực tế vô kho
             $sqlTemp = "SELECT variant_id, SUM(actual_qty) as total_act FROM ticket_import_temp WHERE ticket_id = $1 GROUP BY variant_id";
             $resTemp = pg_query_params($this->conn, $sqlTemp, [$ticket_id]);
 
@@ -502,12 +498,27 @@ class TicketModel
                 }
             }
 
-            // 2. Chốt phiếu và xóa bảng tạm
-            pg_query_params($this->conn, "UPDATE tickets SET status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP WHERE ticket_id = $1", [$ticket_id]);
+            // 2. TÍNH TOÁN TRẠNG THÁI CUỐI CÙNG DỰA TRÊN DƯ / THIẾU
+            $sqlCheck = "SELECT SUM(quantity) as exp_total, SUM(processed_qty) as act_total FROM ticket_details WHERE ticket_id = $1";
+            $resCheck = pg_query_params($this->conn, $sqlCheck, [$ticket_id]);
+            $rowCheck = pg_fetch_assoc($resCheck);
+            
+            $exp_total = (int)$rowCheck['exp_total'];
+            $act_total = (int)$rowCheck['act_total'];
+            
+            $final_status = 'COMPLETED'; // Mặc định khớp 100%
+            if ($act_total < $exp_total) {
+                $final_status = 'MISSING'; // Nhập thiếu hàng
+            } elseif ($act_total > $exp_total) {
+                $final_status = 'EXCESS'; // Nhập dư hàng
+            }
+
+            // 3. Chốt phiếu với Trạng thái mới và xóa bảng tạm
+            pg_query_params($this->conn, "UPDATE tickets SET status = $2, completed_at = CURRENT_TIMESTAMP WHERE ticket_id = $1", [$ticket_id, $final_status]);
             pg_query_params($this->conn, "DELETE FROM ticket_import_temp WHERE ticket_id = $1", [$ticket_id]);
 
             pg_query($this->conn, "COMMIT");
-            return true;
+            return $final_status; // Trả về trạng thái để báo ra giao diện
         } catch (Exception $e) {
             pg_query($this->conn, "ROLLBACK");
             return false;

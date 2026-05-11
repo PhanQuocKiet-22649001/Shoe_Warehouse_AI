@@ -533,6 +533,7 @@ class TicketController
         exit;
     }
 
+    
     public function completeImportAjax()
     {
         if (ob_get_length()) ob_clean();
@@ -541,10 +542,21 @@ class TicketController
         $ticket_id = $_POST['ticket_id'];
         $user_id = $_SESSION['user_id'];
 
-        if ($this->model->completeImportTicket($ticket_id, $user_id)) {
-            // Nếu Model báo thành công -> Bắn Pusher về cho Manager
-            $this->triggerManagerSync($ticket_id, 'COMPLETED', date('d/m/Y H:i'));
-            echo json_encode(['status' => 'success']);
+        $final_status = $this->model->completeImportTicket($ticket_id, $user_id);
+
+        if ($final_status !== false) {
+            // Trả về kèm theo final_status
+            echo json_encode(['status' => 'success', 'final_status' => $final_status]);
+            
+            $size = ob_get_length();
+            header("Content-Length: $size");
+            header('Connection: close');
+            ob_end_flush();
+            @ob_flush();
+            flush();
+            if (session_id()) session_write_close();
+
+            $this->triggerManagerSync($ticket_id, $final_status, date('d/m/Y H:i'));
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Lỗi chốt sổ kho.']);
         }
