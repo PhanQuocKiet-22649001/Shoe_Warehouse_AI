@@ -73,6 +73,7 @@ async function loadImportTicketItems() {
 }
 
 // Render danh sách bên trái (Cột phiếu)
+// sửa hàm này kiểm tra dk biến allDone nếu muốn hiện nút lưu chốt khi nhập xong biến thể
 function renderImportItemsUI() {
     const container = document.getElementById('import_ticket_items');
     let allDone = true;
@@ -100,9 +101,20 @@ function renderImportItemsUI() {
         const isDone = processed >= qty;
         if (!isDone) allDone = false;
 
-        // Chỉ cho phép click nếu đôi giày đó ĐÃ ĐƯỢC QUÉT (processed > 0)
         let rowClass = processed > 0 ? 'bg-success bg-opacity-10 border-secondary cursor-pointer' : 'bg-dark border-secondary';
         let clickEvent = processed > 0 ? `onclick="editImportItem(${item.variant_id})"` : '';
+
+        // --- BỔ SUNG: IN RA THÔNG BÁO VỊ TRÍ KỆ ĐÃ LƯU BÊN DANH SÁCH ---
+        let locationsHtml = '';
+        if (item.putaway_locations) {
+            try {
+                let locs = JSON.parse(item.putaway_locations);
+                if (locs && locs.length > 0) {
+                    let locArr = locs.map(l => `${l.shelf_name || ''}${l.tier}-${l.slot} (${l.qty} đôi)`);
+                    locationsHtml = `<div class="small text-warning mt-2 pt-2 border-top border-secondary"><i class="fas fa-map-marker-alt me-1"></i>Đã cất: ${locArr.join(', ')}</div>`;
+                }
+            } catch(e){}
+        }
 
         return `
             <div id="import_row_${item.variant_id}" class="p-3 rounded border ${rowClass} transition-all" ${clickEvent}>
@@ -119,22 +131,18 @@ function renderImportItemsUI() {
                             </div>
                             ${statusTag}
                         </div>
+                        ${locationsHtml}
                     </div>
                 </div>
             </div>
         `;
     }).join('');
-// thêm if (allDone && importTicketItems.length > 0) nếu muốn nhập hết mới  hiện nút
+
     if (importTicketItems.length > 0) {
         document.getElementById('btn_complete_import').classList.remove('d-none');
     } else {
         document.getElementById('btn_complete_import').classList.add('d-none');
     }
-}
-
-function backToImportTickets() {
-    fetch(`index.php?page=tickets&action=update_status&ticket_id=${currentImportTicketId}&status=PAUSED`, { method: 'POST' });
-    loadMyImportTickets();
 }
 
 // 3. XỬ LÝ ẢNH & QUÉT AI
@@ -444,7 +452,6 @@ function updateImportSizeDropdown() {
         if(row) row.classList.add('bg-info', 'bg-opacity-25', 'border-info');
     });
 }
-
 // 6. AUTO FILL SỐ LƯỢNG & THU HẸP HIGHLIGHT
 function autoFillImportQty() {
     const sizeSelect = document.getElementById('import_size');
@@ -461,17 +468,128 @@ function autoFillImportQty() {
 
         window.currentMatchedItems.forEach(item => {
             let row = document.getElementById(`import_row_${item.variant_id}`);
-            if(row) {
-                row.classList.remove('bg-info', 'bg-opacity-25', 'border-info');
-            }
+            if(row) row.classList.remove('bg-info', 'bg-opacity-25', 'border-info');
         });
 
         let activeRow = document.getElementById(`import_row_${targetVariantId}`);
-        if(activeRow) {
-            activeRow.classList.add('bg-info', 'bg-opacity-25', 'border-info');
-        }
+        if(activeRow) activeRow.classList.add('bg-info', 'bg-opacity-25', 'border-info');
         
         checkImportDiscrepancy();
+        
+        // Gọi load giao diện phân bổ kệ
+        loadPutawayLocations(targetVariantId);
+    }
+}
+
+// =========================================================================
+// HÀM MỚI: TẢI DANH SÁCH Ô KỆ ĐỂ CẤT HÀNG (PUTAWAY)
+// =========================================================================
+async function loadPutawayLocations(variantId) {
+    let container = document.getElementById('putaway_locations_container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'putaway_locations_container';
+        container.className = 'mt-3 p-3 rounded bg-black bg-opacity-25 border border-info';
+        
+        const btnSave = document.getElementById('btn_save_temp');
+        btnSave.parentNode.insertBefore(container, btnSave);
+    }
+
+    container.innerHTML = '<div class="text-center text-info small"><i class="fas fa-spinner fa-spin"></i> Đang tải sơ đồ kệ...</div>';
+    
+    try {
+        const res = await fetch(`index.php?page=tickets&action=get_putaway_locations&variant_id=${variantId}&ticket_id=${currentImportTicketId}`);
+        const data = await res.json();
+        
+        const renderSlot = (slot, isCurrent) => {
+            let mark = isCurrent ? `<span class="text-warning small">(Đang có: ${slot.var_count})</span>` : '';
+            let key = `${slot.shelf_id}_${slot.tier}_${slot.slot}`;
+            
+            // --- BỔ SUNG: KIỂM TRA MẢNG current_alloc ĐỂ AUTO FILL SỐ LƯỢNG KỆ ĐÃ LƯU ---
+            let prefillQty = (data.current_alloc && data.current_alloc[key]) ? data.current_alloc[key] : 0;
+            
+            return `
+            <div class="d-flex justify-content-between align-items-center bg-black p-2 rounded mb-2 border border-secondary putaway-row transition-all">
+                <span class="text-white fw-bold small">
+                    Ô ${slot.slot_code} 
+                    <span class="text-white-50 ms-1">(Trống: ${slot.available})</span>
+                    ${mark}
+                </span>
+                <input type="number" class="form-control form-control-sm text-center putaway-input fw-bold bg-dark text-info border-info" 
+                       style="width: 70px;" data-shelf-id="${slot.shelf_id}" data-shelf-name="${slot.shelf_name}" data-tier="${slot.tier}" data-slot="${slot.slot}" 
+                       max="${slot.available + prefillQty}" min="0" value="${prefillQty}" oninput="validatePutawayTotal()">
+            </div>`;
+        };
+
+        const currentHtml = data.current.length > 0 ? data.current.map(s => renderSlot(s, true)).join('') : '<div class="small text-white-50">Không có kệ nào đang chứa sẵn mẫu này.</div>';
+        const availableHtml = data.available.length > 0 ? data.available.map(s => renderSlot(s, false)).join('') : '<div class="small text-danger">Kho đã đầy, không còn kệ trống!</div>';
+
+        container.innerHTML = `
+            <h6 class="fw-bold text-info mb-3 small"><i class="fas fa-boxes me-1"></i>CHỌN VỊ TRÍ KỆ ĐỂ CẤT HÀNG</h6>
+            <div class="row g-3">
+                <div class="col-md-6 border-end border-secondary">
+                    <label class="small text-warning fw-bold mb-2">Đang chứa sẵn mẫu này</label>
+                    <div class="d-flex flex-column" style="max-height: 200px; overflow-y: auto; padding-right: 5px;">${currentHtml}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-success fw-bold mb-2">Gợi ý các ô trống khác</label>
+                    <div class="d-flex flex-column" style="max-height: 200px; overflow-y: auto; padding-right: 5px;">${availableHtml}</div>
+                </div>
+            </div>
+            <div id="putaway_warning_msg" class="mt-3 text-center fw-bold small"></div>
+        `;
+        
+        // Cần gọi Validation ngay lập tức để nó Highlight (bôi xanh) các ô vừa được Prefill số lượng!
+        validatePutawayTotal();
+    } catch (e) {
+        container.innerHTML = '<div class="text-danger small">Lỗi truy xuất sơ đồ kệ.</div>';
+    }
+}
+
+// Kiểm tra điều kiện phân bổ số lượng lên các kệ
+function validatePutawayTotal() {
+    const targetQty = parseInt(document.getElementById('import_actual_qty').value) || 0;
+    let allocatedQty = 0;
+    const inputs = document.querySelectorAll('.putaway-input');
+    
+    inputs.forEach(input => {
+        let max = parseInt(input.max) || 0;
+        let val = parseInt(input.value) || 0;
+        
+        if (val < 0) { val = 0; input.value = 0; }
+        if (val > max) { val = max; input.value = max; }
+        
+        const row = input.closest('.putaway-row');
+        if (val > 0) {
+            row.classList.replace('border-secondary', 'border-success');
+            row.style.backgroundColor = 'rgba(25, 135, 84, 0.2)'; // Hightlight ô đã chọn
+        } else {
+            row.classList.replace('border-success', 'border-secondary');
+            row.style.backgroundColor = '';
+        }
+        
+        allocatedQty += val;
+    });
+
+    const btnSave = document.getElementById('btn_save_temp');
+    const msg = document.getElementById('putaway_warning_msg');
+
+    // ĐÃ FIX: CHỐT CHẶN CHỐNG CRASH JAVASCRIPT
+    // Nếu bảng kệ chưa kịp load xong (msg = null) thì return luôn để không bị sập JS
+    if (!msg) return;
+
+    if (targetQty === 0) {
+        msg.innerHTML = '<span class="text-secondary">Vui lòng đếm số lượng thực tế cần nhập.</span>';
+        btnSave.disabled = true;
+    } else if (allocatedQty === targetQty) {
+        msg.innerHTML = `<span class="text-success"><i class="fas fa-check-circle me-1"></i>Đã chọn đủ vị trí cho ${targetQty} đôi. Có thể Lưu Nháp!</span>`;
+        btnSave.disabled = false;
+    } else if (allocatedQty < targetQty) {
+        msg.innerHTML = `<span class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>Vui lòng chọn thêm kệ để cất ${targetQty - allocatedQty} đôi nữa.</span>`;
+        btnSave.disabled = true;
+    } else {
+        msg.innerHTML = `<span class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i>Phân bổ dư ${allocatedQty - targetQty} đôi. Giảm bớt số lượng!</span>`;
+        btnSave.disabled = true;
     }
 }
 
@@ -495,15 +613,30 @@ function checkImportDiscrepancy() {
         badge.innerText = `DƯ ${act - exp} ĐÔI`;
         typeInput.value = 'OVER';
     }
+    
+    // ĐÃ FIX: Tính toán lại phân bổ kệ mỗi khi User gõ lại số lượng thực tế
+    validatePutawayTotal(); 
 }
 
-// 7. LƯU BẢNG TẠM (CÓ ALERT CONFIRM NẾU DƯ/THIẾU HÀNG)
+
+
+// 7. LƯU BẢNG TẠM (CÓ GỬI KÈM MẢNG VỊ TRÍ KỆ)
 async function saveTempImport(e) {
     e.preventDefault();
     
     const exp = parseInt(document.getElementById('import_expected_qty').value) || 0;
     const act = parseInt(document.getElementById('import_actual_qty').value) || 0;
     
+    let allocatedQty = 0;
+    document.querySelectorAll('.putaway-input').forEach(input => {
+        allocatedQty += parseInt(input.value) || 0;
+    });
+
+    if (act > 0 && allocatedQty !== act) {
+        alert(`LỖI: Bạn đang nhập ${act} đôi giày nhưng mới xếp ${allocatedQty} đôi lên kệ.\nVui lòng phân bổ đủ vị trí trên Sơ đồ Kệ trước khi nhấn Lưu!`);
+        return; 
+    }
+
     if (act !== exp) {
         let msg = act < exp ? `Phát hiện THIẾU ${exp - act} đôi.` : `Phát hiện DƯ ${act - exp} đôi.`;
         if (!confirm(`${msg}\nBạn có chắc chắn muốn ghi nhận số lượng thực tế là ${act} không?`)) return;
@@ -514,8 +647,24 @@ async function saveTempImport(e) {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ĐANG LƯU...';
     btn.disabled = true;
 
+    let putawayLocations = [];
+    document.querySelectorAll('.putaway-input').forEach(input => {
+        let val = parseInt(input.value) || 0;
+        if (val > 0) {
+            putawayLocations.push({
+                shelf_id: input.getAttribute('data-shelf-id'),
+                shelf_name: input.getAttribute('data-shelf-name'), // --- BỔ SUNG LƯU THÊM TÊN KỆ ĐỂ IN RA UI ---
+                tier: input.getAttribute('data-tier'),
+                slot: input.getAttribute('data-slot'),
+                variant_id: document.getElementById('import_variant_id').value,
+                qty: val
+            });
+        }
+    });
+
     const fd = new FormData(form);
     fd.append('ticket_id', currentImportTicketId);
+    fd.append('putaway_locations', JSON.stringify(putawayLocations)); 
 
     try {
         const res = await fetch('index.php?page=tickets&action=save_temp_import', { method: 'POST', body: fd });
@@ -524,7 +673,6 @@ async function saveTempImport(e) {
         if(data.status === 'success') {
             loadImportTicketItems(); 
             
-            // ĐÃ FIX: Chỉ đánh dấu "Ảnh quét xong" nếu là dữ liệu quét từ AI (activeScannedIndex > -1)
             if (window.currentMatchedItems && activeScannedIndex !== -1) {
                 window.currentMatchedItems = window.currentMatchedItems.filter(i => i.detail_id != fd.get('detail_id'));
                 if(window.currentMatchedItems.length === 0 && importScannedData[activeScannedIndex]) {
@@ -535,13 +683,14 @@ async function saveTempImport(e) {
             document.getElementById('import_form_zone').classList.remove('d-flex');
             document.getElementById('import_form_zone').classList.add('d-none');
             
-            // Trả lại vùng hiển thị ảnh AI nếu đang xài AI
+            let container = document.getElementById('putaway_locations_container');
+            if (container) container.remove(); 
+            
             if (activeScannedIndex !== -1) renderImportPostScan();
             
         } else { alert("Lỗi: " + data.message); }
     } catch(err) { 
         alert("Lỗi kết nối ngầm!"); 
-        console.error(err);
     } finally {
         btn.innerHTML = 'LƯU NHÁP BIẾN THỂ NÀY';
         btn.disabled = false;
@@ -550,7 +699,7 @@ async function saveTempImport(e) {
 
 // 8. CHỐT SỔ CUỐI CÙNG (CÓ CONFIRM GHI NHẬN TRẠNG THÁI)
 async function completeImportTicket() {
-    if (!confirm("Hệ thống sẽ cập nhật kho theo SỐ LƯỢNG THỰC TẾ và ghi nhận trạng thái (KHỚP / THIẾU / DƯ). Bạn chắc chắn chốt phiếu?")) return;
+    if (!confirm("Hệ thống sẽ cộng tồn kho, lưu đồ thị mảng Kệ và ghi nhận trạng thái (KHỚP / THIẾU / DƯ). Bạn chắc chắn chốt phiếu?")) return;
 
     const btn = document.getElementById('btn_complete_import');
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ĐANG XỬ LÝ...';
@@ -564,7 +713,6 @@ async function completeImportTicket() {
         const data = await res.json();
 
         if (data.status === 'success') {
-            // Sửa lại alert để hứng final_status nếu phía Server có trả về
             alert(`NHẬP KHO THÀNH CÔNG!\nTrạng thái phiếu: ${data.final_status || 'Hoàn tất'}`);
             window.location.reload();
         } else {
@@ -578,308 +726,12 @@ async function completeImportTicket() {
     }
 }
 
-// ==========================================
-// LOGIC XUẤT KHO THEO PHIẾU (THỦ CÔNG)
-// ==========================================
-let currentExportTicketId = null;
-let currentExportTicketCode = "";
-let currentTicketItems = [];
-
-// Khi mở Modal Xuất Kho -> Load danh sách phiếu
-document.getElementById('exportAIModal').addEventListener('show.bs.modal', loadMyExportTickets);
-
-async function loadMyExportTickets() {
-    const list = document.getElementById('export_ticket_list');
-    list.innerHTML = '<div class="text-center text-white-50 py-3"><i class="fas fa-spinner fa-spin me-2"></i>Đang tải dữ liệu...</div>';
-
-    document.getElementById('export_step_1').classList.remove('d-none');
-    document.getElementById('export_step_2').classList.add('d-none');
-    document.getElementById('export_right_default').classList.remove('d-none');
-    document.getElementById('export_right_action').classList.add('d-none');
-
-    try {
-        const res = await fetch('index.php?page=tickets&action=get_my_exports');
-        const tickets = await res.json();
-
-        if (!tickets || tickets.length === 0) {
-            list.innerHTML = '<div class="alert alert-glass-blink text-center text-warning border-0">Không có phiếu xuất nào đang chờ.</div>';
-            return;
-        }
-
-        list.innerHTML = tickets.map(t => `
-            <div class="list-group-item bg-dark text-white border-secondary mb-2 rounded-1 p-3 cursor-pointer" 
-                 onclick="openExportTicket(${t.ticket_id}, '${t.ticket_code}')">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="fw-bold text-info"><i class="fas fa-ticket-alt me-2"></i>${t.ticket_code}</span>
-                    <span class="badge ${t.status === 'PAUSED' ? 'bg-warning text-dark' : 'bg-primary'}">${t.status}</span>
-                </div>
-            </div>
-        `).join('');
-    } catch (e) {
-        list.innerHTML = '<div class="text-danger small">Lỗi kết nối.</div>';
-    }
-}
-
-async function openExportTicket(ticketId, ticketCode) {
-    currentExportTicketId = ticketId;
-    currentExportTicketCode = ticketCode;
-
-    document.getElementById('export_current_ticket_code').innerText = `MÃ PHIẾU: ${ticketCode}`;
-    document.getElementById('export_step_1').classList.add('d-none');
-    document.getElementById('export_step_2').classList.remove('d-none');
-
-    const itemsContainer = document.getElementById('export_ticket_items');
-    itemsContainer.innerHTML = '<div class="text-center text-white-50 py-3"><i class="fas fa-spinner fa-spin"></i> Đang tải giày...</div>';
-
-    // Cập nhật trạng thái phiếu sang PROCESSING 
-    fetch(`index.php?page=tickets&action=update_status&ticket_id=${ticketId}&status=PROCESSING`, { method: 'POST' });
-
-    try {
-        const res = await fetch(`index.php?page=tickets&action=get_ticket_details&ticket_id=${ticketId}`);
-        currentTicketItems = await res.json();
-        renderExportItems();
-    } catch (e) {
-        itemsContainer.innerHTML = '<div class="text-danger small">Lỗi tải danh sách sản phẩm.</div>';
-    }
-}
-
-function renderExportItems() {
-    const container = document.getElementById('export_ticket_items');
-    let allDone = true;
-
-    container.innerHTML = currentTicketItems.map(item => {
-        const qty = parseInt(item.quantity) || 0;
-        const processed = parseInt(item.processed_qty) || 0;
-        const remaining = qty - processed;
-        const isDone = remaining <= 0;
-
-        if (!isDone) allDone = false;
-
-        return `
-            <div class="p-3 rounded border ${isDone ? 'bg-success bg-opacity-25 border-success' : 'bg-dark border-secondary'}">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="fw-bold small ${isDone ? 'text-success' : 'text-white'}">${item.product_name}</span>
-                    <span class="badge ${isDone ? 'bg-success' : 'bg-danger'}">${processed} / ${qty}</span>
-                </div>
-                <div class="d-flex justify-content-between align-items-end">
-                    <div class="small text-white-50">
-                        Size: <strong class="text-white">${item.size}</strong> | Màu: <strong class="text-white">${item.color}</strong>
-                    </div>
-                    ${!isDone ? `
-                        <button class="btn btn-sm btn-info fw-bold py-0 px-3" 
-                            onclick="autoFillExportForm(${item.detail_id})">
-                            CHỌN
-                        </button>
-                    ` : '<span class="text-success small fw-bold"><i class="fas fa-check-circle me-1"></i>Đã xong</span>'}
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    if (allDone && currentTicketItems.length > 0) {
-        document.getElementById('btn_complete_export').classList.remove('d-none');
-        document.getElementById('export_right_default').classList.remove('d-none');
-        document.getElementById('export_right_action').classList.add('d-none');
-    } else {
-        document.getElementById('btn_complete_export').classList.add('d-none');
-    }
-}
-
-function backToExportTickets() {
-    fetch(`index.php?page=tickets&action=update_status&ticket_id=${currentExportTicketId}&status=PAUSED`, { method: 'POST' });
-    loadMyExportTickets();
-}
-
-let currentRequiredQty = 0;
-async function autoFillExportForm(detailId) {
-    const item = currentTicketItems.find(i => i.detail_id == detailId);
-    if(!item) return;
-
-    const remainingQty = parseInt(item.quantity) - parseInt(item.processed_qty || 0);
-    currentRequiredQty = remainingQty; 
-
-    document.getElementById('export_right_default').classList.add('d-none');
-    document.getElementById('export_right_action').classList.remove('d-none');
-    document.getElementById('export_right_action').classList.add('d-flex');
-
-    document.getElementById('autofill_ticket_code').value = currentExportTicketCode;
-    document.getElementById('autofill_brand').value = item.brand;
-    document.getElementById('autofill_name').value = item.product_name;
-    document.getElementById('autofill_color').value = item.color;
-    document.getElementById('autofill_size').value = item.size;
-    document.getElementById('autofill_image').src = `assets/img_product/${item.product_image || 'default_shoe.png'}`;
-
-    document.getElementById('pick_detail_id').value = item.detail_id;
-    document.getElementById('pick_variant_id').value = item.variant_id;
-
-    const inputQty = document.getElementById('pick_qty_input');
-    inputQty.value = 0;
-    inputQty.readOnly = true; 
-    document.getElementById('pick_qty_max').innerText = `/ ${remainingQty}`;
-
-    const othersArea = document.getElementById('other_variants_area');
-    const othersList = document.getElementById('other_variants_list');
-    if (item.other_variants && item.other_variants.length > 0) {
-        othersArea.classList.remove('d-none');
-        othersList.innerHTML = item.other_variants.map(o => `• Màu ${o.color}, Size ${o.size} (Cần lấy: ${o.quantity})`).join('<br>');
-    } else {
-        othersArea.classList.add('d-none');
-    }
-
-    const locContainer = document.getElementById('pick_locations_container');
-    locContainer.innerHTML = '<span class="text-white-50 small"><i class="fas fa-spinner fa-spin"></i> Đang dò vị trí kệ...</span>';
-
-    try {
-        const res = await fetch(`index.php?page=products&action=get_locations&variant_id=${item.variant_id}`);
-        const locs = await res.json();
-
-        if (!locs || locs.length === 0) {
-            locContainer.innerHTML = '<span class="badge bg-danger p-2">Mẫu này hiện không có sẵn trên kệ!</span>';
-            return;
-        }
-
-        let html = '';
-        locs.forEach(l => {
-            html += `
-            <div class="w-100 d-flex justify-content-between align-items-center bg-black bg-opacity-25 p-2 rounded mb-2 border border-secondary">
-                <span class="text-white fw-bold small">
-                    Kệ ${l.shelf_name} - Ô ${l.slot_code} <span class="text-warning">(Tồn: ${l.qty_in_slot})</span>
-                </span>
-                <input type="number" class="form-control form-control-sm text-center pick-input fw-bold bg-dark text-info border-info" 
-                       style="width: 80px;" data-shelf-id="${l.shelf_id}" data-slot="${l.slot_code}"
-                       min="0" max="${l.qty_in_slot}" value="0" oninput="validatePickTotal()">
-            </div>`;
-        });
-        locContainer.innerHTML = html;
-        validatePickTotal(); 
-    } catch (e) {
-        locContainer.innerHTML = '<span class="text-danger small">Lỗi truy xuất sơ đồ kho.</span>';
-    }
-}
-
-function validatePickTotal() {
-    let totalPicked = 0;
-    const inputs = document.querySelectorAll('.pick-input');
-    
-    inputs.forEach(input => {
-        let max = parseInt(input.max) || 0;
-        let val = parseInt(input.value) || 0;
-        
-        if (val < 0) { val = 0; input.value = 0; }
-        if (val > max) { val = max; input.value = max; }
-        
-        totalPicked += val;
-    });
-
-    const totalInput = document.getElementById('pick_qty_input');
-    totalInput.value = totalPicked;
-    
-    const btnConfirm = document.querySelector('#export_right_action button');
-
-    let warningMsg = document.getElementById('pick_warning_msg');
-    if (!warningMsg) {
-        warningMsg = document.createElement('div');
-        warningMsg.id = 'pick_warning_msg';
-        warningMsg.className = 'small fw-bold mt-2 text-center mb-2';
-        btnConfirm.parentNode.insertBefore(warningMsg, btnConfirm);
-    }
-
-    if (totalPicked === currentRequiredQty) {
-        totalInput.classList.replace('text-white', 'text-success');
-        btnConfirm.disabled = false;
-        warningMsg.innerHTML = '<span class="text-success"><i class="fas fa-check-circle me-1"></i> Đã chọn đủ số lượng yêu cầu!</span>';
-    } 
-    else if (totalPicked < currentRequiredQty) {
-        totalInput.classList.replace('text-success', 'text-white');
-        btnConfirm.disabled = true;
-        let thieu = currentRequiredQty - totalPicked;
-        warningMsg.innerHTML = `<span class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i> Bạn đang lấy THIẾU ${thieu} đôi. Vui lòng chọn thêm ở kệ khác!</span>`;
-    } 
-    else {
-        totalInput.classList.replace('text-success', 'text-white');
-        btnConfirm.disabled = true;
-        let du = totalPicked - currentRequiredQty;
-        warningMsg.innerHTML = `<span class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i> Bạn đang chọn DƯ ${du} đôi so với phiếu. Vui lòng giảm bớt!</span>`;
-    }
-}
-
-async function confirmPickItem() {
-    const detailId = document.getElementById('pick_detail_id').value;
-    const totalPicked = parseInt(document.getElementById('pick_qty_input').value);
-
-    let pickedLocations = [];
-    document.querySelectorAll('.pick-input').forEach(input => {
-        let val = parseInt(input.value) || 0;
-        if (val > 0) {
-            pickedLocations.push({
-                shelf_id: input.getAttribute('data-shelf-id'),
-                slot_code: input.getAttribute('data-slot'),
-                qty: val
-            });
-        }
-    });
-
-    const btn = document.querySelector('#export_right_action button');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>ĐANG LƯU...';
-
-    try {
-        const fd = new FormData();
-        fd.append('detail_id', detailId);
-        fd.append('picked_qty', totalPicked);
-        fd.append('picked_locations', JSON.stringify(pickedLocations));
-
-        const res = await fetch('index.php?page=tickets&action=update_export_progress', {
-            method: 'POST',
-            body: fd
-        });
-        const data = await res.json();
-
-        if (data.status === 'success') {
-            const item = currentTicketItems.find(i => i.detail_id == detailId);
-            if (item) item.processed_qty = parseInt(item.processed_qty || 0) + totalPicked;
-
-            renderExportItems(); 
-            document.getElementById('export_right_default').classList.remove('d-none');
-            document.getElementById('export_right_action').classList.add('d-none');
-            document.getElementById('export_right_action').classList.remove('d-flex');
-        } else {
-            alert("Lỗi: " + data.message);
-        }
-    } catch (e) {
-        alert("Lỗi mạng khi lưu tiến độ.");
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'XÁC NHẬN ĐÃ LẤY HÀNG NÀY';
-    }
-}
-
-async function completeExportTicket() {
-    if (!confirm("Hệ thống sẽ trừ kho chính thức và hoàn tất phiếu. Bạn chắc chắn chứ?")) return;
-
-    try {
-        const res = await fetch(`index.php?page=tickets&action=complete_export&ticket_id=${currentExportTicketId}`, { method: 'POST' });
-        const data = await res.json();
-
-        if (data.status === 'success') {
-            alert("Xuất kho thành công!");
-            window.location.reload();
-        } else {
-            alert("Lỗi hoàn tất: " + data.message);
-        }
-    } catch (e) {
-        alert("Lỗi hệ thống.");
-    }
-}
-
-
 // =========================================================================
 // HÀM MỚI: BẤM VÀO DANH SÁCH BÊN TRÁI ĐỂ SỬA TAY 
 // =========================================================================
 function editImportItem(variantId) {
     const item = importTicketItems.find(i => i.variant_id == variantId);
     
-    // ĐÃ FIX (CHỐT CHẶN BẢO MẬT): Nếu không tìm thấy, HOẶC chưa từng quét (processed = 0) thì CẤM SỬA TAY!
     if (!item || parseInt(item.processed_qty || 0) === 0) {
         return; 
     }
@@ -917,4 +769,7 @@ function editImportItem(variantId) {
     if (activeRow) activeRow.classList.add('bg-info', 'bg-opacity-25', 'border-info');
 
     checkImportDiscrepancy();
+    
+    // Mở bảng cho phép xếp kệ lại từ đầu nếu sửa số lượng
+    loadPutawayLocations(variantId);
 }

@@ -16,9 +16,9 @@ class TicketController
         date_default_timezone_set('Asia/Ho_Chi_Minh');
     }
 
-
     /**
-     * Chức năng: Middleware kiểm tra quyền Quản lý.
+     * Chức năng: Middleware bảo vệ Route, kiểm tra quyền Quản lý.
+     * Tác dụng: Đá văng user không phải là MANAGER ra khỏi các trang tạo phiếu.
      */
     private function checkManager()
     {
@@ -30,7 +30,8 @@ class TicketController
     }
 
     /**
-     * Chức năng: Middleware kiểm tra quyền Nhân viên.
+     * Chức năng: Middleware bảo vệ Route, kiểm tra quyền Nhân viên.
+     * Tác dụng: Đá văng user không phải là STAFF ra khỏi các màn hình thao tác kho.
      */
     private function checkStaff()
     {
@@ -46,8 +47,8 @@ class TicketController
     // ======================================================
 
     /**
-     * Chức năng: Gửi thông báo Real-time cho một nhân viên cụ thể.
-     * Tác dụng: Dùng khi Manager vừa tạo xong phiếu mới và giao việc cho Staff.
+     * Chức năng: Gửi thông báo Push Notification (Alert) trên giao diện nhân viên.
+     * Tác dụng: Báo cho nhân viên biết khi có công việc mới vừa được Quản lý phân công.
      */
     private function triggerPusherNotification($staff_id, $message)
     {
@@ -64,19 +65,17 @@ class TicketController
                 $options
             );
 
-            // Phát sóng vào kênh 'warehouse-channel', đích danh nhân viên được giao việc
             $pusher->trigger('warehouse-channel', 'new-ticket-' . $staff_id, [
                 'message' => $message
             ]);
         } catch (Exception $e) {
-            // Bắt lỗi ngầm để web PHP vẫn chạy tạo phiếu bình thường dù rớt mạng
             error_log("Lỗi gửi Pusher: " . $e->getMessage());
         }
     }
 
     /**
-     * Chức năng: Bắn tín hiệu đồng bộ trạng thái phiếu về cho màn hình của Manager.
-     * Tác dụng: Cập nhật màu sắc (Pending, Processing, Paused) và thời gian hoàn thành (Completed) mà không cần F5.
+     * Chức năng: Đồng bộ màu sắc trạng thái thẻ Phiếu về máy Quản lý không cần F5.
+     * Tác dụng: Đổi màu từ Pending -> Processing, cập nhật giờ hoàn tất khi nhân viên thao tác ở dưới kho.
      */
     private function triggerManagerSync($ticket_id, $status, $completed_at = null)
     {
@@ -89,7 +88,6 @@ class TicketController
                 'status' => $status
             ];
 
-            // Nếu có thời gian hoàn thành thì nhét thêm vào gói tin
             if ($completed_at) {
                 $payload['completed_at'] = $completed_at;
             }
@@ -100,10 +98,9 @@ class TicketController
         }
     }
 
-
     /**
-     * Chức năng: Bắn tín hiệu ngầm yêu cầu trình duyệt nhân viên tải lại số lượng Badge.
-     * Tác dụng: Dùng khi nhân viên đó bị thu hồi phiếu hoặc phiếu bị xóa.
+     * Chức năng: Phát yêu cầu Reset lại số lượng Badge Đỏ ngầm không làm phiền màn hình.
+     * Tác dụng: Khi Manager thu hồi công việc, badge đỏ của nhân viên bị giảm đi lập tức.
      */
     private function triggerPusherSilentUpdate($staff_id)
     {
@@ -112,18 +109,18 @@ class TicketController
             $options = ['cluster' => 'ap1', 'useTLS' => true];
             $pusher = new Pusher\Pusher('24a79cb74cfa666e1831', '4cb0f10dc4e59d30d062', '2150978', $options);
 
-            // Bắn tín hiệu refresh-badge đích danh cho staff_id
             $pusher->trigger('warehouse-channel', 'refresh-badge-' . $staff_id, ['refresh' => true]);
         } catch (Exception $e) {
         }
     }
+
     // ======================================================
     // 1. CÁC HÀM XỬ LÝ GIAO DIỆN & SUBMIT FORM (TRUYỀN THỐNG)
     // ======================================================
 
     /**
-     * Chức năng: Chuẩn bị dữ liệu để hiển thị trang Tạo Phiếu.
-     * Tác dụng: Load danh sách nhân viên, hãng, mã phiếu tự sinh, lịch sử phiếu và bộ lọc.
+     * Chức năng: Prepare Data để tải giao diện tạo phiếu mới.
+     * Tác dụng: Đóng gói danh sách nhân viên, dữ liệu filter, mảng phiếu chờ trả về View.
      */
     public function create($type)
     {
@@ -136,7 +133,6 @@ class TicketController
             $suggestions = $this->model->getLowStockSuggestions();
         }
 
-        // Lọc lịch sử
         $status = $_GET['filter_status'] ?? '';
         $start_date = !empty($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d');
         $end_date = !empty($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
@@ -157,8 +153,8 @@ class TicketController
     }
 
     /**
-     * Chức năng: Xử lý lưu phiếu mới vào Database khi Manager nhấn Submit.
-     * Tác dụng: Validate dữ liệu, lưu DB, thực hiện giữ chỗ (reserved_stock), và điều hướng báo lỗi/thành công.
+     * Chức năng: Lưu phiếu mới vào CSDL khi bấm Submit Form.
+     * Tác dụng: Ép mảng sản phẩm vào DB và bắn Pusher báo có việc đến thiết bị nhân viên.
      */
     public function saveTicket()
     {
@@ -179,31 +175,26 @@ class TicketController
                 }
             }
 
-            // Nhận kết quả từ Model
             $result = $this->model->createTicket($ticket_code, $batch_code, $type, $manager_id, $staff_id, $details);
 
             if ($result === true) {
-                // Thành công: Bắn thông báo cho Staff và quay về trang
                 $loaiPhieu = ($type === 'IMPORT') ? "Nhập kho" : "Xuất kho";
                 $this->triggerPusherNotification($staff_id, "Quản lý vừa giao cho bạn 1 phiếu $loaiPhieu mới!");
                 header("Location: index.php?page=ticket_create&type={$type}&msg=create_success");
                 exit;
             } elseif ($result === 'out_of_stock') {
-                // LỖI: Không đủ hàng khả dụng
                 header("Location: index.php?page=ticket_create&type={$type}&msg=out_of_stock");
                 exit;
             } else {
-                // Lỗi hệ thống khác
                 header("Location: index.php?page=ticket_create&type={$type}&msg=error");
                 exit;
             }
         }
     }
 
-
     /**
-     * Chức năng: Hiển thị trang Lịch sử phiếu của riêng Nhân viên (Staff).
-     * Tác dụng: Hứng bộ lọc ngày tháng/trạng thái và gọi Model lấy dữ liệu.
+     * Chức năng: Xem lịch sử các phiếu của riêng Staff truy cập.
+     * Tác dụng: Hỗ trợ màn hình quản lý công tác cá nhân.
      */
     public function staffHistory()
     {
@@ -225,8 +216,8 @@ class TicketController
     }
 
     /**
-     * Chức năng: Đổi nhân viên phụ trách cho một phiếu đang chờ.
-     * Tác dụng: Cập nhật DB, báo cho NV mới (Alert) và báo cho NV cũ trừ số (Silent).
+     * Chức năng: Đổi chủ (Giao lại phiếu) cho nhân viên khác.
+     * Tác dụng: Thay staff_id trong DB, bắn push alert cho người mới và push silent cập nhật icon cho người bị mất quyền.
      */
     public function reassignStaff()
     {
@@ -235,14 +226,11 @@ class TicketController
             $new_staff_id = $_POST['new_staff_id'];
             $return_type = $_POST['return_type'];
 
-            // Model trả về ID nhân viên cũ (NV1) nếu thành công
             $old_staff_id = $this->model->updateStaffInTicket($ticket_id, $new_staff_id);
 
             if ($old_staff_id !== false) {
-                // 1. Báo cho người mới (Hiện thông báo Alert)
                 $this->triggerPusherNotification($new_staff_id, "Bạn vừa được bàn giao xử lý 1 phiếu kho mới!");
 
-                // 2. Báo cho người cũ cập nhật lại số Badge (Âm thầm refresh, không hiện Alert)
                 if ($old_staff_id && $old_staff_id != $new_staff_id) {
                     $this->triggerPusherSilentUpdate($old_staff_id);
                 }
@@ -257,8 +245,8 @@ class TicketController
     }
 
     /**
-     * Chức năng: Xóa (Hủy) một phiếu đang ở trạng thái PENDING.
-     * Tác dụng: Xóa phiếu trong DB, xả hàng giữ chỗ, và báo NV đang giữ phiếu cập nhật lại số Badge.
+     * Chức năng: Xóa (Ẩn tạm thời) phiếu lỗi.
+     * Tác dụng: Gọi Model đánh cờ Delete và thu hồi lại kho nếu là Phiếu Xuất.
      */
     public function deleteTicket()
     {
@@ -266,11 +254,9 @@ class TicketController
             $ticket_id = $_POST['ticket_id'];
             $return_type = $_POST['return_type'];
 
-            // Model trả về ID nhân viên đang phụ trách phiếu đó trước khi bị xóa
             $staff_id_to_refresh = $this->model->softDeleteTicket($ticket_id);
 
             if ($staff_id_to_refresh !== false) {
-                // Bắn tín hiệu Silent Update để NV đó tự động trừ số trên Badge vì phiếu đã bay màu
                 if (is_numeric($staff_id_to_refresh)) {
                     $this->triggerPusherSilentUpdate($staff_id_to_refresh);
                 }
@@ -284,14 +270,13 @@ class TicketController
         }
     }
 
-
     // ======================================================
-    // 2. CÁC HÀM AJAX (PHẢN HỒI ĐỊNH DẠNG JSON CHO JAVASCRIPT)
+    // 2. CÁC HÀM AJAX CHUNG (JSON ENDPOINTS)
     // ======================================================
 
     /**
-     * Chức năng: Lấy danh sách mẫu giày dựa theo ID Hãng (Brand).
-     * Tác dụng: Đổ dữ liệu vào Dropdown thứ 2 khi người dùng chọn Hãng ở form tạo phiếu.
+     * Chức năng: Lấy JSON danh sách Mẫu Giày lọc bằng Brand ID.
+     * Tác dụng: Gọi từ jQuery để hiện các select option khi tạo phiếu.
      */
     public function getProductsByBrandAjax()
     {
@@ -315,8 +300,8 @@ class TicketController
     }
 
     /**
-     * Chức năng: Lấy danh sách Biến thể (Màu, Size) dựa theo ID Mẫu giày.
-     * Tác dụng: Đổ dữ liệu vào Dropdown thứ 3. Nếu là phiếu XUẤT, tự động tính Tồn Khả Dụng (Stock - Reserved).
+     * Chức năng: Lấy JSON danh sách Size, Màu theo mã Sản phẩm.
+     * Tác dụng: Auto fill các tùy chọn và hiển thị tồn kho hiện tại lên form nhập liệu.
      */
     public function getVariantsByProductAjax()
     {
@@ -342,8 +327,8 @@ class TicketController
     }
 
     /**
-     * Chức năng: Lấy chi tiết toàn bộ sản phẩm bên trong 1 phiếu cụ thể.
-     * Tác dụng: Dùng để hiển thị Modal Xem Chi Tiết cho Manager hoặc form Xuất Kho cho Staff.
+     * Chức năng: Cung cấp JSON mảng chi tiết toàn bộ các dòng hàng trong 1 Mã Phiếu.
+     * Tác dụng: Vẽ lên bảng chi tiết (Modal xem phiếu) hoặc giao diện Quét Hàng.
      */
     public function getTicketDetailsAjax()
     {
@@ -368,8 +353,8 @@ class TicketController
     }
 
     /**
-     * Chức năng: Đếm số lượng phiếu chưa hoàn thành của nhân viên.
-     * Tác dụng: Hiển thị cục màu đỏ (Badge) thông báo trên thanh Topbar của nhân viên.
+     * Chức năng: Request số lượng phiếu (Import/Export) đang mở để hiển thị Badge đỏ.
+     * Tác dụng: Liên tục kiểm tra bằng JS trên Header Topbar báo hiệu công việc chưa xử lý.
      */
     public function getPendingCountsAjax()
     {
@@ -391,23 +376,8 @@ class TicketController
     }
 
     /**
-     * Chức năng: Lấy danh sách các phiếu xuất kho đang giao cho nhân viên hiện tại.
-     * Tác dụng: Hiển thị danh sách phiếu (Cột bên trái) ở màn hình thao tác Xuất Kho của Staff.
-     */
-    public function getMyExportsAjax()
-    {
-        if (ob_get_length()) ob_clean();
-        header('Content-Type: application/json; charset=utf-8');
-
-        $staff_id = $_SESSION['user_id'];
-        $data = $this->model->getMyExports($staff_id);
-        echo json_encode($data);
-        exit;
-    }
-
-    /**
-     * Chức năng: Thay đổi trạng thái của phiếu (Ví dụ: Từ PENDING sang PROCESSING).
-     * Tác dụng: Lưu Database và gọi hàm đồng bộ Real-time về màn hình Manager ngay lập tức.
+     * Chức năng: API Đổi trạng thái qua lại của bất kỳ loại Phiếu nào (Pending, Paused, v.v.).
+     * Tác dụng: Hỗ trợ nhấn Cập nhật Nhanh không cần form gửi POST đi, cập nhật tức thì màn Quản lý.
      */
     public function updateStatusAjax()
     {
@@ -421,230 +391,6 @@ class TicketController
         $this->triggerManagerSync($ticket_id, $status);
 
         echo json_encode(['status' => 'success']);
-        exit;
-    }
-
-    /**
-     * Chức năng: Cập nhật tiến độ xuất kho.
-     * Tác dụng: Cộng dồn số lượng đôi giày mà nhân viên đã xác nhận nhặt được vào Database.
-     */
-    public function updateExportProgressAjax()
-    {
-        if (ob_get_length()) ob_clean();
-        header('Content-Type: application/json; charset=utf-8');
-
-        $detail_id = $_POST['detail_id'];
-        $picked_qty = (int)$_POST['picked_qty'];
-
-        if ($this->model->updateExportProgress($detail_id, $picked_qty)) {
-            echo json_encode(['status' => 'success']);
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Lỗi cập nhật CSDL']);
-        }
-        exit;
-    }
-
-    /**
-     * Chức năng: Mổ xẻ JSONB để tìm vị trí đôi giày.
-     * Tác dụng: Cung cấp thông tin Kệ và Ô để hiển thị lộ trình đi nhặt hàng cho Staff.
-     */
-    public function getLocationsAjax()
-    {
-        if (ob_get_length()) ob_clean();
-        header('Content-Type: application/json; charset=utf-8');
-
-        $variant_id = $_GET['variant_id'];
-        $data = $this->model->getLocationsFromJSON($variant_id);
-        echo json_encode($data);
-        exit;
-    }
-
-    /**
-     * Chức năng: Chốt sổ phiếu Xuất Kho (Nút Xác Nhận Hoàn Tất).
-     * Tác dụng: Khởi chạy Transaction trừ tồn kho thật, xả giữ chỗ, xóa giày trên JSONB kệ, và thông báo về Manager.
-     */
-    public function completeExportAjax()
-    {
-        if (ob_get_length()) ob_clean();
-        header('Content-Type: application/json; charset=utf-8');
-
-        $ticket_id = $_REQUEST['ticket_id'] ?? 0;
-
-        if ($ticket_id > 0) {
-            if ($this->model->completeExportTicket($ticket_id)) {
-                // Lấy giờ hệ thống hiện tại để bắn cho Manager
-                $completed_at = date('d/m/Y H:i');
-                $this->triggerManagerSync($ticket_id, 'COMPLETED', $completed_at);
-
-                echo json_encode(['status' => 'success']);
-            } else {
-                echo json_encode(['status' => 'error', 'message' => 'Lỗi trừ kho thực tế.']);
-            }
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Mã phiếu không hợp lệ.']);
-        }
-        exit;
-    }
-
-
-    // ======================================================
-    // CÁC HÀM AJAX XỬ LÝ NHẬP KHO AI
-    // ======================================================
-
-    public function getMyImportsAjax()
-    {
-        if (ob_get_length()) ob_clean();
-        header('Content-Type: application/json; charset=utf-8');
-        
-        $staff_id = $_SESSION['user_id'];
-        
-        // Gọi thẳng Model, không dính líu đến SQL nữa
-        $data = $this->model->getMyImports($staff_id);
-        
-        echo json_encode($data);
-        exit;
-    }
-
-    public function saveTempImportAjax()
-    {
-        if (ob_get_length()) ob_clean();
-        header('Content-Type: application/json; charset=utf-8');
-
-        $ticket_id = $_POST['ticket_id'];
-        $detail_id = $_POST['detail_id'];
-        $variant_id = $_POST['variant_id'];
-        $actual_qty = $_POST['actual_qty'];
-        $status = 'SCANNED';
-        $disc_type = $_POST['discrepancy_type'];
-        $note = $_POST['note'];
-        $image = $_POST['scanned_image'];
-        $staff_id = $_SESSION['user_id'];
-
-        // Đẩy toàn bộ cục data xuống Model xử lý Transaction
-        $result = $this->model->saveTempImport(
-            $ticket_id, $detail_id, $variant_id, $actual_qty, $image, $status, $disc_type, $note, $staff_id
-        );
-
-        if ($result === true) {
-            echo json_encode(['status' => 'success']);
-        } else {
-            echo json_encode(['status' => 'error', 'message' => $result]); // Trả về mã lỗi DB nếu có
-        }
-        exit;
-    }
-
-    
-    public function completeImportAjax()
-    {
-        if (ob_get_length()) ob_clean();
-        header('Content-Type: application/json; charset=utf-8');
-        
-        $ticket_id = $_POST['ticket_id'];
-        $user_id = $_SESSION['user_id'];
-
-        $final_status = $this->model->completeImportTicket($ticket_id, $user_id);
-
-        if ($final_status !== false) {
-            // Trả về kèm theo final_status
-            echo json_encode(['status' => 'success', 'final_status' => $final_status]);
-            
-            $size = ob_get_length();
-            header("Content-Length: $size");
-            header('Connection: close');
-            ob_end_flush();
-            @ob_flush();
-            flush();
-            if (session_id()) session_write_close();
-
-            $this->triggerManagerSync($ticket_id, $final_status, date('d/m/Y H:i'));
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Lỗi chốt sổ kho.']);
-        }
-        exit;
-    }
-
-
-    // ======================================================
-    // CÁC HÀM AJAX XỬ LÝ NHẬP KHO AI (BẢNG TẠM)
-    // ======================================================
-
-    /**
-     * Chức năng: Khởi tạo quy trình nhập kho và chuẩn bị bảng tạm.
-     * Tác dụng: Chuyển trạng thái phiếu sang PROCESSING và đổ dữ liệu dự kiến vào staging area (ticket_import_temp) để bắt đầu quét AI.
-     */
-    public function startImportProcessAjax() 
-    {
-        if (ob_get_length()) ob_clean();
-        header('Content-Type: application/json; charset=utf-8');
-
-        $ticket_id = $_POST['ticket_id'] ?? 0;
-        $res = $this->model->startImportProcess($ticket_id);
-        
-        echo json_encode(['success' => $res]);
-        exit;
-    }
-
-    /**
-     * Chức năng: Cập nhật số lượng thực nhập từ kết quả nhận diện AI vào bảng tạm.
-     * Tác dụng: Ghi nhận tăng số lượng thực tế, lưu vết ảnh quét và chặn các sản phẩm không nằm trong danh sách phiếu nhập.
-     */
-    public function updateTempImportAjax() 
-    {
-        if (ob_get_length()) ob_clean();
-        header('Content-Type: application/json; charset=utf-8');
-
-        $ticket_id = $_POST['ticket_id'];
-        $variant_id = $_POST['variant_id'];
-        $image_url = $_POST['image_url'];
-
-        $res = $this->model->updateImportTemp($ticket_id, $variant_id, $image_url);
-        
-        if($res) {
-            echo json_encode(['success' => true, 'actual_qty' => $res['actual_qty']]);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Sản phẩm này không có trong phiếu nhập!']);
-        }
-        exit;
-    }
-
-    /**
-     * Chức năng: Giảm số lượng thực nhập trong bảng tạm khi xóa ảnh lỗi.
-     * Tác dụng: Hỗ trợ tính năng "Undo" khi quét nhầm, đảm bảo đồng bộ số lượng thực tế giữa giao diện và Database bảng tạm.
-     */
-    public function decreaseTempImportAjax() 
-    {
-        if (ob_get_length()) ob_clean();
-        header('Content-Type: application/json; charset=utf-8');
-
-        $ticket_id = $_POST['ticket_id'];
-        $variant_id = $_POST['variant_id'];
-        
-        $res = $this->model->decreaseImportTemp($ticket_id, $variant_id);
-        echo json_encode(['success' => (bool)$res]);
-        exit;
-    }
-
-    /**
-     * Chức năng: Chốt sổ phiếu nhập kho và cập nhật tồn kho chính thức.
-     * Tác dụng: Đồng bộ dữ liệu từ bảng tạm sang bảng chính, cộng kho vật lý, giải phóng bảng tạm và bắn tín hiệu Pusher Real-time cho Quản lý.
-     */
-    public function finalizeImportAjax() 
-    {
-        if (ob_get_length()) ob_clean();
-        header('Content-Type: application/json; charset=utf-8');
-
-        $ticket_id = $_POST['ticket_id'];
-        $user_id = $_SESSION['user_id'];
-
-        $res = $this->model->finalizeImport($ticket_id, $user_id);
-        
-        if($res) {
-            // Bắn tín hiệu đồng bộ về màn hình Manager ngay khi hoàn tất
-            $completed_at = date('d/m/Y H:i');
-            $this->triggerManagerSync($ticket_id, 'COMPLETED', $completed_at);
-        }
-
-        echo json_encode(['success' => $res]);
         exit;
     }
 }

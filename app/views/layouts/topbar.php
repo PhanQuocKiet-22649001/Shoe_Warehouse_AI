@@ -65,7 +65,7 @@ $allCategories = $cModel->getAll();
         <div class="modal-content shadow rounded-1">
             <div class="modal-header border-bottom flex-column align-items-start">
                 <div class="d-flex w-100 justify-content-between align-items-center">
-                    <h5 class="modal-title fw-bold text-white text-uppercase">NHẬP KHO BẰNG TRÍ TUỆ NHÂN TẠO (AI)</h5>
+                    <h5 class="modal-title fw-bold text-white text-uppercase">NHẬP KHO BẰNG TRÍ TUỆ NHÂN TẠO (AI).</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
             </div>
@@ -461,6 +461,7 @@ $allCategories = $cModel->getAll();
     });
 </script>
 <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
-<script src="assets/js/import_export_product.js"></script>
+<script src="assets/js/import.js"></script>
+<script src="assets/js/export.js"></script>
 <script src="assets/js/profile.js"></script>
 <script src="assets/js/topbar.js"></script>

@@ -10,8 +10,16 @@ if (isset($_GET['page'])) {
         require_once '../config/database.php';
         require_once '../app/models/TicketModel.php';
         require_once '../app/controllers/TicketController.php';
-        $ticketAjax = new TicketController();
+        require_once '../app/models/ExportModel.php';
+        require_once '../app/controllers/ExportController.php';
+        require_once '../app/models/ImportModel.php';
+        require_once '../app/controllers/ImportController.php';
 
+        $ticketAjax = new TicketController();
+        $exportAjax = new ExportController();
+        $importAjax = new ImportController();
+
+        // 1. ROUTE PHIẾU CHUNG
         if ($_GET['action'] === 'get_products') {
             $ticketAjax->getProductsByBrandAjax();
             exit;
@@ -28,43 +36,64 @@ if (isset($_GET['page'])) {
             $ticketAjax->getPendingCountsAjax();
             exit;
         }
-        if ($_GET['action'] === 'get_pending_counts') {
-            $ticketAjax->getPendingCountsAjax();
-            exit;
-        }
-
-        // --- BỔ SUNG ROUTE MỚI CHO XUẤT KHO ---
-        if ($_GET['action'] === 'get_my_exports') {
-            $ticketAjax->getMyExportsAjax();
-            exit;
-        }
         if ($_GET['action'] === 'update_status') {
             $ticketAjax->updateStatusAjax();
             exit;
         }
+
+        // 2. ROUTE XUẤT KHO
+        if ($_GET['action'] === 'get_my_exports') {
+            $exportAjax->getMyExportsAjax();
+            exit;
+        }
         if ($_GET['action'] === 'update_export_progress') {
-            $ticketAjax->updateExportProgressAjax();
+            $exportAjax->updateExportProgressAjax();
             exit;
         }
         if ($_GET['action'] === 'complete_export') {
-            $ticketAjax->completeExportAjax();
+            $exportAjax->completeExportAjax();
             exit;
         }
+        if ($_GET['action'] === 'get_locations') {
+            $exportAjax->getLocationsAjax();
+            exit;
+        }
+
+        // 3. ROUTE NHẬP KHO
         if ($_GET['action'] === 'get_my_imports') {
-            $ticketAjax->getMyImportsAjax();
+            $importAjax->getMyImportsAjax();
             exit;
         }
         if ($_GET['action'] === 'save_temp_import') {
-            $ticketAjax->saveTempImportAjax();
+            $importAjax->saveTempImportAjax();
             exit;
         }
         if ($_GET['action'] === 'complete_import') {
-            $ticketAjax->completeImportAjax();
+            $importAjax->completeImportAjax();
             exit;
         }
-        // -------------------------------------
+        if ($_GET['action'] === 'startImportProcessAjax') {
+            $importAjax->startImportProcessAjax();
+            exit;
+        }
+        if ($_GET['action'] === 'updateTempImportAjax') {
+            $importAjax->updateTempImportAjax();
+            exit;
+        }
+        if ($_GET['action'] === 'decreaseTempImportAjax') {
+            $importAjax->decreaseTempImportAjax();
+            exit;
+        }
+        if ($_GET['action'] === 'finalizeImportAjax') {
+            $importAjax->finalizeImportAjax();
+            exit;
+        }
+        // ĐÂY LÀ ROUTE LẤY KỆ BỊ THIẾU:
+        if ($_GET['action'] === 'get_putaway_locations') {
+            $importAjax->getPutawayLocationsAjax();
+            exit;
+        }
     }
-
 
     if ($_GET['page'] === 'history-detail') {
         require_once __DIR__ . '/../app/controllers/TransactionController.php';
@@ -128,9 +157,10 @@ if (isset($_GET['page'])) {
             exit;
         }
         if ($_GET['action'] === 'get_locations') {
-            require_once '../app/controllers/TicketController.php';
-            $ticketLocAjax = new TicketController();
-            $ticketLocAjax->getLocationsAjax();
+            require_once '../app/models/ExportModel.php';
+            require_once '../app/controllers/ExportController.php';
+            $exportLocAjax = new ExportController();
+            $exportLocAjax->getLocationsAjax();
             exit;
         }
 
