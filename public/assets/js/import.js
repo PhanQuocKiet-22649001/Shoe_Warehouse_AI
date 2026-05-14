@@ -598,23 +598,15 @@ function checkImportDiscrepancy() {
     const exp = parseInt(document.getElementById('import_expected_qty').value) || 0;
     const act = parseInt(document.getElementById('import_actual_qty').value) || 0;
     const badge = document.getElementById('import_status_badge');
-    const typeInput = document.getElementById('import_discrepancy_type');
 
     if (act === exp) {
         badge.className = 'badge bg-success w-100 p-2';
         badge.innerText = 'KHỚP SỐ LƯỢNG';
-        typeInput.value = 'MATCH';
-    } else if (act < exp) {
-        badge.className = 'badge bg-warning text-dark w-100 p-2';
-        badge.innerText = `THIẾU ${exp - act} ĐÔI`;
-        typeInput.value = 'SHORT';
     } else {
-        badge.className = 'badge bg-danger w-100 p-2';
-        badge.innerText = `DƯ ${act - exp} ĐÔI`;
-        typeInput.value = 'OVER';
+        badge.className = 'badge bg-warning text-dark w-100 p-2';
+        let diff = act - exp;
+        badge.innerText = `CÓ LỆCH: ${diff > 0 ? '+' : ''}${diff} ĐÔI`;
     }
-    
-    // ĐÃ FIX: Tính toán lại phân bổ kệ mỗi khi User gõ lại số lượng thực tế
     validatePutawayTotal(); 
 }
 
@@ -653,7 +645,7 @@ async function saveTempImport(e) {
         if (val > 0) {
             putawayLocations.push({
                 shelf_id: input.getAttribute('data-shelf-id'),
-                shelf_name: input.getAttribute('data-shelf-name'), // --- BỔ SUNG LƯU THÊM TÊN KỆ ĐỂ IN RA UI ---
+                shelf_name: input.getAttribute('data-shelf-name'), 
                 tier: input.getAttribute('data-tier'),
                 slot: input.getAttribute('data-slot'),
                 variant_id: document.getElementById('import_variant_id').value,
@@ -671,6 +663,23 @@ async function saveTempImport(e) {
         const data = await res.json();
         
         if(data.status === 'success') {
+
+            //ĐOẠN NÀY ĐỂ HIỆN QR
+            if (data.qr_code) {
+                const qrImage = `https://quickchart.io/qr?text=${encodeURIComponent(data.qr_code)}&size=200&ecLevel=H`;
+                
+                const qrModalHtml = `
+                    <div id="temp_qr_overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center;">
+                        <div class="bg-white p-4 rounded text-center shadow-lg" style="width:300px;">
+                            <h5 class="fw-bold text-success mb-3"><i class="fas fa-check-circle"></i> ĐÃ LƯU BIẾN THỂ</h5>
+                            <img src="${qrImage}" class="img-fluid border p-2 rounded mb-3">
+                            <p class="small text-muted mb-3">Quét mã để dán lên lô hàng</p>
+                            <button class="btn btn-dark w-100 fw-bold" onclick="document.getElementById('temp_qr_overlay').remove()">TIẾP TỤC QUÉT</button>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', qrModalHtml);
+            }
             loadImportTicketItems(); 
             
             if (window.currentMatchedItems && activeScannedIndex !== -1) {

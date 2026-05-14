@@ -262,14 +262,16 @@ class TicketModel
                     td.variant_id,      
                     td.quantity, 
                     COALESCE(td.processed_qty, 0) as processed_qty, 
-                    td.note,  
+                    td.note,
+                    td.is_diff,      
+                    td.qr_code,  
                     pv.color, 
                     pv.size, 
                     p.product_id,       
                     p.product_name, 
                     p.product_image, 
                     c.category_name as brand,
-                    tit.putaway_locations -- BỔ SUNG: Lấy dữ liệu kệ đã lưu từ bảng tạm
+                    tit.putaway_locations 
                 FROM ticket_details td
                 JOIN product_variants pv ON td.variant_id = pv.variant_id
                 JOIN products p ON pv.product_id = p.product_id

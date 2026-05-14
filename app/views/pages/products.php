@@ -178,17 +178,9 @@ $cat = $cat ?? ['categoryName' => 'Chưa rõ'];
 
                                                         <td class="text-center pe-4">
                                                             <div class="d-flex justify-content-center gap-2 align-items-center">
-                                                                <?php if ($_SESSION['role'] === 'STAFF'): ?>
-                                                                    <form action="index.php?page=products&action=export" method="POST" class="d-flex align-items-center gap-1" onsubmit="return confirmExport(this);">
-                                                                        <input type="hidden" name="variant_id" value="<?= $var['variant_id'] ?>">
-                                                                        <input type="hidden" name="current_stock" value="<?= $var['stock'] ?>">
-                                                                        <input type="hidden" name="category_id" value="<?= $pro['category_id'] ?>">
-                                                                        <input type="number" name="quantity" class="form-control form-control-sm text-center"
-                                                                            style="width: 55px; border-color: #61839D;" value="1" min="1" max="<?= $var['stock'] ?>" required>
-                                                                        <button type="submit" name="export_stock" class="btn btn-sm shadow-sm fw-bold btn-outline-dark">Xuất</button>
-                                                                    </form>
 
-                                                                <?php elseif ($_SESSION['role'] === 'MANAGER'): ?>
+                                                                <?php if ($_SESSION['role'] === 'MANAGER'): ?>
+                                                                    <!-- chuyển vị trí -->
                                                                     <?php $is_active = ($var['variant_status'] === 't' || $var['variant_status'] === true || $var['variant_status'] === '1'); ?>
 
                                                                     <?php if (!empty($locs)): ?>
@@ -198,6 +190,7 @@ $cat = $cat ?? ['categoryName' => 'Chưa rõ'];
                                                                         </button>
                                                                     <?php endif; ?>
 
+                                                                    <!-- tạm ngưng biến thể -->
                                                                     <form action="index.php?page=products&action=toggle_variant_status" method="POST" class="m-0"
                                                                         onsubmit="return confirm('<?= $is_active ? 'Bạn có chắc chắn muốn TẠM NGƯNG biến thể này?' : 'Bạn muốn KÍCH HOẠT LẠI biến thể này để kinh doanh?' ?>');">
                                                                         <input type="hidden" name="variant_id" value="<?= $var['variant_id'] ?>">
@@ -208,14 +201,23 @@ $cat = $cat ?? ['categoryName' => 'Chưa rõ'];
                                                                         </button>
                                                                     </form>
 
+                                                                    <!-- xóa biến thể -->
                                                                     <form action="index.php?page=products&action=delete_variant" method="POST" class="m-0"
-                                                                        onsubmit="return confirm('⚠️ CẢNH BÁO: Bạn có chắc chắn muốn XÓA biến thể này không? (Dữ liệu sẽ được đưa vào thùng rác)');">
+                                                                        onsubmit="return confirm('⚠️ CẢNH BÁO: Bạn có chắc chắn muốn XÓA biến thể này không?');">
                                                                         <input type="hidden" name="variant_id" value="<?= $var['variant_id'] ?>">
                                                                         <button type="submit" class="btn btn-sm btn-danger" title="Xóa biến thể">
                                                                             <i class="fas fa-trash-alt"></i>
                                                                         </button>
                                                                     </form>
                                                                 <?php endif; ?>
+
+                                                                <!-- xem qr -->
+                                                                <button type="button" class="btn btn-sm btn-outline-dark"
+                                                                    onclick="printVariantQR('<?= $var['sku'] ?>', '<?= addslashes($pro['product_name']) ?>', '<?= $var['color'] ?>', '<?= $var['size'] ?>', '<?= $var['variant_id'] ?>')"
+                                                                    title="In mã QR">
+                                                                    <i class="fas fa-qrcode"></i>
+                                                                </button>
+
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -397,5 +399,41 @@ $cat = $cat ?? ['categoryName' => 'Chưa rõ'];
         }
     </script>
 <?php endif; ?>
+<div class="modal fade" id="simpleQRModal" tabindex="-1" data-bs-backdrop="false" style="background: none;">
+        <div class="modal-dialog modal-sm modal-dialog-centered" style="box-shadow: 0 10px 50px rgba(0,0,0,0.2);">
+            <div class="modal-content" style="border: 2px solid #000;">
+                <div class="modal-header p-2 border-0">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pt-0" id="qrContentArea">
+                </div>
+                <div class="modal-footer p-2 border-0">
+                    <button type="button" class="btn btn-dark w-100 fw-bold" onclick="startPrint()">IN MÃ QR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* CSS chỉ phục vụ việc in ấn, không ảnh hưởng giao diện lúc xem */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+
+            #qrContentArea,
+            #qrContentArea * {
+                visibility: visible;
+            }
+
+            #qrContentArea {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
 
 <script src="assets/js/product.js"></script>

@@ -25,35 +25,44 @@ class ImportModel
         return $res ? (pg_fetch_all($res) ?: []) : [];
     }
 
-    /**
+   /**
      * Chức năng: Cập nhật thông tin thực nhập cho một Size/Màu cụ thể vào Bảng Tạm.
-     * Tác dụng: Ghi đè số liệu mỗi khi Staff điền tay hoặc xác nhận AI, lưu kèm ghi chú (Dư/Thiếu).
+     * Tác dụng: Ghi đè số liệu, tự động tính toán chênh lệch (is_diff) và cấp phát mã QR định danh.
      */
-    public function saveTempImport($ticket_id, $detail_id, $variant_id, $actual_qty, $image, $status, $disc_type, $note, $staff_id, $putaway_locations)
+    public function saveTempImport($ticket_id, $detail_id, $variant_id, $actual_qty, $image, $note, $staff_id, $putaway_locations)
     {
         pg_query($this->conn, "BEGIN");
         try {
+            // 1. Lấy số lượng yêu cầu để tính độ lệch
             $sqlGetQty = "SELECT quantity FROM ticket_details WHERE detail_id = $1";
             $resQty = pg_query_params($this->conn, $sqlGetQty, [$detail_id]);
             $expected_qty = pg_fetch_result($resQty, 0, 'quantity');
 
+            // 2. Kích hoạt cờ is_diff nếu có sai lệch & Tạo URL cho QR Code
+            $is_diff = ($actual_qty != $expected_qty) ? 'true' : 'false';
+            $qr_code = "http://192.168.0.127/Shoe_Warehouse/check_QR.php?tid=$ticket_id&vid=$variant_id";
+
             pg_query_params($this->conn, "DELETE FROM ticket_import_temp WHERE ticket_id = $1 AND variant_id = $2", [$ticket_id, $variant_id]);
 
+            // 3. Lưu vào bảng tạm
             $sqlTemp = "INSERT INTO ticket_import_temp 
-                        (ticket_id, variant_id, expected_qty, actual_qty, scanned_image, status, discrepancy_type, note, staff_id, putaway_locations) 
+                        (ticket_id, variant_id, expected_qty, actual_qty, scanned_image, note, staff_id, putaway_locations, is_diff, qr_code) 
                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)";
             pg_query_params($this->conn, $sqlTemp, [
-                $ticket_id, $variant_id, $expected_qty, $actual_qty, $image, $status, $disc_type, $note, $staff_id, $putaway_locations
+                $ticket_id, $variant_id, $expected_qty, $actual_qty, $image, $note, $staff_id, $putaway_locations, $is_diff, $qr_code
             ]);
 
-            $sqlUpdateDetail = "UPDATE ticket_details SET processed_qty = $1, note = $3 WHERE detail_id = $2";
-            pg_query_params($this->conn, $sqlUpdateDetail, [$actual_qty, $detail_id, $note]);
+            // 4. Đồng bộ ngay vào bảng chi tiết
+            $sqlUpdateDetail = "UPDATE ticket_details SET processed_qty = $1, note = $3, is_diff = $4, qr_code = $5 WHERE detail_id = $2";
+            pg_query_params($this->conn, $sqlUpdateDetail, [$actual_qty, $detail_id, $note, $is_diff, $qr_code]);
 
             pg_query($this->conn, "COMMIT");
-            return true;
+            
+            // Trả về mảng chứa URL QR để file import.js gọi API hiện Popup
+            return ['status' => 'success', 'qr_code' => $qr_code];
         } catch (Exception $e) {
             pg_query($this->conn, "ROLLBACK");
-            return $e->getMessage();
+            return ['status' => 'error', 'message' => $e->getMessage()];
         }
     }
 
@@ -96,9 +105,9 @@ class ImportModel
 
     /**
      * Chức năng: Xác nhận nhập kho chính thức.
-     * Tác dụng: Cộng thực tế số lượng hàng nhập vào CSDL tồn kho, xóa bảng tạm và quyết định tag Dư/Thiếu.
+     * Tác dụng: Cộng tồn kho, đẩy hàng lên kệ, xóa bảng tạm và gán tag COMPLETE_DIFF nếu có bất kỳ dòng nào sai lệch.
      */
-   public function completeImportTicket($ticket_id, $user_id)
+    public function completeImportTicket($ticket_id, $user_id)
     {
         pg_query($this->conn, "BEGIN");
         try {
@@ -122,18 +131,17 @@ class ImportModel
                 }
             }
 
-            $sqlCheck = "SELECT SUM(quantity) as exp_total, SUM(processed_qty) as act_total FROM ticket_details WHERE ticket_id = $1";
+            // Quét cờ is_diff toàn bộ chi tiết phiếu
+            $sqlCheck = "SELECT EXISTS(SELECT 1 FROM ticket_details WHERE ticket_id = $1 AND is_diff = true)";
             $resCheck = pg_query_params($this->conn, $sqlCheck, [$ticket_id]);
-            $rowCheck = pg_fetch_assoc($resCheck);
+            $hasDiff = pg_fetch_result($resCheck, 0, 0) === 't';
             
-            $exp_total = (int)$rowCheck['exp_total'];
-            $act_total = (int)$rowCheck['act_total'];
-            
-            $final_status = 'COMPLETED'; 
-            if ($act_total < $exp_total) $final_status = 'MISSING'; 
-            elseif ($act_total > $exp_total) $final_status = 'EXCESS'; 
+            $final_status = $hasDiff ? 'COMPLETE_DIFF' : 'COMPLETED'; 
+            $is_diff_val = $hasDiff ? 'true' : 'false';
 
-            pg_query_params($this->conn, "UPDATE tickets SET status = $2, completed_at = CURRENT_TIMESTAMP WHERE ticket_id = $1", [$ticket_id, $final_status]);
+            // Cập nhật phiếu mẹ
+            pg_query_params($this->conn, "UPDATE tickets SET status = $2, is_diff = $3, completed_at = CURRENT_TIMESTAMP WHERE ticket_id = $1", [$ticket_id, $final_status, $is_diff_val]);
+            
             pg_query_params($this->conn, "DELETE FROM ticket_import_temp WHERE ticket_id = $1", [$ticket_id]);
 
             pg_query($this->conn, "COMMIT");

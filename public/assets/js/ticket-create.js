@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', function () {
             btn.addEventListener('click', function () {
                 const ticketId = this.getAttribute('data-ticket-id');
                 const ticketCode = this.getAttribute('data-ticket-code');
-                const staffName = this.getAttribute('data-staff-name'); 
+                const staffName = this.getAttribute('data-staff-name');
 
                 document.getElementById('modal_ticket_id').value = ticketId;
                 document.getElementById('modal_ticket_code').value = ticketCode;
@@ -152,19 +152,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const viewButtons = document.querySelectorAll('.btn-view-details');
     if (viewButtons.length > 0) {
         viewButtons.forEach(btn => {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function () {
                 const ticketId = this.getAttribute('data-ticket-id');
                 const ticketCode = this.getAttribute('data-ticket-code');
-                
+
                 document.getElementById('view_ticket_code').textContent = ticketCode;
                 const tbody = document.getElementById('detailModalBody');
                 tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><br>Đang tải dữ liệu...</td></tr>';
-                
+
                 fetch(`index.php?page=tickets&action=get_ticket_details&ticket_id=${ticketId}`)
                     .then(res => res.json())
                     .then(data => {
-                        tbody.innerHTML = ''; 
-                        
+                        tbody.innerHTML = '';
+
                         if (data.status === 'error') {
                             tbody.innerHTML = `<tr><td colspan="5" class="text-danger fw-bold">${data.message}</td></tr>`;
                             return;
@@ -177,19 +177,43 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         data.forEach(item => {
                             const imgSrc = item.product_image ? `assets/img_product/${item.product_image}` : 'assets/images/placeholder.png';
+                            let expected = parseInt(item.quantity) || 0;
+                            let actual = parseInt(item.processed_qty) || 0;
+                            let diffNum = actual - expected;
+
+                            let diffHtml = '';
+                            let noteHtml = item.note ? `<span class="small text-muted">${item.note}</span>` : `<span class="text-black-50">-</span>`;
+
+                            if (diffNum !== 0) {
+                                let diffStr = diffNum > 0 ? `+${diffNum}` : `${diffNum}`;
+                                let colorClass = diffNum > 0 ? 'text-info' : 'text-danger';
+                                diffHtml = `<span class="fw-bold ${colorClass}">${diffStr}</span>`;
+                            } else {
+                                diffHtml = `<span class="text-success fw-bold"><i class="fas fa-check"></i> Khớp</span>`;
+                            }
+
                             tbody.innerHTML += `
                                 <tr>
                                     <td class="p-2">
-                                        <img src="${imgSrc}" class="rounded shadow-sm" style="width: 50px; height: 50px; object-fit: cover;">
+                                        <img src="${imgSrc}" class="rounded shadow-sm border" style="width: 85px; height: 85px; object-fit: cover;">
                                     </td>
-                                    <td class="fw-bold">${item.brand}</td>
-                                    <td class="text-start fw-bold text-primary">${item.product_name}</td>
-                                    <td>
-                                        <span class="badge bg-light text-dark border"><i class="fas fa-palette text-info"></i> ${item.color}</span>
-                                        <span class="badge bg-light text-dark border ms-1"><i class="fas fa-ruler text-warning"></i> Size ${item.size}</span>
+                                    <td class="fw-bold text-secondary text-uppercase" style="font-size: 0.8rem;">${item.brand}</td>
+                                    <td >
+                                        <div class="fw-bold text-primary" style="white-space: normal; line-height: 1.3;">
+                                            ${item.product_name}
+                                        </div>
                                     </td>
                                     <td>
-                                        <span class="badge bg-success fs-6 px-3">${item.quantity}</span>
+                                        <div class="variant-tag">${item.color}</div>
+                                        <div class="variant-tag mt-1">Size ${item.size}</div>
+                                    </td>
+                                    <td><span class="fw-bold fs-5">${expected}</span></td>
+                                    <td><span class="fw-bold fs-5 ${diffNum !== 0 ? 'text-danger' : 'text-success'}">${actual}</span></td>
+                                    <td>${diffHtml}</td>
+                                    <td >
+                                        <div style="white-space: normal; word-break: break-word; line-height: 1.4;">
+                                            ${noteHtml}
+                                        </div>
                                     </td>
                                 </tr>
                             `;
@@ -210,7 +234,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const pusherManager = new Pusher('24a79cb74cfa666e1831', { cluster: 'ap1', forceTLS: true });
         const channelManager = pusherManager.subscribe('warehouse-channel');
 
-        channelManager.bind('ticket-status-changed', function(data) {
+        channelManager.bind('ticket-status-changed', function (data) {
             console.log("Đã nhận tín hiệu Pusher:", data); // Bật để soi lỗi
 
             // Tìm đúng dòng của phiếu vừa bị thay đổi
@@ -224,21 +248,23 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (data.status === 'PROCESSING') bgClass = 'bg-info text-dark';
                     if (data.status === 'PAUSED') bgClass = 'bg-danger';
                     if (data.status === 'COMPLETED') bgClass = 'bg-success';
+                    if (data.status === 'COMPLETE_DIFF') bgClass = 'bg-danger';
                     statusCell.innerHTML = `<span class="badge ${bgClass}">${data.status}</span>`;
                 }
 
                 // 2. Cập nhật thời gian hoàn thành (NẾU CÓ)
-                if (data.status === 'COMPLETED' && data.completed_at) {
+                if (['COMPLETED', 'COMPLETE_DIFF'].includes(data.status) && data.completed_at) {
                     const timeCell = row.querySelector('.ticket-time-cell');
                     if (timeCell) {
-                        timeCell.innerHTML = `<span class="text-success fw-bold">${data.completed_at}</span>`;
+                        let colorClass = data.status === 'COMPLETE_DIFF' ? 'text-danger' : 'text-success';
+                        timeCell.innerHTML = `<span class="${colorClass} fw-bold">${data.completed_at}</span>`;
                     }
                 }
 
                 // 3. Ẩn/Hiện nút Sửa NV và Xóa tùy theo trạng thái
                 const btnChange = row.querySelector('.btn-change-staff');
                 const formDelete = row.querySelector('.form-delete-ticket');
-                
+
                 // Trạng thái không phải PENDING thì "Tàng hình" 2 nút này
                 if (data.status !== 'PENDING') {
                     if (btnChange) btnChange.classList.add('d-none');

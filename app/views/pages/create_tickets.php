@@ -269,6 +269,7 @@ foreach ($suggestions as $s) {
                                         if ($t['status'] == 'PROCESSING') $bgClass = 'bg-info text-dark';
                                         if ($t['status'] == 'PAUSED') $bgClass = 'bg-danger';
                                         if ($t['status'] == 'COMPLETED') $bgClass = 'bg-success';
+                                        if ($t['status'] == 'COMPLETE_DIFF') $bgClass = 'bg-danger text-white';
                                         ?>
                                         <span class="badge <?= $bgClass ?>"><?= $t['status'] ?></span>
                                     </td>
@@ -281,7 +282,7 @@ foreach ($suggestions as $s) {
                                         <td class="text-muted fst-italic">Trống</td>
                                     <?php endif; ?>
 
-                                   <?php if (in_array($t['status'], ['COMPLETED', 'MISSING', 'EXCESS']) && !empty($t['completed_at'])): ?>
+                                    <?php if (in_array($t['status'], ['COMPLETED', 'COMPLETE_DIFF']) && !empty($t['completed_at'])): ?>
                                         <td class="text-success fw-bold ticket-time-cell"><?= date('d/m/Y H:i', strtotime($t['completed_at'])) ?></td>
                                     <?php else: ?>
                                         <td class="text-muted fst-italic ticket-time-cell">-</td>
@@ -381,7 +382,7 @@ foreach ($suggestions as $s) {
 
 <!-- MODAL XEM CHI TIẾT PHIẾU -->
 <div class="modal fade" id="ticketDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-light">
                 <h5 class="modal-title fw-bold text-primary">
@@ -391,18 +392,20 @@ foreach ($suggestions as $s) {
             </div>
             <div class="modal-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0 text-center">
+                    <table class="align-middle mb-0 text-center w-100 custom-table">
                         <thead class="table-dark">
                             <tr>
-                                <th width="100">Hình ảnh</th>
-                                <th>Hãng</th>
-                                <th class="text-start">Tên sản phẩm</th>
-                                <th>Phân loại (Màu - Size)</th>
-                                <th>Số lượng</th>
+                                <th style="width: 10%">Hình ảnh</th>
+                                <th style="width: 10%">Hãng</th>
+                                <th style="width: 20%" >Tên sản phẩm</th>
+                                <th style="width: 12%">Phân loại</th>
+                                <th style="width: 8%">Cần nhập</th>
+                                <th style="width: 8%">Thực tế</th>
+                                <th style="width: 10%">Chênh lệch</th>
+                                <th style="width: 22%" >Ghi chú</th>
                             </tr>
                         </thead>
                         <tbody id="detailModalBody">
-                            <!-- JS sẽ đổ dữ liệu vào đây -->
                         </tbody>
                     </table>
                 </div>

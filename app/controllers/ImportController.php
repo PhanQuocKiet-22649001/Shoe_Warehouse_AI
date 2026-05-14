@@ -64,42 +64,45 @@ class ImportController
 
     /**
      * Chức năng: Lưu Form biến thể do AI nhận diện hoặc sửa tay.
-     * Tác dụng: Xử lý request từ Javascript và đẩy vào Database (Đã bổ sung việc nhận mảng vị trí kệ putaway_locations).
+     * Tác dụng: Xử lý request từ Javascript, đẩy vào Database và trả về mã QR.
      */
     public function saveTempImportAjax()
     {
         if (ob_get_length()) ob_clean();
         header('Content-Type: application/json; charset=utf-8');
 
+        // 1. Nhận dữ liệu từ form (Đã bỏ 2 biến status và discrepancy_type cũ)
         $ticket_id = $_POST['ticket_id'];
         $detail_id = $_POST['detail_id'];
         $variant_id = $_POST['variant_id'];
         $actual_qty = $_POST['actual_qty'];
-        $status = 'SCANNED';
-        $disc_type = $_POST['discrepancy_type'];
         $note = $_POST['note'];
         $image = $_POST['scanned_image'];
         $staff_id = $_SESSION['user_id'];
-        // BỔ SUNG: Nhận dữ liệu vị trí kệ từ Form gửi lên
         $putaway_locations = $_POST['putaway_locations'] ?? null;
 
+        // 2. Gọi Model lưu dữ liệu
         $result = $this->model->saveTempImport(
             $ticket_id,
             $detail_id,
             $variant_id,
             $actual_qty,
             $image,
-            $status,
-            $disc_type,
             $note,
             $staff_id,
             $putaway_locations
         );
 
-        if ($result === true) {
-            echo json_encode(['status' => 'success']);
+        // 3. Xử lý kết quả mảng trả về từ Model (Chứa qr_code)
+        if (is_array($result) && $result['status'] === 'success') {
+            echo json_encode([
+                'status' => 'success', 
+                'qr_code' => $result['qr_code'] // Đẩy QR code về cho import.js hiển thị
+            ]);
         } else {
-            echo json_encode(['status' => 'error', 'message' => $result]);
+            // Lấy câu thông báo lỗi từ Model nếu có
+            $msg = is_array($result) ? ($result['message'] ?? 'Lỗi chưa xác định') : 'Lỗi hệ thống';
+            echo json_encode(['status' => 'error', 'message' => $msg]);
         }
         exit;
     }
