@@ -228,33 +228,32 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 function printVariantQR(sku, name, color, size, vid) {
-    // 1. Kiểm tra an toàn: Nếu vid bị rỗng hoặc undefined thì báo lỗi ngay
+    // 1. Kiểm tra an toàn
     if (!vid || vid === 'undefined') {
         alert("Lỗi: Không tìm thấy ID biến thể (variant_id). Vui lòng kiểm tra lại dữ liệu!");
         return;
     }
 
-    // 2. Tạo link truy xuất chuẩn
-    const qrLink = `http://192.168.0.127/Shoe_Warehouse/check_QR.php?vid=${vid}`;
-    const qrUrl = `https://quickchart.io/qr?text=${encodeURIComponent(qrLink)}&size=300&ecLevel=H`;
+    // 2. Tạo link truy xuất chuẩn (Link Ngrok)
+    const baseUrl = "https://countless-henna-obtain.ngrok-free.dev/Shoe_Warehouse/";
+    const targetUrl = `${baseUrl}check_QR.php?vid=${vid}`;
 
-    // 3. Render giao diện Modal
+    // 3. Dùng QuickChart tạo link ảnh
+    const qrImageUrl = `https://quickchart.io/qr?text=${encodeURIComponent(targetUrl)}&size=250`;
+
+    // 4. Render giao diện Modal
     const html = `
         <div class="text-center">
             <p class="mb-1"><strong>${name}</strong></p>
             <p class="small text-muted mb-2">${color} - Size ${size}</p>
-            <img src="${qrUrl}" style="width: 250px; height: 250px;" class="border p-2 shadow-sm rounded">
+            <img src="${qrImageUrl}" style="width: 250px; height: 250px;" class="border p-2 shadow-sm rounded">
             <p class="mt-3 mb-0 small text-secondary">MÃ TRUY XUẤT HỆ THỐNG</p>
             <p class="fw-bold text-dark">SKU: ${sku}</p>
         </div>
     `;
 
-    // 4. Đổ dữ liệu và hiển thị
-    const container = document.getElementById('qrContentArea');
-    if (container) {
-        container.innerHTML = html;
-        const modalElement = document.getElementById('simpleQRModal');
-        const myModal = bootstrap.Modal.getOrCreateInstance(modalElement);
-        myModal.show();
-    }
+    // 5. Đẩy HTML vào Modal và hiển thị
+    document.getElementById('qrContentArea').innerHTML = html;
+    const modal = new bootstrap.Modal(document.getElementById('simpleQRModal'));
+    modal.show();
 }

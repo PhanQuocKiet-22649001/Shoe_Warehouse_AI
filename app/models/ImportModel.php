@@ -1,4 +1,7 @@
+
 <?php
+// URL tạo QR ngrok
+define('BASE_URL', 'https://countless-henna-obtain.ngrok-free.dev/Shoe_Warehouse/');
 require_once __DIR__ . '/../../config/database.php';
 
 class ImportModel
@@ -25,7 +28,7 @@ class ImportModel
         return $res ? (pg_fetch_all($res) ?: []) : [];
     }
 
-   /**
+    /**
      * Chức năng: Cập nhật thông tin thực nhập cho một Size/Màu cụ thể vào Bảng Tạm.
      * Tác dụng: Ghi đè số liệu, tự động tính toán chênh lệch (is_diff) và cấp phát mã QR định danh.
      */
@@ -40,7 +43,14 @@ class ImportModel
 
             // 2. Kích hoạt cờ is_diff nếu có sai lệch & Tạo URL cho QR Code
             $is_diff = ($actual_qty != $expected_qty) ? 'true' : 'false';
-            $qr_code = "http://192.168.0.127/Shoe_Warehouse/check_QR.php?tid=$ticket_id&vid=$variant_id";
+
+
+            // Tạo link đích bằng cách ghép hằng số BASE_URL
+            $target_url = BASE_URL . "check_QR.php?tid=$ticket_id&vid=$variant_id";
+
+            //  Gọi QuickChart API để "biến" cái link trên thành hình ảnh QR
+            // Chỉ lưu đúng cái ĐÍCH ĐẾN (Target URL) vào Database
+            $qr_code = BASE_URL . "check_QR.php?tid=$ticket_id&vid=$variant_id";
 
             pg_query_params($this->conn, "DELETE FROM ticket_import_temp WHERE ticket_id = $1 AND variant_id = $2", [$ticket_id, $variant_id]);
 
@@ -49,7 +59,16 @@ class ImportModel
                         (ticket_id, variant_id, expected_qty, actual_qty, scanned_image, note, staff_id, putaway_locations, is_diff, qr_code) 
                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)";
             pg_query_params($this->conn, $sqlTemp, [
-                $ticket_id, $variant_id, $expected_qty, $actual_qty, $image, $note, $staff_id, $putaway_locations, $is_diff, $qr_code
+                $ticket_id,
+                $variant_id,
+                $expected_qty,
+                $actual_qty,
+                $image,
+                $note,
+                $staff_id,
+                $putaway_locations,
+                $is_diff,
+                $qr_code
             ]);
 
             // 4. Đồng bộ ngay vào bảng chi tiết
@@ -57,7 +76,7 @@ class ImportModel
             pg_query_params($this->conn, $sqlUpdateDetail, [$actual_qty, $detail_id, $note, $is_diff, $qr_code]);
 
             pg_query($this->conn, "COMMIT");
-            
+
             // Trả về mảng chứa URL QR để file import.js gọi API hiện Popup
             return ['status' => 'success', 'qr_code' => $qr_code];
         } catch (Exception $e) {
@@ -71,7 +90,8 @@ class ImportModel
     /**
      * Chức năng Helper: Nhét mã variant_id vào mảng JSON của kệ tương ứng.
      */
-    private function addItemsToShelves($locations) {
+    private function addItemsToShelves($locations)
+    {
         $grouped = [];
         foreach ($locations as $loc) {
             $grouped[$loc['shelf_id']][] = $loc;
@@ -91,7 +111,7 @@ class ImportModel
 
                     if (!isset($layout[$tier][$slot])) $layout[$tier][$slot] = [];
 
-                    for($i=0; $i<$qty; $i++) {
+                    for ($i = 0; $i < $qty; $i++) {
                         $layout[$tier][$slot][] = $vid;
                         $changed = true;
                     }
@@ -135,17 +155,17 @@ class ImportModel
             $sqlCheck = "SELECT EXISTS(SELECT 1 FROM ticket_details WHERE ticket_id = $1 AND is_diff = true)";
             $resCheck = pg_query_params($this->conn, $sqlCheck, [$ticket_id]);
             $hasDiff = pg_fetch_result($resCheck, 0, 0) === 't';
-            
-            $final_status = $hasDiff ? 'COMPLETE_DIFF' : 'COMPLETED'; 
+
+            $final_status = $hasDiff ? 'COMPLETE_DIFF' : 'COMPLETED';
             $is_diff_val = $hasDiff ? 'true' : 'false';
 
             // Cập nhật phiếu mẹ
             pg_query_params($this->conn, "UPDATE tickets SET status = $2, is_diff = $3, completed_at = CURRENT_TIMESTAMP WHERE ticket_id = $1", [$ticket_id, $final_status, $is_diff_val]);
-            
+
             pg_query_params($this->conn, "DELETE FROM ticket_import_temp WHERE ticket_id = $1", [$ticket_id]);
 
             pg_query($this->conn, "COMMIT");
-            return $final_status; 
+            return $final_status;
         } catch (Exception $e) {
             pg_query($this->conn, "ROLLBACK");
             return false;
@@ -187,7 +207,7 @@ class ImportModel
             WHERE ticket_id = $1 AND variant_id = $2 
             RETURNING actual_qty";
         $res = pg_query_params($this->conn, $sql, [$ticket_id, $variant_id, $image_url]);
-        return $res ? pg_fetch_assoc($res) : false; 
+        return $res ? pg_fetch_assoc($res) : false;
     }
 
     /**
@@ -227,18 +247,18 @@ class ImportModel
 
 
 
-   /**
+    /**
      * Chức năng: Tìm các Ô, Kệ đang chứa mẫu này HOẶC còn trống.
      * Tác dụng: Cấp dữ liệu cho 2 cột chọn vị trí trên màn hình nhập kho (Đã bổ sung tính toán Giữ chỗ và Lịch sử lưu).
      */
     public function getPutawayLocations($variant_id, $ticket_id = 0)
     {
         $shelves = pg_query($this->conn, "SELECT shelf_id, shelf_name, layout, max_capacity_per_slot FROM shelves ORDER BY shelf_name ASC");
-        
+
         // Quét tất cả kệ đã được giữ chỗ, NGOẠI TRỪ dòng đang sửa
         $sqlTemp = "SELECT putaway_locations FROM ticket_import_temp WHERE putaway_locations IS NOT NULL AND NOT (ticket_id = $1 AND variant_id = $2)";
         $resTemp = pg_query_params($this->conn, $sqlTemp, [$ticket_id, $variant_id]);
-        
+
         $reserved_slots = [];
         if ($resTemp) {
             while ($row = pg_fetch_assoc($resTemp)) {
@@ -279,17 +299,17 @@ class ImportModel
             foreach ($layout as $tier => $slots) {
                 foreach ($slots as $slotKey => $items) {
                     $occ = count($items);
-                    
+
                     $rKey = "{$sId}_{$tier}_{$slotKey}";
                     if (isset($reserved_slots[$rKey])) {
                         $occ += $reserved_slots[$rKey];
                     }
-                    
+
                     $varCount = 0;
                     foreach ($items as $item) {
                         if ($item == $variant_id) $varCount++;
                     }
-                    
+
                     $slotInfo = [
                         'shelf_id' => $sId,
                         'shelf_name' => $sName,
