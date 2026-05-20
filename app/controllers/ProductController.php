@@ -751,9 +751,9 @@ class ProductController
         exit;
     }
 
-    /**
+        /**
      * Chức năng: Điều chuyển hàng hóa qua lại giữa các ô.
-     * Tác dụng: Kích hoạt khi Quản lý nắm kéo đôi giày thả từ Kệ A sang Kệ B, cập nhật ngay lập tức vào cơ sở dữ liệu sơ đồ kho.
+     * Hỗ trợ chia nhỏ số lượng sang nhiều ô đích cùng lúc.
      */
     public function processMoveLocation()
     {
@@ -761,34 +761,40 @@ class ProductController
         if (ob_get_length()) ob_clean();
         header('Content-Type: application/json');
 
-        // ĐƯA KHAI BÁO $db LÊN ĐẦU TIÊN
         $db = $this->productModel->getConnection();
 
         try {
             $input = json_decode(file_get_contents('php://input'), true);
             $variant_id = $input['variant_id'] ?? 0;
             $from_loc = $input['from_loc'] ?? '';
-            $to_loc = $input['to_loc'] ?? '';
-            $qty = intval($input['qty'] ?? 0);
+            $destinations = $input['destinations'] ?? []; // mảng các object {loc, qty}
 
-            if (!$variant_id || !$from_loc || !$to_loc || $qty <= 0) {
+            if (!$variant_id || !$from_loc || empty($destinations)) {
                 throw new Exception("Dữ liệu không hợp lệ.");
             }
-            if ($from_loc === $to_loc) {
-                throw new Exception("Ô nguồn và đích trùng nhau.");
+
+            // Tính tổng số lượng
+            $totalQty = 0;
+            foreach ($destinations as $d) {
+                $totalQty += intval($d['qty']);
+            }
+
+            if ($totalQty <= 0) {
+                throw new Exception("Số lượng di chuyển phải lớn hơn 0.");
             }
 
             pg_query($db, "BEGIN");
 
-            $this->productModel->movePutawayLocation($variant_id, $from_loc, $to_loc, $qty);
+            // Gọi hàm xử lý nhiều đích đã viết ở Model
+            $this->productModel->movePutawayLocationsMulti($variant_id, $from_loc, $destinations);
 
             pg_query($db, "COMMIT");
-            echo json_encode(["status" => "success", "message" => "Đã di chuyển/hoán đổi thành công $qty đôi từ $from_loc sang $to_loc."]);
+            echo json_encode(["status" => "success", "message" => "Đã phân bổ thành công $totalQty đôi vào các ô đích."]);
         } catch (Exception $e) {
-            // Lúc này $db chắc chắn đã tồn tại để Rollback
             pg_query($db, "ROLLBACK");
             echo json_encode(["status" => "error", "message" => $e->getMessage()]);
         }
         exit;
     }
+
 }

@@ -110,7 +110,9 @@ class WarehouseController
                 }
             }
             $processedShelves[] = [
+                 'shelf_id' => $shelf['shelf_id'],
                 'shelf_name' => $shelf['shelf_name'],
+                'status' => $shelf['status'], // <--- DÒNG BỔ SUNG MỚI
                 'layout' => $layout,
                 'slot_max' => $slotMax,
                 'shelf_max_capacity' => $shelfCap,
@@ -187,4 +189,84 @@ class WarehouseController
         echo json_encode(array_slice($results, 0, 5));
         exit;
     }
+
+
+
+        // Chức năng: Cầu nối API nhận dữ liệu từ JS để Thêm kệ
+    public function addShelfAjax() {
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/json');
+         // Chặn quyền truy cập nếu không phải Manager
+        if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'MANAGER') {
+            echo json_encode(['status' => 'error', 'message' => 'Từ chối truy cập! Chỉ Quản lý mới được thao tác kệ hàng.']);
+            exit;
+        }
+        $name = $_POST['shelf_name'] ?? '';
+        $capacity = $_POST['max_capacity'] ?? 4;
+        $tiers = $_POST['tiers'] ?? 4;
+        $slots = $_POST['slots'] ?? 6;
+
+        if (empty($name)) {
+            echo json_encode(['status' => 'error', 'message' => 'Tên kệ không được để trống']);
+            exit;
+        }
+
+        $result = $this->warehouseModel->addShelf($name, $capacity, $tiers, $slots);
+        if ($result) {
+            echo json_encode(['status' => 'success', 'message' => 'Thêm kệ thành công!']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Lỗi kết nối hoặc tên kệ đã tồn tại!']);
+        }
+        exit;
+    }
+
+    // Chức năng: Xử lý request Xóa kệ. Chặn xóa nếu kệ còn hàng.
+    public function deleteShelfAjax() {
+        
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/json');
+        // Chặn quyền truy cập nếu không phải Manager
+        if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'MANAGER') {
+            echo json_encode(['status' => 'error', 'message' => 'Từ chối truy cập! Chỉ Quản lý mới được thao tác kệ hàng.']);
+            exit;
+        }
+        $name = $_POST['shelf_name'] ?? '';
+        $shelf = $this->warehouseModel->getShelfIdByName($name);
+        if (!$shelf) { echo json_encode(['status' => 'error', 'message' => 'Không tìm thấy kệ!']); exit; }
+
+        if (!$this->warehouseModel->isShelfEmpty($shelf['shelf_id'])) {
+            echo json_encode(['status' => 'error', 'message' => 'Kệ đang chứa giày, KHÔNG THỂ xóa! Vui lòng dời hàng đi trước.']);
+            exit;
+        }
+
+        $result = $this->warehouseModel->softDeleteShelf($shelf['shelf_id']);
+        echo json_encode(['status' => $result ? 'success' : 'error']);
+        exit;
+    }
+
+    // Chức năng: Xử lý request chuyển Trạng thái. Tương tự, nếu muốn Tạm Ngưng thì kệ cũng phải trống.
+    public function toggleShelfAjax() {
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/json');
+        // Chặn quyền truy cập nếu không phải Manager
+        if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'MANAGER') {
+            echo json_encode(['status' => 'error', 'message' => 'Từ chối truy cập! Chỉ Quản lý mới được thao tác kệ hàng.']);
+            exit;
+        }
+        $name = $_POST['shelf_name'] ?? '';
+        $shelf = $this->warehouseModel->getShelfIdByName($name);
+        if (!$shelf) { echo json_encode(['status' => 'error', 'message' => 'Không tìm thấy kệ!']); exit; }
+
+        if ($shelf['status'] === 't') { // Nếu đang hoạt động, muốn tạm ngưng thì phải kiểm tra
+            if (!$this->warehouseModel->isShelfEmpty($shelf['shelf_id'])) {
+                echo json_encode(['status' => 'error', 'message' => 'Kệ đang chứa hàng, KHÔNG THỂ tạm ngưng.']);
+                exit;
+            }
+        }
+
+        $result = $this->warehouseModel->toggleStatusShelf($shelf['shelf_id']);
+        echo json_encode(['status' => $result ? 'success' : 'error']);
+        exit;
+    }
+
 }

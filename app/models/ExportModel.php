@@ -52,7 +52,7 @@ class ExportModel
                 jsonb_each(tier.value) AS slot,       
                 jsonb_array_elements_text(slot.value) AS item 
             WHERE 
-                item.value = $1::text                 
+                item.value = $1::text AND s.is_deleted = true  AND s.status = true
             GROUP BY 
                 s.shelf_name, tier.key, slot.key
             HAVING 

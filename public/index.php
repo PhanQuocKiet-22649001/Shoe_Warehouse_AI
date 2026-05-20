@@ -178,7 +178,21 @@ if (isset($_GET['page'])) {
         }
     }
     // -----------------------------------------------------------
+        // --- CHỨC NĂNG AJAX WAREHOUSE MAP (BỔ SUNG) ---
+    if ($_GET['page'] === 'warehouse_map' && isset($_GET['action'])) {
+        require_once '../config/database.php';
+        require_once '../app/models/WarehouseModel.php';
+        require_once '../app/controllers/WarehouseController.php';
+        $warehouseAjax = new WarehouseController();
+
+        if ($_GET['action'] === 'add_shelf') { $warehouseAjax->addShelfAjax(); exit; }
+        if ($_GET['action'] === 'delete_shelf') { $warehouseAjax->deleteShelfAjax(); exit; }
+        if ($_GET['action'] === 'toggle_shelf') { $warehouseAjax->toggleShelfAjax(); exit; }
+    }
 }
+
+
+
 
 // 1. Gọi Database & Models trước
 require_once '../config/database.php';

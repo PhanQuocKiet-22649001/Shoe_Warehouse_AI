@@ -253,7 +253,9 @@ class ImportModel
      */
     public function getPutawayLocations($variant_id, $ticket_id = 0)
     {
-        $shelves = pg_query($this->conn, "SELECT shelf_id, shelf_name, layout, max_capacity_per_slot FROM shelves ORDER BY shelf_name ASC");
+       $shelves = pg_query($this->conn, "SELECT shelf_id, shelf_name, layout, max_capacity_per_slot FROM shelves WHERE is_deleted = true AND status = true ORDER BY shelf_name ASC");
+
+
 
         // Quét tất cả kệ đã được giữ chỗ, NGOẠI TRỪ dòng đang sửa
         $sqlTemp = "SELECT putaway_locations FROM ticket_import_temp WHERE putaway_locations IS NOT NULL AND NOT (ticket_id = $1 AND variant_id = $2)";

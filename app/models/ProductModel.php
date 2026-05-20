@@ -505,104 +505,113 @@ class ProductModel
     }
 
     /**
-     * Xử lý Di chuyển hoặc Hoán đổi vị trí (Update JSONB)
+     * Xử lý Di chuyển hàng hóa (Nhiều đích đến, tự động chia nhỏ)
+     * Kèm theo logic chặn kệ đã Tạm ngưng.
      */
-    public function movePutawayLocation($variant_id, $from_loc, $to_loc, $qty)
+    public function movePutawayLocationsMulti($variant_id, $from_loc, $destinations)
     {
-        // 1. Phân tích tọa độ
+        // 1. Phân tích tọa độ nguồn
         preg_match('/([A-Z])(\d)-(\d{2})/', $from_loc, $f_match);
-        preg_match('/([A-Z])(\d)-(\d{2})/', $to_loc, $t_match);
-        
-        if (count($f_match) != 4 || count($t_match) != 4) throw new Exception("Tọa độ không hợp lệ.");
+        if (count($f_match) != 4) throw new Exception("Tọa độ nguồn không hợp lệ.");
         
         $f_shelf = $f_match[1]; $f_tier = $f_match[2]; $f_slot = $f_match[3];
-        $t_shelf = $t_match[1]; $t_tier = $t_match[2]; $t_slot = $t_match[3];
+        
+        // 2. Tính tổng số lượng cần chuyển đi
+        $totalQty = 0;
+        foreach ($destinations as $dest) {
+            $totalQty += intval($dest['qty']);
+        }
+        if ($totalQty <= 0) throw new Exception("Số lượng chuyển không hợp lệ.");
 
-        // 2. Lấy dữ liệu kệ Nguồn và Đích
-        $sql = "SELECT shelf_name, layout, max_capacity_per_slot FROM shelves WHERE shelf_name IN ($1, $2)";
-        $res = pg_query_params($this->conn, $sql, [$f_shelf, $t_shelf]);
+        // 3. Thu thập danh sách các kệ liên quan (để tối ưu câu query)
+        $involvedShelfNames = [$f_shelf];
+        foreach ($destinations as $dest) {
+            preg_match('/([A-Z])(\d)-(\d{2})/', $dest['loc'], $t_match);
+            if (count($t_match) != 4) throw new Exception("Tọa độ đích không hợp lệ: " . $dest['loc']);
+            $t_shelf = $t_match[1];
+            if (!in_array($t_shelf, $involvedShelfNames)) $involvedShelfNames[] = $t_shelf;
+        }
+
+        // 4. KIỂM TRA TRẠNG THÁI KỆ (Chặn kệ Tạm Ngưng/Đã Xóa)
+        $placeholders = [];
+        for ($i = 1; $i <= count($involvedShelfNames); $i++) $placeholders[] = "$" . $i;
+        $inClause = implode(',', $placeholders);
+        $sql = "SELECT shelf_name, layout, max_capacity_per_slot, status, is_deleted FROM shelves WHERE shelf_name IN ($inClause)";
+        $res = pg_query_params($this->conn, $sql, $involvedShelfNames);
         $shelvesData = pg_fetch_all($res) ?: [];
         
         $shelves = [];
-        $maxCap = 4; // Mặc định
+        $maxCaps = [];
+        
         foreach ($shelvesData as $s) {
+            // Quy tắc kinh doanh: Kệ phải có is_deleted = true VÀ status = true mới là đang hoạt động
+            if ($s['status'] !== 't' || $s['is_deleted'] !== 't') {
+                throw new Exception("Kệ {$s['shelf_name']} đang bị Tạm Ngưng hoặc đã Xóa. Không thể điều chuyển hàng!");
+            }
             $shelves[$s['shelf_name']] = json_decode($s['layout'], true) ?: [];
-            $maxCap = (int)$s['max_capacity_per_slot'];
+            $maxCaps[$s['shelf_name']] = (int)$s['max_capacity_per_slot'];
         }
 
-        if (!isset($shelves[$f_shelf]) || !isset($shelves[$t_shelf])) throw new Exception("Không tìm thấy kệ.");
-
-        // 3. Khởi tạo mảng ô nếu chưa có
+        // 5. Kiểm tra Nguồn có đủ giày không?
         if (!isset($shelves[$f_shelf][$f_tier][$f_slot])) $shelves[$f_shelf][$f_tier][$f_slot] = [];
-        if (!isset($shelves[$t_shelf][$t_tier][$t_slot])) $shelves[$t_shelf][$t_tier][$t_slot] = [];
-
         $sourceArr = &$shelves[$f_shelf][$f_tier][$f_slot];
-        $destArr = &$shelves[$t_shelf][$t_tier][$t_slot];
-
-        // 4. Đếm số lượng variant cần chuyển trong ô Nguồn
+        
         $sourceCounts = array_count_values($sourceArr);
         $availableQty = $sourceCounts[$variant_id] ?? 0;
-
-        if ($availableQty < $qty) throw new Exception("Ô nguồn $from_loc chỉ có $availableQty đôi, không đủ $qty đôi để chuyển.");
-
-        $destOccupancy = count($destArr);
-        $freeSpace = $maxCap - $destOccupancy;
-
-        // ==========================================
-        // LOGIC DI CHUYỂN / HOÁN ĐỔI
-        // ==========================================
-        if ($freeSpace >= $qty) {
-            // TRƯỜNG HỢP 1: Đích CÒN ĐỦ CHỖ -> Di chuyển bình thường
-            // Rút từ Nguồn
-            $removed = 0;
-            foreach ($sourceArr as $idx => $vid) {
-                if ($vid == $variant_id && $removed < $qty) {
-                    unset($sourceArr[$idx]);
-                    $removed++;
-                }
-            }
-            $sourceArr = array_values($sourceArr); // Re-index
-
-            // Bơm vào Đích
-            for ($i = 0; $i < $qty; $i++) {
-                $destArr[] = (int)$variant_id;
-            }
-        } else {
-            // TRƯỜNG HỢP 2: Đích KHÔNG ĐỦ CHỖ -> Kích hoạt chế độ HOÁN ĐỔI (SWAP)
-            // Lấy những đôi giày ở ô Đích đang chiếm chỗ (Ưu tiên loại khác loại đang chuyển)
-            $shoesToEvict = array_slice($destArr, 0, $qty);
-            
-            // Rút từ Nguồn
-            $removed = 0;
-            foreach ($sourceArr as $idx => $vid) {
-                if ($vid == $variant_id && $removed < $qty) {
-                    unset($sourceArr[$idx]);
-                    $removed++;
-                }
-            }
-            $sourceArr = array_values($sourceArr);
-
-            // Rút từ Đích
-            array_splice($destArr, 0, $qty);
-
-            // Bơm vào chéo (Hoán đổi)
-            for ($i = 0; $i < $qty; $i++) $destArr[] = (int)$variant_id;
-            foreach ($shoesToEvict as $evictedVid) $sourceArr[] = (int)$evictedVid;
+        
+        if ($availableQty < $totalQty) {
+            throw new Exception("Ô nguồn $from_loc chỉ có $availableQty đôi, không đủ $totalQty đôi để chuyển.");
         }
 
-        // 5. Cập nhật DB
-        if ($f_shelf === $t_shelf) {
-            // Cùng kệ
-            $jsonb = json_encode($shelves[$f_shelf]);
-            pg_query_params($this->conn, "UPDATE shelves SET layout = $1::jsonb WHERE shelf_name = $2", [$jsonb, $f_shelf]);
-        } else {
-            // Khác kệ
-            $jsonb_f = json_encode($shelves[$f_shelf]);
-            $jsonb_t = json_encode($shelves[$t_shelf]);
-            pg_query_params($this->conn, "UPDATE shelves SET layout = $1::jsonb WHERE shelf_name = $2", [$jsonb_f, $f_shelf]);
-            pg_query_params($this->conn, "UPDATE shelves SET layout = $1::jsonb WHERE shelf_name = $2", [$jsonb_t, $t_shelf]);
+        // 6. KIỂM TRA TẤT CẢ CÁC ĐÍCH CÓ BỊ QUÁ TẢI KHÔNG (Bỏ logic Swap cũ)
+        foreach ($destinations as $dest) {
+            preg_match('/([A-Z])(\d)-(\d{2})/', $dest['loc'], $t_match);
+            $t_shelf = $t_match[1]; $t_tier = $t_match[2]; $t_slot = $t_match[3];
+            $qtyToMove = intval($dest['qty']);
+            
+            if (!isset($shelves[$t_shelf][$t_tier][$t_slot])) $shelves[$t_shelf][$t_tier][$t_slot] = [];
+            $destArr = $shelves[$t_shelf][$t_tier][$t_slot];
+            
+            $destOccupancy = count($destArr);
+            $freeSpace = $maxCaps[$t_shelf] - $destOccupancy;
+            
+            // Nếu click chọn lại chính ô nguồn làm đích (ít xảy ra nhưng phòng hờ)
+            if ($from_loc === $dest['loc']) $freeSpace += $qtyToMove; 
+
+            if ($freeSpace < $qtyToMove) {
+                throw new Exception("Ô đích {$dest['loc']} chỉ còn chỗ cho $freeSpace đôi (cần $qtyToMove). Giao dịch bị hủy!");
+            }
+        }
+
+        // 7. THỰC THI: Rút giày khỏi ô nguồn
+        $removed = 0;
+        foreach ($sourceArr as $idx => $vid) {
+            if ($vid == $variant_id && $removed < $totalQty) {
+                unset($sourceArr[$idx]);
+                $removed++;
+            }
+        }
+        $sourceArr = array_values($sourceArr); // Re-index mảng liên tục
+
+        // 8. THỰC THI: Bơm giày vào các ô đích
+        foreach ($destinations as $dest) {
+            preg_match('/([A-Z])(\d)-(\d{2})/', $dest['loc'], $t_match);
+            $t_shelf = $t_match[1]; $t_tier = $t_match[2]; $t_slot = $t_match[3];
+            $qtyToMove = intval($dest['qty']);
+            
+            $destArrRef = &$shelves[$t_shelf][$t_tier][$t_slot];
+            for ($i = 0; $i < $qtyToMove; $i++) {
+                $destArrRef[] = (int)$variant_id;
+            }
+        }
+
+        // 9. LƯU TOÀN BỘ VÀO DB
+        foreach ($involvedShelfNames as $shelfName) {
+            $jsonb = json_encode($shelves[$shelfName]);
+            pg_query_params($this->conn, "UPDATE shelves SET layout = $1::jsonb WHERE shelf_name = $2", [$jsonb, $shelfName]);
         }
         
         return true;
     }
+
 }
