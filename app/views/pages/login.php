@@ -47,9 +47,10 @@ $error = isset($error) ? $error : '';
 
                     <form method="POST" action="">
                         <div class="mb-3">
-                            <label class="custom-label">Tên đăng nhập</label>
-                            <input type="text" name="username" class="form-control rounded-3" placeholder="Nhập tên tài khoản..." required>
+                            <label class="custom-label">Mã nhân viên (ID)</label>
+                            <input type="text" name="user_id" class="form-control rounded-3" placeholder="Nhập mã nhân viên gồm 6 chữ số..." required pattern="\d{6}" title="Mã nhân viên phải gồm 6 chữ số">
                         </div>
+
 
                         <div class="mb-4">
                             <label class="custom-label">Mật khẩu</label>

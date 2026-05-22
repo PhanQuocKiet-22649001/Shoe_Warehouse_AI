@@ -7,13 +7,9 @@ Hệ thống quản lý kho giày tích hợp trí tuệ nhân tạo (AI) chạy
 
 ## 🛠 1. Công nghệ & Thư viện sử dụng
 * **Frontend:** Bootstrap 5, CSS3, JavaScript.
-* **Backend:** PHP (Kiến trúc MVC).
+* **Backend:** PHP (Kiến trúc MVC), Python
 * **Database:** PostgreSQL + Extension `pgvector`.
-* **AI Engine:** Python (Chạy Local API).
-* **AI Frameworks:** * **LangChain:** Quản lý luồng truy vấn dữ liệu (Text-to-SQL).
-    * **Ollama:** Môi trường chạy mô hình AI Offline.
-    * **Qwen2.5-Coder:7b:** Mô hình ngôn ngữ lớn chuyên biệt cho lập trình và SQL.
-    * **CLIP (ViT-B-32):** Nhận diện hình ảnh không gian Vector.
+* **AI:** MODEL CLIP VISION ViT-B/32 (OPENAI)
 
 ---
 
@@ -49,16 +45,11 @@ D:\Application\xampp\htdocs\Shoe_Warehouse
         ├───img_temp/   # Ảnh tạm thời khi xử lý AI
 
 
-🚀 3. Các bước cài đặt và chạy dự án
-🔹 Bước 1: Cài đặt thư viện Python
-- Mở Terminal dự án và cài đặt các thư viện cần thiết để chạy LangChain và Model CLIP:
-python -m pip install -U torch Pillow ftfy regex tqdm langchain langchain-community langchain-ollama langgraph sqlalchemy psycopg2-binary pgvector fastapi uvicorn flask sentence-transformers python-dotenv
 
-pip install vanna google-generativeai fastapi uvicorn python-dotenv psycopg2-binary pandaspython 
+
 
 - Cài đặt thư viện CLIP trực tiếp từ source OpenAI:
 python -m pip install git+https://github.com/openai/CLIP.git
-
 
 - Đối với Quét ảnh:
 Chạy file generate_vector.py để AI tự động tải bộ não CLIP về thư mục models (Chỉ chạy 1 lần duy nhất):
@@ -79,51 +70,39 @@ Cấu hình User/Password database trong config/database.php.
 4. Cách vận hành khi Demo (Bắt buộc)
 Để hệ thống hoạt động đầy đủ tính năng, bồ cần mở cửa sổ Terminal để chạy các dịch vụ sau:
 
-- Dịch vụ Chatbot (LangChain + Ollama):
-cd ai_services
-python ai_bridge.py
 
-- Phần mềm Ollama: Đảm bảo phần mềm Ollama đã được bật
+5. composer install (tải vendor của composer dùng pusher bắn tín hiệu)
 
 
 
 
-- composer install (tải vendor của composer dùng pusher bắn tín hiệu)
-
-ollama pull qwen2.5-coder:7b-instruct-q4_K_M
-
-## ĐÃ LÀM (17/20)
-1. login
-2. logout
-3. thêm danh mục sản phẩm
-4. xóa danh mục sản phẩm (xóa mềm)
-5. cập nhật trạng thái danh mục (active/inactive)
-6. nhập kho (Quét AI)
-7. cập nhật trạng thái sản phẩm/biến thể (active/inactive)
-8. Thêm user
-9. xóa mềm user
-10. cập nhật trạng thái user (active/inactive)
-11. xem thống kê báo cáo
-12. tìm kiếm (tên, size, màu sắc)
-13. xem thông tin cá nhân
-14. cập nhật thông tin cá nhân
-15. xuất kho
-16. xem lịch sử xuất nhập kho
-17. Quản lí vị trí kệ
-18. Tạo phiếu xuất nhập
-
-## CHƯA LÀM
-1. chatbot AI
-2. Dự đoán xu hướng tiêu thụ (AI)
 
 
 
-## Đang làm 
-1. quản lí vị trí kệ
-- load được vị trí sản phẩm ra giao diện
-- thêm được sản phẩm vào kệ đã chọn nhưng chưa xong hoàn chỉnh
-- xuất kho chưa tự trừ sản phẩm trên kệ
-- thuật toán gợi ý vị trí nhập kho vào kệ chưa hoàn chỉnh
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -399,7 +378,7 @@ Mở thư mục C:\Windows.
 
 Dán (Paste) file đó vào đây.
 
-Lợi ích: Làm cách này bồ có thể đứng ở bất cứ thư mục dự án nào (như Shoe_Warehouse hay ai_services) gõ lệnh ngrok là nó chạy luôn, không cần phải cd đi đâu cả.
+Lợi ích: Làm cách này có thể đứng ở bất cứ thư mục dự án nào (như Shoe_Warehouse hay ai_services) gõ lệnh ngrok là nó chạy luôn, không cần phải cd đi đâu cả.
 
 Bước 3: Lấy Authtoken (Dấu vân tay định danh)
 Đăng nhập vào trang dashboard.ngrok.com.
@@ -409,9 +388,6 @@ Bước 3: Lấy Authtoken (Dấu vân tay định danh)
 Copy cái dãy mã dài dằng dặc đó.
 
 Bước 4: Kích hoạt Ngrok trên máy
-Mở CMD (hoặc PowerShell) lên và gõ lệnh sau (thay dấu ... bằng token bồ vừa copy):
+Mở CMD (hoặc PowerShell) lên và gõ lệnh sau: ngrok http 80 (tùy port xampp đang dùng)
 
-
-
-Buoc 5
-Mở lại CMD và gõ lệnh sau (thay cái đoạn tên-miền-của-ban bằng cái bồ vừa copy ở bước trên):
+![alt text](image.png)

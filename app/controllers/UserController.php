@@ -17,7 +17,7 @@ class UserController
         // Lấy dữ liệu từ GET request
         $search = isset($_GET['search']) ? trim($_GET['search']) : '';
         $role = isset($_GET['role']) ? trim($_GET['role']) : '';
-        
+
         return $users = $this->userModel->getAllUsers($search, $role);
     }
 
@@ -31,39 +31,51 @@ class UserController
         }
     }
 
+    // Hàm kiểm tra quyền ADMIN
+    private function checkAdmin()
+    {
+        if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'ADMIN') {
+            $_SESSION['error'] = "Bạn không có quyền thực hiện chức năng này!";
+            header("Location: index.php?page=dashboard");
+            exit;
+        }
+    }
+
     // Xử lý thêm nhân viên mới
     public function add()
     {
-        $this->checkManager();
+        $this->checkAdmin();
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = [
                 'full_name' => trim($_POST['full_name']),
-                'username' => trim($_POST['username']),
                 'password' => $_POST['password'],
                 'role' => $_POST['role'],
                 'status' => isset($_POST['status']) ? true : false
             ];
 
-            $result = $this->userModel->addUser($data);
+            // Gọi model để tạo mới nhân viên (ID sẽ được tự động sinh ngẫu nhiên 6 số bên trong Model)
+            $random_id = $this->userModel->addUser($data);
 
-            if ($result) {
-                $_SESSION['success'] = "Thêm nhân viên mới thành công!";
+            if ($random_id !== false) {
+                $_SESSION['success'] = "Thêm nhân viên thành công! Mã ID nhân viên mới của bồ là: " . $random_id;
                 header("Location: index.php?page=employees");
                 exit;
             } else {
-                $_SESSION['error'] = "Thêm nhân viên thất bại!";
+                $_SESSION['error'] = "Thêm nhân viên thất bại, vui lòng thử lại!";
                 $users = $this->userModel->getAllUsers();
                 require __DIR__ . '/../views/pages/employees.php';
             }
         }
     }
 
+
+
     // Xử lý xóa mềm nhân viên
     public function delete($user_id)
     {
-        $this->checkManager();
+        $this->checkAdmin();
 
-        // Ngăn chặn tự xóa chính mình
+        // Ngăn chặn tự xóa chính mìn
         if ($user_id == $_SESSION['user_id']) {
             $_SESSION['error'] = "Bạn không thể tự xóa chính mình đâu nha!";
             header("Location: index.php?page=employees");
@@ -80,10 +92,11 @@ class UserController
         exit;
     }
 
+
     // Xử lý cập nhật nhân viên
     public function update()
     {
-        $this->checkManager();
+        $this->checkAdmin();
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user_id = $_POST['user_id'];
             $status = isset($_POST['status']); // Checkbox được tích = true

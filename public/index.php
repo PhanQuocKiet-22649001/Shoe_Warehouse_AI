@@ -178,16 +178,25 @@ if (isset($_GET['page'])) {
         }
     }
     // -----------------------------------------------------------
-        // --- CHỨC NĂNG AJAX WAREHOUSE MAP (BỔ SUNG) ---
+    // --- CHỨC NĂNG AJAX WAREHOUSE MAP (BỔ SUNG) ---
     if ($_GET['page'] === 'warehouse_map' && isset($_GET['action'])) {
         require_once '../config/database.php';
         require_once '../app/models/WarehouseModel.php';
         require_once '../app/controllers/WarehouseController.php';
         $warehouseAjax = new WarehouseController();
 
-        if ($_GET['action'] === 'add_shelf') { $warehouseAjax->addShelfAjax(); exit; }
-        if ($_GET['action'] === 'delete_shelf') { $warehouseAjax->deleteShelfAjax(); exit; }
-        if ($_GET['action'] === 'toggle_shelf') { $warehouseAjax->toggleShelfAjax(); exit; }
+        if ($_GET['action'] === 'add_shelf') {
+            $warehouseAjax->addShelfAjax();
+            exit;
+        }
+        if ($_GET['action'] === 'delete_shelf') {
+            $warehouseAjax->deleteShelfAjax();
+            exit;
+        }
+        if ($_GET['action'] === 'toggle_shelf') {
+            $warehouseAjax->toggleShelfAjax();
+            exit;
+        }
     }
 }
 
@@ -372,8 +381,9 @@ if ($page === 'products') {
                         case 'get_variant_data':
                             $reportController->getVariantDataAjax();
                             break;
+
                         case 'employees':
-                            if ($_SESSION['role'] !== 'MANAGER') {
+                            if ($_SESSION['role'] !== 'ADMIN') {
                                 header("Location: index.php?page=dashboard");
                                 exit;
                             }
@@ -415,11 +425,17 @@ if ($page === 'products') {
                             break;
 
                         case 'dashboard':
+                        case 'default':
                         default:
+                            if (isset($_SESSION['role']) && $_SESSION['role'] === 'ADMIN') {
+                                header("Location: index.php?page=employees");
+                                exit;
+                            }
                             $data = $reportController->index();
                             extract($data);
                             require_once __DIR__ . '/../app/views/pages/dashboard.php';
                             break;
+
 
                         case 'ticket_create':
                             $data = $ticketController->create($_GET['type'] ?? 'IMPORT');

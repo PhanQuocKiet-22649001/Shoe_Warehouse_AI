@@ -74,7 +74,7 @@ $allCategories = $cModel->getAll();
                 <div class="row g-0 d-flex" style="min-height: 550px;">
 
                     <div class="col-md-5 p-4 border-end-glass" style="background: rgba(0,0,0,0.2); max-height: 650px; overflow-y: auto;">
-                        
+
                         <div id="import_step_1">
                             <h6 class="fw-bold text-white pb-2 mb-3 border-bottom-glass">
                                 <i class="fas fa-clipboard-list me-2"></i>PHIẾU NHẬP ĐANG CHỜ
@@ -91,7 +91,7 @@ $allCategories = $cModel->getAll();
                             </div>
                             <p class="text-white-50 small mb-2">Hệ thống sẽ highlight dòng tương ứng khi AI nhận diện thành công:</p>
                             <div id="import_ticket_items" class="d-flex flex-column gap-2 mb-3"></div>
-                            
+
                             <button id="btn_complete_import" class="btn btn-success fw-bold w-100 py-2 d-none" onclick="completeImportTicket()">
                                 XÁC NHẬN HOÀN TẤT PHIẾU NÀY
                             </button>
@@ -171,7 +171,7 @@ $allCategories = $cModel->getAll();
                                 <button type="submit" id="btn_save_temp" class="btn btn-info text-dark fw-bold w-100 py-2">LƯU NHÁP BIẾN THỂ NÀY</button>
                             </form>
                         </div>
-                        
+
                         <div id="import_right_default" class="text-center text-white-50 m-auto">
                             <i class="fas fa-boxes fa-3x mb-3 opacity-25"></i>
                             <p>Chọn phiếu nhập để bắt đầu quy trình AI</p>
@@ -314,9 +314,10 @@ $allCategories = $cModel->getAll();
                     <table class="table table-striped table-hover align-middle mb-0">
                         <tbody>
                             <tr>
-                                <th style="width: 35%;" class="ps-3">Tài khoản truy cập</th>
-                                <td class="fw-bold"><?= $uData['username'] ?></td>
+                                <th style="width: 35%;" class="ps-3">Mã nhân viên (ID)</th>
+                                <td class="fw-bold"><?= $uData['user_id'] ?></td>
                             </tr>
+
                             <tr>
                                 <th class="ps-3">Họ và tên</th>
                                 <td><?= $uData['full_name'] ?></td>

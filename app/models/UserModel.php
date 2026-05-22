@@ -12,19 +12,18 @@ class UserModel
         $this->conn = getConnection();
     }
 
-    // Tìm user theo username (bảo mật bằng prepare)
-    public function findByUsername($username)
+    // Tìm user theo user_id để phục vụ Login (bảo mật bằng prepare)
+    public function findById($user_id)
     {
-        $sql =
-            "SELECT user_id, username, password_hash, full_name, role, status 
-        FROM users 
-        WHERE username = $1 AND is_deleted = false AND status = true";
+        $sql = "SELECT user_id, password_hash, full_name, role, status 
+                FROM users 
+                WHERE user_id = $1 AND is_deleted = false AND status = true";
 
         // Chuẩn bị query
         pg_prepare($this->conn, "find_user", $sql);
 
         // Thực thi
-        $result = pg_execute($this->conn, "find_user", array($username));
+        $result = pg_execute($this->conn, "find_user", array(intval($user_id)));
 
         if ($result && pg_num_rows($result) > 0) {
             return pg_fetch_assoc($result);
@@ -33,10 +32,10 @@ class UserModel
         return null;
     }
 
-   // Lấy tất cả nhân viên chưa bị xóa (Có hỗ trợ Tìm kiếm & Lọc)
+    // Lấy tất cả nhân viên chưa bị xóa (Có hỗ trợ Tìm kiếm theo ID hoặc Tên & Lọc)
     public function getAllUsers($keyword = '', $role = '')
     {
-        $sql = "SELECT user_id, full_name, username, role, status, created_at 
+        $sql = "SELECT user_id, full_name, role, status, created_at 
                 FROM users 
                 WHERE is_deleted = false";
         $params = [];
@@ -65,11 +64,31 @@ class UserModel
 
         return $result ? pg_fetch_all($result) : [];
     }
-    // Thêm nhân viên mới
+
+
+
+
+    // Kiểm tra ID nhân viên đã tồn tại hay chưa (bất kể đã xóa mềm hay chưa)
+    public function checkUserIdExists($user_id)
+    {
+        $sql = "SELECT user_id FROM users WHERE user_id = $1";
+        $result = pg_query_params($this->conn, $sql, [intval($user_id)]);
+        if ($result && pg_num_rows($result) > 0) {
+            return true;
+        }
+        return false;
+    }
+
+    // Thêm nhân viên mới (Tự sinh ID ngẫu nhiên 6 chữ số không trùng lặp)
     public function addUser($data)
     {
-        $sql = "INSERT INTO users (full_name, username, password_hash, role, status, is_deleted, created_at)
-            VALUES ($1, $2, $3, $4, $5, false, NOW())";
+        // Sinh ID ngẫu nhiên 6 chữ số (từ 100000 đến 999999) và kiểm tra trùng lặp
+        do {
+            $random_id = rand(100000, 999999);
+        } while ($this->checkUserIdExists($random_id));
+
+        $sql = "INSERT INTO users (user_id, full_name, password_hash, role, status, is_deleted, created_at)
+                VALUES ($1, $2, $3, $4, $5, false, NOW())";
 
         // Hash mật khẩu an toàn
         $password_hash = password_hash($data['password'], PASSWORD_BCRYPT);
@@ -78,15 +97,17 @@ class UserModel
         $status_db = $data['status'] ? 'true' : 'false';
 
         $result = pg_query_params($this->conn, $sql, [
+            $random_id,
             trim($data['full_name']),
-            trim($data['username']),
             $password_hash,
             strtoupper(trim($data['role'])),
             $status_db
         ]);
 
-        return $result;
+        // Nếu insert thành công, trả về ID vừa được sinh ngẫu nhiên
+        return $result ? $random_id : false;
     }
+
 
     // Xóa mềm nhân viên
     public function deleteUser($user_id)
@@ -108,18 +129,18 @@ class UserModel
     // Lấy 1 nhân viên theo ID
     public function getUserById($user_id)
     {
-        $sql = "SELECT user_id, full_name, username, role, status, phone_number, address 
-            FROM users 
-            WHERE user_id = $1 AND is_deleted = false";
+        $sql = "SELECT user_id, full_name, role, status, phone_number, address 
+                FROM users 
+                WHERE user_id = $1 AND is_deleted = false";
 
-        // Dùng cái này cho an toàn, gọi bao nhiêu lần cũng được không bị lỗi "already exists"
-        $result = pg_query_params($this->conn, $sql, [$user_id]);
+        $result = pg_query_params($this->conn, $sql, [intval($user_id)]);
 
         if ($result && pg_num_rows($result) > 0) {
             return pg_fetch_assoc($result);
         }
         return null;
     }
+
 
 
 

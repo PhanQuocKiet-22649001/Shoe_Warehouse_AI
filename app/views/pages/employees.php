@@ -37,16 +37,17 @@ $error = $error ?? '';
         <!-- KHU VỰC TÌM KIẾM VÀ LỌC (Nằm giữa) -->
         <div class="glass-filter-form d-flex gap-2 rounded" style="flex-grow: 0.5; max-width: 600px;">
             <input type="text" id="searchInput" class="glass-input form-control"
-                placeholder="Nhập ID, Tên hoặc Username..." style="flex: 1; height: 40px;">
+                placeholder="Nhập ID, Tên..." style="flex: 1; height: 40px;">
 
             <select id="roleFilter" class="glass-input form-select" style="width: 145px; height: 40px;">
                 <option value="">Tất cả vai trò</option>
+                <option value="Admin">Admin</option>
                 <option value="Manager">Manager</option>
                 <option value="Staff">Staff</option>
             </select>
         </div>
 
-        <?php if ($_SESSION['role'] === 'MANAGER'): ?>
+        <?php if ($_SESSION['role'] === 'ADMIN'): ?>
             <button class="btn btn-add-brand px-4 fw-bold text-dark border border-dark d-flex align-items-center justify-content-center"
                 data-bs-toggle="modal" data-bs-target="#addModal" style="height: 40px;">
                 <i class="fas fa-plus me-2"></i> Thêm nhân viên
@@ -60,7 +61,6 @@ $error = $error ?? '';
             <tr>
                 <th>ID</th>
                 <th>Họ tên</th>
-                <th>Username</th>
                 <th>Vai trò</th>
                 <th>Trạng thái</th>
                 <th>Thao tác</th>
@@ -73,7 +73,6 @@ $error = $error ?? '';
                     <tr class="employee-row">
                         <td class="col-id"><?= $user['user_id'] ?></td>
                         <td class="col-name"><?= htmlspecialchars($user['full_name']) ?></td>
-                        <td class="col-username"><?= htmlspecialchars($user['username']) ?></td>
                         <td class="col-role"><span class="badge" style="color: #374151;"><?= ucfirst($user['role']) ?></span></td>
                         <td>
                             <?php $isActive = ($user['status'] === 't' || $user['status'] === true || $user['status'] == 1); ?>
@@ -85,13 +84,13 @@ $error = $error ?? '';
                             <?php if ($user['user_id'] == $_SESSION['user_id']): ?>
                                 <a href="index.php?page=profile" class="btn-profile" style="text-decoration: none; color: black;">Cập nhật thông tin</a>
                             <?php else: ?>
-                                <?php if ($_SESSION['role'] === 'MANAGER'): ?>
+                                <?php if ($_SESSION['role'] === 'ADMIN'): ?>
                                     <button class="btn-action btn-edit btn-edit-user"
                                         data-bs-toggle="modal" data-bs-target="#editModal"
                                         data-user="<?= htmlspecialchars(json_encode($user), ENT_QUOTES, 'UTF-8') ?>">Sửa</button>
                                 <?php endif; ?>
 
-                                <?php if ($_SESSION['role'] === 'MANAGER' && $user['user_id'] != $_SESSION['user_id']): ?>
+                                <?php if ($_SESSION['role'] === 'ADMIN' && $user['user_id'] != $_SESSION['user_id']): ?>
                                     <form method="POST" action="index.php?page=employees" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn xóa nhân viên này?')">
                                         <input type="hidden" name="user_id" value="<?= $user['user_id'] ?>">
                                         <button type="submit" name="delete" class="btn-action btn-delete">Xóa</button>
@@ -108,7 +107,7 @@ $error = $error ?? '';
             <?php endif; ?>
             <!-- Dòng báo lỗi khi tìm không thấy (Mặc định ẩn) -->
             <tr id="noResultRow" style="display: none;">
-                <td colspan="6" class="text-center py-4 fw-bold text-muted">Không tìm thấy nhân viên nào phù hợp!</td>
+                <td colspan="5" class="text-center py-4 fw-bold text-muted">Không tìm thấy nhân viên nào phù hợp!</td>
             </tr>
         </tbody>
     </table>
@@ -126,9 +125,6 @@ $error = $error ?? '';
                     <label>Họ tên</label>
                     <input type="text" name="full_name" placeholder="Nhập họ tên" required>
 
-                    <label>Username</label>
-                    <input type="text" name="username" placeholder="Username" required>
-
                     <label>Mật khẩu</label>
                     <input type="password" name="password" placeholder="Mật khẩu" required>
 
@@ -136,6 +132,7 @@ $error = $error ?? '';
                     <select name="role">
                         <option value="staff">Staff</option>
                         <option value="manager">Manager</option>
+                        <option value="admin">Admin</option>
                     </select>
 
                     <div class="form-check mb-3 d-flex align-items-center" style="gap: 10px; margin-top: 15px;">

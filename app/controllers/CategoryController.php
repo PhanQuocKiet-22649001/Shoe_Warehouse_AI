@@ -35,6 +35,14 @@ class CategoryController
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name = trim($_POST['category_name']);
+            $name = trim($_POST['category_name']);
+
+            // Kiểm tra trùng lặp tên Hãng giày (Category)
+            if ($this->categoryModel->isCategoryExists($name)) {
+                $_SESSION['error'] = "Thêm thất bại! Hãng giày '" . htmlspecialchars($name) . "' đã tồn tại trên hệ thống.";
+                header("Location: index.php?page=categories");
+                exit;
+            }
 
             $logo_name = 'default_brand.jpg';
 

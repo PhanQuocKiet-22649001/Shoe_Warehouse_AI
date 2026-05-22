@@ -11,17 +11,21 @@ $page = $page ?? 'dashboard';
         <p class="menu-title">MENU CHÍNH</p>
 
         <ul>
-            <li class="<?= $page === 'dashboard' ? 'active' : '' ?>">
-                <a href="index.php?page=dashboard">Tổng quan</a>
-            </li>
+            <?php if (isset($_SESSION['role']) && strtoupper($_SESSION['role']) !== 'ADMIN'): ?>
+                <li class="<?= $page === 'dashboard' ? 'active' : '' ?>">
+                    <a href="index.php?page=dashboard">Tổng quan</a>
+                </li>
+            <?php endif; ?>
 
-            <li class="<?= $page === 'categories' ? 'active' : '' ?>">
-                <a href="index.php?page=categories">
-                    <?= ($_SESSION['role'] === 'MANAGER') ? 'Quản lý danh mục' : 'Quản lý sản phẩm' ?>
-                </a>
-            </li>
+            <?php if (isset($_SESSION['role']) && strtoupper($_SESSION['role']) !== 'ADMIN'): ?>
+                <li class="<?= $page === 'categories' ? 'active' : '' ?>">
+                    <a href="index.php?page=categories">
+                        <?= ($_SESSION['role'] === 'MANAGER') ? 'Quản lý danh mục' : 'Quản lý sản phẩm' ?>
+                    </a>
+                </li>
+            <?php endif; ?>
 
-            <?php if (isset($_SESSION['role']) && strtoupper($_SESSION['role']) === 'MANAGER'): ?>
+            <?php if (isset($_SESSION['role']) && strtoupper($_SESSION['role']) === 'ADMIN'): ?>
                 <li class="<?= $page === 'employees' ? 'active' : '' ?>">
                     <a href="index.php?page=employees">Quản lí Nhân viên</a>
                 </li>
@@ -61,11 +65,13 @@ $page = $page ?? 'dashboard';
                 </li>
             <?php endif; ?>
 
-            <li class="<?= $page === 'warehouse_map' ? 'active' : '' ?>">
-                <a href="index.php?page=warehouse_map">
-                    <?= ($_SESSION['role'] === 'MANAGER') ? 'Quản lý kệ hàng' : 'Xem vị trí kệ hàng' ?>
-                </a>
-            </li>
+            <?php if (isset($_SESSION['role']) && strtoupper($_SESSION['role']) !== 'ADMIN'): ?>
+                <li class="<?= $page === 'warehouse_map' ? 'active' : '' ?>">
+                    <a href="index.php?page=warehouse_map">
+                        <?= ($_SESSION['role'] === 'MANAGER') ? 'Quản lý kệ hàng' : 'Xem vị trí kệ hàng' ?>
+                    </a>
+                </li>
+            <?php endif; ?>
 
             <?php if (isset($_SESSION['role']) && strtoupper($_SESSION['role']) === 'STAFF'): ?>
                 <li class="<?= $page === 'staff_ticket_history' ? 'active' : '' ?>">
@@ -75,9 +81,11 @@ $page = $page ?? 'dashboard';
                 </li>
             <?php endif; ?>
 
-            <li>
-                <a href="#" id="btn-open-ai" class="<?= $page === 'ai-prediction' ? 'active' : '' ?>">Trợ lý AI</a>
-            </li>
+            <?php if (isset($_SESSION['role']) && strtoupper($_SESSION['role']) !== 'ADMIN'): ?>
+                <li>
+                    <a href="#" id="btn-open-ai" class="<?= $page === 'ai-prediction' ? 'active' : '' ?>">Trợ lý AI</a>
+                </li>
+            <?php endif; ?>
         </ul>
     </div>
 
@@ -86,31 +94,33 @@ $page = $page ?? 'dashboard';
     </form>
 </aside>
 
-<!-- Giao diện AI Chatbot -->
-<div id="ai-chat-container" class="ai-chat-minimized">
-    <div class="ai-chat-header d-flex justify-content-between align-items-center px-3 py-2 bg-dark text-white">
-        <div class="d-flex align-items-center">
-            <div class="bg-success rounded-circle me-2 animate-pulse" style="width: 8px; height: 8px;"></div>
-            <span class="fw-bold" style="font-size: 13px; letter-spacing: 0.5px;">SMART AI ASSISTANT</span>
-        </div>
-        <button id="ai-chat-minimize" class="btn btn-sm text-white p-0 border-0">
-            <i class="fas fa-minus"></i>
-        </button>
-    </div>
-
-    <div id="ai-chat-body" class="p-3 bg-white">
-        <div class="bot-msg shadow-sm">Chào bạn Tôi là trợ lý AI. Bạn cần hỏi gì về hàng hóa hay tồn kho không?</div>
-    </div>
-
-    <div class="ai-chat-footer p-2 bg-light border-top">
-        <div class="input-group">
-            <input type="text" id="ai-chat-input" class="form-control form-control-sm border-0 bg-transparent" placeholder="Hỏi về kho (VD: Nike size 40 còn mấy đôi?)..." autocomplete="off">
-            <button id="ai-chat-send" class="btn btn-link text-primary p-0 px-2">
-                <i class="fas fa-paper-plane"></i>
+<?php if (isset($_SESSION['role']) && strtoupper($_SESSION['role']) !== 'ADMIN'): ?>
+    <!-- Giao diện AI Chatbot -->
+    <div id="ai-chat-container" class="ai-chat-minimized">
+        <div class="ai-chat-header d-flex justify-content-between align-items-center px-3 py-2 bg-dark text-white">
+            <div class="d-flex align-items-center">
+                <div class="bg-success rounded-circle me-2 animate-pulse" style="width: 8px; height: 8px;"></div>
+                <span class="fw-bold" style="font-size: 13px; letter-spacing: 0.5px;">SMART AI ASSISTANT</span>
+            </div>
+            <button id="ai-chat-minimize" class="btn btn-sm text-white p-0 border-0">
+                <i class="fas fa-minus"></i>
             </button>
         </div>
+
+        <div id="ai-chat-body" class="p-3 bg-white">
+            <div class="bot-msg shadow-sm">Chào bạn Tôi là trợ lý AI. Bạn cần hỏi gì về hàng hóa hay tồn kho không?</div>
+        </div>
+
+        <div class="ai-chat-footer p-2 bg-light border-top">
+            <div class="input-group">
+                <input type="text" id="ai-chat-input" class="form-control form-control-sm border-0 bg-transparent" placeholder="Hỏi về kho (VD: Nike size 40 còn mấy đôi?)..." autocomplete="off">
+                <button id="ai-chat-send" class="btn btn-link text-primary p-0 px-2">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
     </div>
-</div>
+<?php endif; ?>
 
 <!-- Load script riêng của AI Chatbot -->
 <script src="assets/js/sidebar.js"></script>

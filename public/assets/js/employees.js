@@ -1,8 +1,8 @@
 document.addEventListener("DOMContentLoaded", function () {
-    
+
     // Bắt sự kiện khi click vào nút "Sửa"
     const editButtons = document.querySelectorAll('.btn-edit-user');
-    
+
     editButtons.forEach(function (button) {
         button.addEventListener('click', function () {
             // Lấy chuỗi JSON từ thuộc tính data-user
@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", function () {
             // Đổ dữ liệu vào các ô input trong Modal Edit
             document.getElementById('edit_user_id').value = user.user_id;
             document.getElementById('edit_full_name').value = user.full_name;
-            
+
             // Format ngày giờ
             if (user.created_at) {
                 let date = new Date(user.created_at);
@@ -52,13 +52,12 @@ document.addEventListener("DOMContentLoaded", function () {
             // Lấy dữ liệu và làm sạch ngay lập tức
             const id = row.querySelector('.col-id').textContent.toLowerCase().trim();
             const name = row.querySelector('.col-name').textContent.toLowerCase().trim();
-            const username = row.querySelector('.col-username').textContent.toLowerCase().trim();
             const rowRole = row.querySelector('.col-role').textContent.toLowerCase().trim();
 
-            // Kiểm tra khớp từ khóa
-            const matchKeyword = keyword === "" || id.includes(keyword) || name.includes(keyword) || username.includes(keyword);
-            
-            // Kiểm tra khớp vai trò (Lưu ý quan trọng ở đây)
+            // Kiểm tra khớp từ khóa (chỉ so sánh ID và Tên)
+            const matchKeyword = keyword === "" || id.includes(keyword) || name.includes(keyword);
+
+            // Kiểm tra khớp vai trò
             const matchRole = role === "" || rowRole === role;
 
             if (matchKeyword && matchRole) {
@@ -75,13 +74,14 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+
     // Gắn sự kiện (Lắng nghe khi người dùng gõ chữ hoặc đổi Option)
     if (searchInput) searchInput.addEventListener('keyup', filterEmployees);
     if (roleFilter) roleFilter.addEventListener('change', filterEmployees);
 
     // Xử lý nút Reset
     if (btnResetFilter) {
-        btnResetFilter.addEventListener('click', function() {
+        btnResetFilter.addEventListener('click', function () {
             searchInput.value = '';
             roleFilter.value = '';
             filterEmployees(); // Trả lại bảng nguyên trạng

@@ -29,6 +29,21 @@ class CategoryModel
         return $result ? pg_fetch_assoc($result) : null;
     }
 
+
+    // Kiểm tra tên hãng giày đã tồn tại hay chưa (chỉ xét các hãng chưa bị xóa mềm)
+    public function isCategoryExists($category_name)
+    {
+        $sql = "SELECT category_id FROM categories WHERE category_name ILIKE $1 AND is_deleted = false";
+        $result = pg_query_params($this->conn, $sql, [trim($category_name)]);
+        if ($result && pg_num_rows($result) > 0) {
+            return true;
+        }
+        return false;
+    }
+
+
+
+
     // thêm hãng mới
     public function create($category_name, $logo, $created_by) // Thêm tham số $created_by
     {
