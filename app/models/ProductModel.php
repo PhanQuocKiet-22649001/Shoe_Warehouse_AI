@@ -305,7 +305,8 @@ class ProductModel
     // =========================================================================
 
     // 1. Hàm tính điểm độ Hot
-    private function getVelocityRank($categoryId) {
+    private function getVelocityRank($categoryId)
+    {
         if (!$categoryId) return 'COLD';
         $sql = "WITH CategoryVelocity AS (
                     SELECT c.category_id, SUM(t.quantity) as total_sold
@@ -317,7 +318,7 @@ class ProductModel
                 SELECT rank() OVER (ORDER BY total_sold DESC) as rank FROM CategoryVelocity WHERE category_id = $1";
         $res = pg_query_params($this->conn, $sql, [$categoryId]);
         $row = $res ? pg_fetch_assoc($res) : null;
-        
+
         if (!$row) return 'COLD';
         if ($row['rank'] <= 2) return 'SUPER_HOT';
         if ($row['rank'] <= 5) return 'HOT';
@@ -325,7 +326,8 @@ class ProductModel
     }
 
     // 2. Hàm Dry Run: Quét kho và trả về mảng các ô gợi ý
-    public function findSuggestedPutawaySlots($productId, $categoryId, $variantId, $qtyNeeded) {
+    public function findSuggestedPutawaySlots($productId, $categoryId, $variantId, $qtyNeeded)
+    {
         $velocityRank = $this->getVelocityRank($categoryId);
         $sql = "SELECT shelf_name, layout FROM shelves";
         $shelves = pg_fetch_all(pg_query($this->conn, $sql)) ?: [];
@@ -334,7 +336,7 @@ class ProductModel
         foreach ($shelves as $shelf) {
             $shelfName = $shelf['shelf_name'];
             $layout = json_decode($shelf['layout'], true) ?: [];
-            
+
             foreach ($layout as $tier => $slots) {
                 foreach ($slots as $slotKey => $shoesArray) {
                     $occupancy = count($shoesArray);
@@ -360,8 +362,10 @@ class ProductModel
         }
 
         // Sắp xếp giảm dần theo điểm
-        usort($scoredSlots, function($a, $b) { return $b['score'] <=> $a['score']; });
-        
+        usort($scoredSlots, function ($a, $b) {
+            return $b['score'] <=> $a['score'];
+        });
+
         // Cắt lấy top n ô cần thiết để chứa đủ số lượng
         $suggestions = [];
         for ($i = 0; $i < min(count($scoredSlots), ceil($qtyNeeded / 4)); $i++) {
@@ -371,23 +375,28 @@ class ProductModel
     }
 
     // 3. Hàm lưu mảng vị trí vào JSONB (Dùng khi ấn Lưu)
-    public function savePutawayToShelves($putawayDataArray, $variantId) {
+    public function savePutawayToShelves($putawayDataArray, $variantId)
+    {
         foreach ($putawayDataArray as $item) {
             $loc = $item['location']; // Ví dụ: A1-01
             $qty = intval($item['quantity']);
-            
+
             preg_match('/([A-Z])(\d)-(\d{2})/', $loc, $matches);
             if (count($matches) == 4) {
-                $shelfName = $matches[1]; $tier = $matches[2]; $slot = $matches[3];
-                
+                $shelfName = $matches[1];
+                $tier = $matches[2];
+                $slot = $matches[3];
+
                 $sql = "SELECT layout FROM shelves WHERE shelf_name = $1";
                 $res = pg_query_params($this->conn, $sql, [$shelfName]);
                 if ($row = pg_fetch_assoc($res)) {
                     $layout = json_decode($row['layout'], true);
                     if (!isset($layout[$tier][$slot])) $layout[$tier][$slot] = [];
-                    
-                    for ($k = 0; $k < $qty; $k++) { array_push($layout[$tier][$slot], (int)$variantId); }
-                    
+
+                    for ($k = 0; $k < $qty; $k++) {
+                        array_push($layout[$tier][$slot], (int)$variantId);
+                    }
+
                     $jsonb_str = json_encode($layout);
                     pg_query_params($this->conn, "UPDATE shelves SET layout = $1::jsonb WHERE shelf_name = $2", [$jsonb_str, $shelfName]);
                 }
@@ -404,7 +413,8 @@ class ProductModel
      * - Nếu $qtyToRemove là số nguyên: Rút đúng số lượng (Dùng cho Xuất kho)
      * - Nếu $qtyToRemove là null: Quét và rút sạch toàn bộ (Dùng cho Xóa biến thể)
      */
-    public function removePutawayFromShelves($variantId, $qtyToRemove = null) {
+    public function removePutawayFromShelves($variantId, $qtyToRemove = null)
+    {
         $sql = "SELECT shelf_name, layout FROM shelves";
         $shelves = pg_fetch_all(pg_query($this->conn, $sql)) ?: [];
 
@@ -422,9 +432,9 @@ class ProductModel
             if ($layout) {
                 foreach ($layout as $tier => &$slots) {
                     foreach ($slots as $slotKey => &$shoesArray) {
-                        
+
                         $indexesToDelete = array_keys($shoesArray, (int)$variantId);
-                        
+
                         if (!empty($indexesToDelete)) {
                             foreach ($indexesToDelete as $idx) {
                                 if ($removeAll || $remainingToRemove > 0) {
@@ -436,7 +446,7 @@ class ProductModel
                                 }
                             }
                             // Gắn lại key của mảng để khi lưu JSON không bị biến thành Object
-                            $shoesArray = array_values($shoesArray); 
+                            $shoesArray = array_values($shoesArray);
                         }
                     }
                 }
@@ -470,24 +480,24 @@ class ProductModel
     {
         $sql = "SELECT shelf_name, layout FROM shelves";
         $shelves = pg_fetch_all(pg_query($this->conn, $sql)) ?: [];
-        
-        $locationMap = []; 
-        
+
+        $locationMap = [];
+
         foreach ($shelves as $shelf) {
             $shelfName = $shelf['shelf_name'];
             $layoutStr = $shelf['layout'];
-            
+
             // Xử lý an toàn 100% chuỗi JSONB từ PostgreSQL (Chống lỗi double-encode)
             $layout = is_string($layoutStr) ? json_decode($layoutStr, true) : $layoutStr;
-            if (is_string($layout)) $layout = json_decode($layout, true); 
-            
+            if (is_string($layout)) $layout = json_decode($layout, true);
+
             if (!is_array($layout)) continue;
-            
+
             foreach ($layout as $tier => $slots) {
                 if (!is_array($slots)) continue;
                 foreach ($slots as $slotKey => $shoesArray) {
                     if (!is_array($shoesArray) || empty($shoesArray)) continue;
-                    
+
                     // Đếm số lượng từng loại giày trong ô
                     $counts = array_count_values($shoesArray);
                     foreach ($counts as $vid => $qty) {
@@ -513,9 +523,11 @@ class ProductModel
         // 1. Phân tích tọa độ nguồn
         preg_match('/([A-Z])(\d)-(\d{2})/', $from_loc, $f_match);
         if (count($f_match) != 4) throw new Exception("Tọa độ nguồn không hợp lệ.");
-        
-        $f_shelf = $f_match[1]; $f_tier = $f_match[2]; $f_slot = $f_match[3];
-        
+
+        $f_shelf = $f_match[1];
+        $f_tier = $f_match[2];
+        $f_slot = $f_match[3];
+
         // 2. Tính tổng số lượng cần chuyển đi
         $totalQty = 0;
         foreach ($destinations as $dest) {
@@ -539,10 +551,10 @@ class ProductModel
         $sql = "SELECT shelf_name, layout, max_capacity_per_slot, status, is_deleted FROM shelves WHERE shelf_name IN ($inClause)";
         $res = pg_query_params($this->conn, $sql, $involvedShelfNames);
         $shelvesData = pg_fetch_all($res) ?: [];
-        
+
         $shelves = [];
         $maxCaps = [];
-        
+
         foreach ($shelvesData as $s) {
             // Quy tắc kinh doanh: Kệ phải có is_deleted = true VÀ status = true mới là đang hoạt động
             if ($s['status'] !== 't' || $s['is_deleted'] !== 't') {
@@ -555,10 +567,10 @@ class ProductModel
         // 5. Kiểm tra Nguồn có đủ giày không?
         if (!isset($shelves[$f_shelf][$f_tier][$f_slot])) $shelves[$f_shelf][$f_tier][$f_slot] = [];
         $sourceArr = &$shelves[$f_shelf][$f_tier][$f_slot];
-        
+
         $sourceCounts = array_count_values($sourceArr);
         $availableQty = $sourceCounts[$variant_id] ?? 0;
-        
+
         if ($availableQty < $totalQty) {
             throw new Exception("Ô nguồn $from_loc chỉ có $availableQty đôi, không đủ $totalQty đôi để chuyển.");
         }
@@ -566,17 +578,19 @@ class ProductModel
         // 6. KIỂM TRA TẤT CẢ CÁC ĐÍCH CÓ BỊ QUÁ TẢI KHÔNG (Bỏ logic Swap cũ)
         foreach ($destinations as $dest) {
             preg_match('/([A-Z])(\d)-(\d{2})/', $dest['loc'], $t_match);
-            $t_shelf = $t_match[1]; $t_tier = $t_match[2]; $t_slot = $t_match[3];
+            $t_shelf = $t_match[1];
+            $t_tier = $t_match[2];
+            $t_slot = $t_match[3];
             $qtyToMove = intval($dest['qty']);
-            
+
             if (!isset($shelves[$t_shelf][$t_tier][$t_slot])) $shelves[$t_shelf][$t_tier][$t_slot] = [];
             $destArr = $shelves[$t_shelf][$t_tier][$t_slot];
-            
+
             $destOccupancy = count($destArr);
             $freeSpace = $maxCaps[$t_shelf] - $destOccupancy;
-            
+
             // Nếu click chọn lại chính ô nguồn làm đích (ít xảy ra nhưng phòng hờ)
-            if ($from_loc === $dest['loc']) $freeSpace += $qtyToMove; 
+            if ($from_loc === $dest['loc']) $freeSpace += $qtyToMove;
 
             if ($freeSpace < $qtyToMove) {
                 throw new Exception("Ô đích {$dest['loc']} chỉ còn chỗ cho $freeSpace đôi (cần $qtyToMove). Giao dịch bị hủy!");
@@ -596,9 +610,11 @@ class ProductModel
         // 8. THỰC THI: Bơm giày vào các ô đích
         foreach ($destinations as $dest) {
             preg_match('/([A-Z])(\d)-(\d{2})/', $dest['loc'], $t_match);
-            $t_shelf = $t_match[1]; $t_tier = $t_match[2]; $t_slot = $t_match[3];
+            $t_shelf = $t_match[1];
+            $t_tier = $t_match[2];
+            $t_slot = $t_match[3];
             $qtyToMove = intval($dest['qty']);
-            
+
             $destArrRef = &$shelves[$t_shelf][$t_tier][$t_slot];
             for ($i = 0; $i < $qtyToMove; $i++) {
                 $destArrRef[] = (int)$variant_id;
@@ -610,8 +626,29 @@ class ProductModel
             $jsonb = json_encode($shelves[$shelfName]);
             pg_query_params($this->conn, "UPDATE shelves SET layout = $1::jsonb WHERE shelf_name = $2", [$jsonb, $shelfName]);
         }
-        
+
         return true;
     }
 
+
+
+    /**
+     * Lấy danh sách tên các sản phẩm (dạng chữ thường) có trong phiếu nhập
+     */
+    public function getProductNamesInTicket($ticket_id)
+    {
+        $sql = "SELECT DISTINCT p.product_name 
+                FROM ticket_details td 
+                JOIN product_variants pv ON td.variant_id = pv.variant_id
+                JOIN products p ON pv.product_id = p.product_id
+                WHERE td.ticket_id = $1";
+        $res = pg_query_params($this->conn, $sql, [$ticket_id]);
+        $names = [];
+        if ($res) {
+            while ($row = pg_fetch_assoc($res)) {
+                $names[] = mb_strtolower(trim($row['product_name']), 'UTF-8');
+            }
+        }
+        return $names;
+    }
 }

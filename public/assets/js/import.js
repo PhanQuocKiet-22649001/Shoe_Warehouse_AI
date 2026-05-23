@@ -4,10 +4,10 @@
 
 let currentImportTicketId = null;
 let currentImportTicketCode = "";
-let importTicketItems = []; 
-let importScannedData = []; 
+let importTicketItems = [];
+let importScannedData = [];
 let importSelectedFiles = [];
-let activeScannedIndex = -1; 
+let activeScannedIndex = -1;
 
 document.getElementById('addProductModal').addEventListener('show.bs.modal', loadMyImportTickets);
 
@@ -15,7 +15,7 @@ document.getElementById('addProductModal').addEventListener('show.bs.modal', loa
 async function loadMyImportTickets() {
     const list = document.getElementById('import_ticket_list');
     list.innerHTML = '<div class="text-center text-white-50 py-3"><i class="fas fa-spinner fa-spin me-2"></i>Đang tải dữ liệu...</div>';
-    
+
     document.getElementById('import_step_1').classList.remove('d-none');
     document.getElementById('import_step_2').classList.add('d-none');
     document.getElementById('import_ai_upload_zone').classList.add('d-none');
@@ -51,7 +51,7 @@ async function openImportTicket(ticketId, ticketCode) {
     document.getElementById('import_current_ticket_code').innerText = `MÃ PHIẾU: ${ticketCode}`;
     document.getElementById('import_step_1').classList.add('d-none');
     document.getElementById('import_step_2').classList.remove('d-none');
-    
+
     document.getElementById('import_right_default').classList.add('d-none');
     document.getElementById('import_ai_upload_zone').classList.remove('d-none');
 
@@ -63,7 +63,7 @@ async function openImportTicket(ticketId, ticketCode) {
 async function loadImportTicketItems() {
     const container = document.getElementById('import_ticket_items');
     container.innerHTML = '<div class="text-center text-white-50"><i class="fas fa-spinner fa-spin"></i> Đang tải giày...</div>';
-    
+
     try {
         // Gọi chung API get_ticket_details của Export
         const res = await fetch(`index.php?page=tickets&action=get_ticket_details&ticket_id=${currentImportTicketId}`);
@@ -81,8 +81,8 @@ function renderImportItemsUI() {
     container.innerHTML = importTicketItems.map(item => {
         const qty = parseInt(item.quantity);
         const processed = parseInt(item.processed_qty) || 0;
-        
-        let badgeClass = 'bg-danger'; 
+
+        let badgeClass = 'bg-danger';
         let statusTag = '';
 
         if (processed > 0) {
@@ -113,7 +113,7 @@ function renderImportItemsUI() {
                     let locArr = locs.map(l => `${l.shelf_name || ''}${l.tier}-${l.slot} (${l.qty} đôi)`);
                     locationsHtml = `<div class="small text-warning mt-2 pt-2 border-top border-secondary"><i class="fas fa-map-marker-alt me-1"></i>Đã cất: ${locArr.join(', ')}</div>`;
                 }
-            } catch(e){}
+            } catch (e) { }
         }
 
         return `
@@ -150,8 +150,8 @@ function previewImportImages(input) {
     importSelectedFiles = Array.from(input.files).slice(0, 3); // Lấy tối đa 3 ảnh
     const container = document.getElementById('import_pre_scan_preview');
     container.innerHTML = '';
-    
-    if(importSelectedFiles.length > 0) {
+
+    if (importSelectedFiles.length > 0) {
         document.getElementById('btn-scan-import').classList.remove('d-none');
         importSelectedFiles.forEach(file => {
             container.innerHTML += `<img src="${URL.createObjectURL(file)}" class="rounded" style="width: 60px; height: 60px; object-fit:cover;">`;
@@ -167,16 +167,22 @@ async function executeImportScan() {
     const fd = new FormData();
     importSelectedFiles.forEach(f => fd.append('images[]', f));
 
+    // --- BỔ SUNG: Gửi kèm ID phiếu nhập hiện tại để server lọc gợi ý AI ---
+    if (currentImportTicketId) {
+        fd.append('ticket_id', currentImportTicketId);
+    }
+    // ----------------------------------------------------------------------
+
     try {
         const response = await fetch('index.php?page=products&action=scan-ai', { method: 'POST', body: fd });
         const res = await response.json();
-        
+
         if (res.status === 'success') {
             importScannedData = res.data;
             document.getElementById('import_pre_scan_preview').innerHTML = ''; // Clear ảnh nháp
             btn.classList.add('d-none');
             renderImportPostScan();
-            if(importScannedData.length > 0) processAIResult(0); // Tự động load ảnh đầu tiên
+            if (importScannedData.length > 0) processAIResult(0); // Tự động load ảnh đầu tiên
         } else { alert("Lỗi quét AI: " + res.message); }
     } catch (e) { alert("Lỗi kết nối AI."); }
     finally {
@@ -184,6 +190,7 @@ async function executeImportScan() {
         btn.disabled = false;
     }
 }
+
 
 function renderImportPostScan() {
     const container = document.getElementById('import_post_scan_area');
@@ -210,8 +217,8 @@ function getNormalizedScore(match) {
 
 function processAIResult(index) {
     activeScannedIndex = index;
-    renderImportPostScan(); 
-    
+    renderImportPostScan();
+
     const aiItem = importScannedData[index];
     const matches = aiItem.matches || [];
     if (matches.length === 0) return alert("AI không nhận diện được bất kỳ mẫu giày nào!");
@@ -223,14 +230,14 @@ function processAIResult(index) {
     document.getElementById('import_form_zone').classList.remove('d-flex');
     document.getElementById('import_form_zone').classList.add('d-none');
     let suggestionContainer = document.getElementById('import_suggestion_container');
-    if(suggestionContainer) suggestionContainer.innerHTML = ''; 
+    if (suggestionContainer) suggestionContainer.innerHTML = '';
 
     // Tắt hết highlight màu xanh của các dòng
     document.querySelectorAll('[id^="import_row_"]').forEach(el => {
         el.classList.remove('bg-info', 'bg-opacity-25', 'border-info');
     });
 
-    const topMatch = matches[0]; 
+    const topMatch = matches[0];
     const topScore = getNormalizedScore(topMatch);
 
     // Dưới 80% -> Từ chối
@@ -253,15 +260,15 @@ function autoProcessMatch(matchData, tempImage) {
     const aiBrand = (matchData.brand || "").toLowerCase();
     const aiName = (matchData.product_name || matchData.model || matchData.name || "").toLowerCase();
 
-    let matchedTicketItems = importTicketItems.filter(item => 
-        (item.brand || "").toLowerCase() === aiBrand && 
+    let matchedTicketItems = importTicketItems.filter(item =>
+        (item.brand || "").toLowerCase() === aiBrand &&
         (item.product_name || "").toLowerCase() === aiName &&
         parseInt(item.processed_qty || 0) < parseInt(item.quantity || 0)
     );
 
     if (matchedTicketItems.length === 0) {
         alert("Sản phẩm AI nhận diện được KHÔNG CÓ trong phiếu nhập này, hoặc đã nhập đủ số lượng!");
-        return false; 
+        return false;
     }
 
     document.getElementById('import_form_zone').classList.remove('d-none');
@@ -281,7 +288,7 @@ function autoProcessMatch(matchData, tempImage) {
 
     matchedTicketItems.forEach(item => {
         let row = document.getElementById(`import_row_${item.variant_id}`);
-        if(row) row.classList.add('bg-info', 'bg-opacity-25', 'border-info');
+        if (row) row.classList.add('bg-info', 'bg-opacity-25', 'border-info');
     });
 
     const colorDropdown = document.getElementById('import_color');
@@ -295,14 +302,14 @@ function autoProcessMatch(matchData, tempImage) {
     });
 
     window.currentMatchedItems = matchedTicketItems;
-    return true; 
+    return true;
 }
 
 // 4.2 HÀM TẠO MENU DROPDOWN VÀ SHOW TOÀN BỘ ẢNH BÊN TRONG DROPDOWN
 function renderSuggestionDropdown(matches, tempImage) {
     let validMatches = matches.filter(m => getNormalizedScore(m) >= 80);
     validMatches.sort((a, b) => getNormalizedScore(b) - getNormalizedScore(a));
-    
+
     let container = document.getElementById('import_suggestion_container');
     if (!container) {
         container = document.createElement('div');
@@ -318,12 +325,12 @@ function renderSuggestionDropdown(matches, tempImage) {
         let score = getNormalizedScore(m).toFixed(1);
         let mBrand = (m.brand || "").toLowerCase();
         let mName = (m.product_name || m.model || m.name || "").toLowerCase();
-        
+
         let inTicket = importTicketItems.some(ti => (ti.brand || "").toLowerCase() === mBrand && (ti.product_name || "").toLowerCase() === mName);
         let mark = inTicket ? "⭐ CÓ TRONG PHIẾU" : "Ngoài phiếu";
-        
+
         let cleanObj = { brand: m.brand, product_name: m.product_name || m.model || m.name, product_image: m.product_image || 'default_shoe.png' };
-        let valStr = JSON.stringify(cleanObj).replace(/'/g, "&#39;"); 
+        let valStr = JSON.stringify(cleanObj).replace(/'/g, "&#39;");
         let displayText = `[${score}%] - ${m.brand} ${cleanObj.product_name}`;
 
         // TẠO HTML CÁC DÒNG BÊN TRONG DROPDOWN (CÓ KÈM HÌNH ẢNH)
@@ -342,7 +349,7 @@ function renderSuggestionDropdown(matches, tempImage) {
                 </a>
             </li>
         `;
-        
+
         let borderClass = inTicket ? 'border-success' : 'border-secondary';
         imagesHtml += `
             <div class="text-center me-2 mb-2 p-1 rounded border ${borderClass} bg-dark" 
@@ -383,19 +390,19 @@ function renderSuggestionDropdown(matches, tempImage) {
 }
 
 // 4.3 CÁC HÀM XỬ LÝ LỰA CHỌN DROPDOWN (ĐÃ FIX LỖI TÌM ẢNH)
-window.selectCustomSuggestion = function(element) {
+window.selectCustomSuggestion = function (element) {
     const hiddenInput = document.getElementById('import_suggestion_value');
     if (hiddenInput) {
         hiddenInput.value = element.getAttribute('data-val');
     }
-    
+
     // Đổi ảnh preview an toàn
     const parsedData = JSON.parse(element.getAttribute('data-val'));
     const previewImg = document.getElementById('import_suggestion_preview_img');
     if (previewImg) {
         previewImg.src = `assets/img_product/${parsedData.product_image}`;
     }
-    
+
     // Cập nhật text trên nút bấm
     const textSpan = element.querySelector('span.fw-bold');
     const btnText = document.getElementById('customSuggestionBtnText');
@@ -405,19 +412,19 @@ window.selectCustomSuggestion = function(element) {
     }
 };
 
-window.selectSuggestionImage = function(index) {
+window.selectSuggestionImage = function (index) {
     const targetItem = document.getElementById(`suggestion_item_${index}`);
-    if(targetItem) targetItem.click();
+    if (targetItem) targetItem.click();
 };
 
-window.confirmSuggestedMatch = function(tempImage) {
+window.confirmSuggestedMatch = function (tempImage) {
     const hiddenInput = document.getElementById('import_suggestion_value');
     if (!hiddenInput || !hiddenInput.value) return alert("Vui lòng chọn 1 mẫu từ danh sách hoặc click vào hình!");
-    
-    let isSuccess = autoProcessMatch(JSON.parse(hiddenInput.value), tempImage); 
-    if(isSuccess) {
+
+    let isSuccess = autoProcessMatch(JSON.parse(hiddenInput.value), tempImage);
+    if (isSuccess) {
         let container = document.getElementById('import_suggestion_container');
-        if (container) container.innerHTML = ''; 
+        if (container) container.innerHTML = '';
     }
 }
 // =========================================================================
@@ -426,56 +433,56 @@ window.confirmSuggestedMatch = function(tempImage) {
 function updateImportSizeDropdown() {
     const color = document.getElementById('import_color').value;
     const sizeDropdown = document.getElementById('import_size');
-    
+
     sizeDropdown.innerHTML = '<option value="">-- Chọn size --</option>';
-    
+
     if (!color) {
         sizeDropdown.disabled = true;
         return;
     }
 
     sizeDropdown.disabled = false;
-    
+
     // Tắt hết highlight cũ
     window.currentMatchedItems.forEach(item => {
         let row = document.getElementById(`import_row_${item.variant_id}`);
-        if(row) row.classList.remove('bg-info', 'bg-opacity-25', 'border-info');
+        if (row) row.classList.remove('bg-info', 'bg-opacity-25', 'border-info');
     });
 
     // Lọc ra các size thuộc về màu đã chọn và SÁNG LẠI các dòng đó
     let availableSizes = window.currentMatchedItems.filter(i => i.color === color);
     availableSizes.forEach(item => {
         sizeDropdown.innerHTML += `<option value="${item.size}" data-detail-id="${item.detail_id}" data-variant-id="${item.variant_id}" data-qty="${item.quantity}">Size ${item.size}</option>`;
-        
+
         // Sáng lại vùng của Màu này
         let row = document.getElementById(`import_row_${item.variant_id}`);
-        if(row) row.classList.add('bg-info', 'bg-opacity-25', 'border-info');
+        if (row) row.classList.add('bg-info', 'bg-opacity-25', 'border-info');
     });
 }
 // 6. AUTO FILL SỐ LƯỢNG & THU HẸP HIGHLIGHT
 function autoFillImportQty() {
     const sizeSelect = document.getElementById('import_size');
     const selectedOption = sizeSelect.options[sizeSelect.selectedIndex];
-    
+
     if (selectedOption.value) {
         const expectedQty = selectedOption.getAttribute('data-qty');
         const targetVariantId = selectedOption.getAttribute('data-variant-id');
 
         document.getElementById('import_expected_qty').value = expectedQty;
-        document.getElementById('import_actual_qty').value = expectedQty; 
+        document.getElementById('import_actual_qty').value = expectedQty;
         document.getElementById('import_detail_id').value = selectedOption.getAttribute('data-detail-id');
         document.getElementById('import_variant_id').value = targetVariantId;
 
         window.currentMatchedItems.forEach(item => {
             let row = document.getElementById(`import_row_${item.variant_id}`);
-            if(row) row.classList.remove('bg-info', 'bg-opacity-25', 'border-info');
+            if (row) row.classList.remove('bg-info', 'bg-opacity-25', 'border-info');
         });
 
         let activeRow = document.getElementById(`import_row_${targetVariantId}`);
-        if(activeRow) activeRow.classList.add('bg-info', 'bg-opacity-25', 'border-info');
-        
+        if (activeRow) activeRow.classList.add('bg-info', 'bg-opacity-25', 'border-info');
+
         checkImportDiscrepancy();
-        
+
         // Gọi load giao diện phân bổ kệ
         loadPutawayLocations(targetVariantId);
     }
@@ -490,24 +497,24 @@ async function loadPutawayLocations(variantId) {
         container = document.createElement('div');
         container.id = 'putaway_locations_container';
         container.className = 'mt-3 p-3 rounded bg-black bg-opacity-25 border border-info';
-        
+
         const btnSave = document.getElementById('btn_save_temp');
         btnSave.parentNode.insertBefore(container, btnSave);
     }
 
     container.innerHTML = '<div class="text-center text-info small"><i class="fas fa-spinner fa-spin"></i> Đang tải sơ đồ kệ...</div>';
-    
+
     try {
         const res = await fetch(`index.php?page=tickets&action=get_putaway_locations&variant_id=${variantId}&ticket_id=${currentImportTicketId}`);
         const data = await res.json();
-        
+
         const renderSlot = (slot, isCurrent) => {
             let mark = isCurrent ? `<span class="text-warning small">(Đang có: ${slot.var_count})</span>` : '';
             let key = `${slot.shelf_id}_${slot.tier}_${slot.slot}`;
-            
+
             // --- BỔ SUNG: KIỂM TRA MẢNG current_alloc ĐỂ AUTO FILL SỐ LƯỢNG KỆ ĐÃ LƯU ---
             let prefillQty = (data.current_alloc && data.current_alloc[key]) ? data.current_alloc[key] : 0;
-            
+
             return `
             <div class="d-flex justify-content-between align-items-center bg-black p-2 rounded mb-2 border border-secondary putaway-row transition-all">
                 <span class="text-white fw-bold small">
@@ -538,7 +545,7 @@ async function loadPutawayLocations(variantId) {
             </div>
             <div id="putaway_warning_msg" class="mt-3 text-center fw-bold small"></div>
         `;
-        
+
         // Cần gọi Validation ngay lập tức để nó Highlight (bôi xanh) các ô vừa được Prefill số lượng!
         validatePutawayTotal();
     } catch (e) {
@@ -551,14 +558,14 @@ function validatePutawayTotal() {
     const targetQty = parseInt(document.getElementById('import_actual_qty').value) || 0;
     let allocatedQty = 0;
     const inputs = document.querySelectorAll('.putaway-input');
-    
+
     inputs.forEach(input => {
         let max = parseInt(input.max) || 0;
         let val = parseInt(input.value) || 0;
-        
+
         if (val < 0) { val = 0; input.value = 0; }
         if (val > max) { val = max; input.value = max; }
-        
+
         const row = input.closest('.putaway-row');
         if (val > 0) {
             row.classList.replace('border-secondary', 'border-success');
@@ -567,7 +574,7 @@ function validatePutawayTotal() {
             row.classList.replace('border-success', 'border-secondary');
             row.style.backgroundColor = '';
         }
-        
+
         allocatedQty += val;
     });
 
@@ -607,7 +614,7 @@ function checkImportDiscrepancy() {
         let diff = act - exp;
         badge.innerText = `CÓ LỆCH: ${diff > 0 ? '+' : ''}${diff} ĐÔI`;
     }
-    validatePutawayTotal(); 
+    validatePutawayTotal();
 }
 
 
@@ -615,10 +622,10 @@ function checkImportDiscrepancy() {
 // 7. LƯU BẢNG TẠM (CÓ GỬI KÈM MẢNG VỊ TRÍ KỆ)
 async function saveTempImport(e) {
     e.preventDefault();
-    
+
     const exp = parseInt(document.getElementById('import_expected_qty').value) || 0;
     const act = parseInt(document.getElementById('import_actual_qty').value) || 0;
-    
+
     let allocatedQty = 0;
     document.querySelectorAll('.putaway-input').forEach(input => {
         allocatedQty += parseInt(input.value) || 0;
@@ -626,7 +633,7 @@ async function saveTempImport(e) {
 
     if (act > 0 && allocatedQty !== act) {
         alert(`LỖI: Bạn đang nhập ${act} đôi giày nhưng mới xếp ${allocatedQty} đôi lên kệ.\nVui lòng phân bổ đủ vị trí trên Sơ đồ Kệ trước khi nhấn Lưu!`);
-        return; 
+        return;
     }
 
     if (act !== exp) {
@@ -645,7 +652,7 @@ async function saveTempImport(e) {
         if (val > 0) {
             putawayLocations.push({
                 shelf_id: input.getAttribute('data-shelf-id'),
-                shelf_name: input.getAttribute('data-shelf-name'), 
+                shelf_name: input.getAttribute('data-shelf-name'),
                 tier: input.getAttribute('data-tier'),
                 slot: input.getAttribute('data-slot'),
                 variant_id: document.getElementById('import_variant_id').value,
@@ -656,18 +663,18 @@ async function saveTempImport(e) {
 
     const fd = new FormData(form);
     fd.append('ticket_id', currentImportTicketId);
-    fd.append('putaway_locations', JSON.stringify(putawayLocations)); 
+    fd.append('putaway_locations', JSON.stringify(putawayLocations));
 
     try {
         const res = await fetch('index.php?page=tickets&action=save_temp_import', { method: 'POST', body: fd });
         const data = await res.json();
-        
-        if(data.status === 'success') {
+
+        if (data.status === 'success') {
 
             //ĐOẠN NÀY ĐỂ HIỆN QR
             if (data.qr_code) {
                 const qrImage = `https://quickchart.io/qr?text=${encodeURIComponent(data.qr_code)}&size=200&ecLevel=H`;
-                
+
                 const qrModalHtml = `
                     <div id="temp_qr_overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center;">
                         <div class="bg-white p-4 rounded text-center shadow-lg" style="width:300px;">
@@ -680,26 +687,26 @@ async function saveTempImport(e) {
                 `;
                 document.body.insertAdjacentHTML('beforeend', qrModalHtml);
             }
-            loadImportTicketItems(); 
-            
+            loadImportTicketItems();
+
             if (window.currentMatchedItems && activeScannedIndex !== -1) {
                 window.currentMatchedItems = window.currentMatchedItems.filter(i => i.detail_id != fd.get('detail_id'));
-                if(window.currentMatchedItems.length === 0 && importScannedData[activeScannedIndex]) {
+                if (window.currentMatchedItems.length === 0 && importScannedData[activeScannedIndex]) {
                     importScannedData[activeScannedIndex].is_done = true;
                 }
             }
-            
+
             document.getElementById('import_form_zone').classList.remove('d-flex');
             document.getElementById('import_form_zone').classList.add('d-none');
-            
+
             let container = document.getElementById('putaway_locations_container');
-            if (container) container.remove(); 
-            
+            if (container) container.remove();
+
             if (activeScannedIndex !== -1) renderImportPostScan();
-            
+
         } else { alert("Lỗi: " + data.message); }
-    } catch(err) { 
-        alert("Lỗi kết nối ngầm!"); 
+    } catch (err) {
+        alert("Lỗi kết nối ngầm!");
     } finally {
         btn.innerHTML = 'LƯU NHÁP BIẾN THỂ NÀY';
         btn.disabled = false;
@@ -717,7 +724,7 @@ async function completeImportTicket() {
     try {
         const fd = new FormData();
         fd.append('ticket_id', currentImportTicketId);
-        
+
         const res = await fetch('index.php?page=tickets&action=complete_import', { method: 'POST', body: fd });
         const data = await res.json();
 
@@ -740,33 +747,33 @@ async function completeImportTicket() {
 // =========================================================================
 function editImportItem(variantId) {
     const item = importTicketItems.find(i => i.variant_id == variantId);
-    
+
     if (!item || parseInt(item.processed_qty || 0) === 0) {
-        return; 
+        return;
     }
 
     window.currentMatchedItems = [item];
-    activeScannedIndex = -1; 
+    activeScannedIndex = -1;
 
     document.getElementById('import_form_zone').classList.remove('d-none');
     document.getElementById('import_form_zone').classList.add('d-flex');
-    
+
     document.getElementById('import_brand').value = item.brand || "";
     document.getElementById('import_name').value = item.product_name || "";
-    document.getElementById('import_temp_image').value = item.product_image || "default_shoe.png"; 
+    document.getElementById('import_temp_image').value = item.product_image || "default_shoe.png";
 
     const colorDropdown = document.getElementById('import_color');
     const sizeDropdown = document.getElementById('import_size');
-    
+
     colorDropdown.innerHTML = `<option value="${item.color}">${item.color}</option>`;
     sizeDropdown.innerHTML = `<option value="${item.size}" data-detail-id="${item.detail_id}" data-variant-id="${item.variant_id}" data-qty="${item.quantity}">Size ${item.size}</option>`;
     sizeDropdown.disabled = false;
 
     document.getElementById('import_expected_qty').value = item.quantity;
-    document.getElementById('import_actual_qty').value = item.processed_qty || 0; 
+    document.getElementById('import_actual_qty').value = item.processed_qty || 0;
     document.getElementById('import_detail_id').value = item.detail_id;
     document.getElementById('import_variant_id').value = item.variant_id;
-    
+
     if (document.getElementById('import_note')) {
         document.getElementById('import_note').value = item.note || '';
     }
@@ -778,7 +785,7 @@ function editImportItem(variantId) {
     if (activeRow) activeRow.classList.add('bg-info', 'bg-opacity-25', 'border-info');
 
     checkImportDiscrepancy();
-    
+
     // Mở bảng cho phép xếp kệ lại từ đầu nếu sửa số lượng
     loadPutawayLocations(variantId);
 }

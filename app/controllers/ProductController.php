@@ -155,7 +155,7 @@ class ProductController
 
             try {
                 // Lấy ID Hãng từ ô Select trong Modal
-                $category_id = $_POST['category_id']; 
+                $category_id = $_POST['category_id'];
                 $product_name = trim($_POST['product_name']);
                 $userId = $_SESSION['user_id'];
 
@@ -206,7 +206,7 @@ class ProductController
      * CHỨC NĂNG DÀNH RIÊNG CHO MANAGER: Khai báo Biến thể (Màu/Size) mới
      * Tác dụng: Tạo SKU chuẩn và ghi nhận danh mục Màu/Size, tồn kho khởi điểm = 0.
      */
-   /**
+    /**
      * CHỨC NĂNG DÀNH RIÊNG CHO MANAGER: Khai báo Biến thể (Màu/Size) mới
      * Tác dụng: Tạo SKU chuẩn và ghi nhận danh mục Màu/Size, tồn kho khởi điểm = 0.
      */
@@ -242,7 +242,7 @@ class ProductController
                 foreach (explode(' ', $cleanName) as $w) {
                     if (!empty($w)) $initials .= strtoupper(substr($w, 0, 1));
                 }
-                
+
                 // GHÉP MÃ: 2 chữ đầu tên Hãng + Viết tắt SP + Mã Màu + Size
                 $sku = strtoupper(substr($brand_name, 0, 2)) . "-" . $initials . "-" . $colorCode . "-" . $size;
 
@@ -400,7 +400,6 @@ class ProductController
         }
         return $str;
     }
-
     /**
      * Chức năng: So khớp hình ảnh thực tế với Database (Dành cho STAFF).
      * Tác dụng: Nhân viên up ảnh lô hàng, AI trích xuất Vector tạm và dò tìm trong Database (Khoảng cách Cosine) để xem nó giống với mẫu nào mà Manager đã khai báo.
@@ -425,6 +424,9 @@ class ProductController
             $fileCount = count($files['name']);
             $limit = min($fileCount, 3); // Giới hạn batch size tránh cháy server
 
+            // Đọc ticket_id gửi từ client lên để lọc gợi ý
+            $ticket_id = isset($_POST['ticket_id']) ? intval($_POST['ticket_id']) : 0;
+
             for ($i = 0; $i < $limit; $i++) {
                 $tmpName = $files['tmp_name'][$i];
                 $tempImageName = time() . '_' . uniqid() . '.jpg';
@@ -443,6 +445,29 @@ class ProductController
 
                     // 2. Tìm kiếm trong Database xem có giống mẫu Manager khai báo không
                     $matches = $this->productModel->findTopMatchesByAI($vectorArray, 3);
+
+                    // --- BỔ SUNG: BỘ LỌC THÔNG MINH GỢI Ý 80% - 95% THEO PHIẾU NHẬP ---
+                    if ($ticket_id > 0 && !empty($matches)) {
+                        $allowedNames = $this->productModel->getProductNamesInTicket($ticket_id);
+
+                        $filteredMatches = [];
+                        foreach ($matches as $match) {
+                            $score = (float)$match['similarity_score'];
+                            // Nếu độ tin cậy từ 80% đến dưới 95%
+                            if ($score >= 0.80 && $score < 0.95) {
+                                $matchName = mb_strtolower(trim($match['product_name']), 'UTF-8');
+                                // Chỉ giữ lại nếu sản phẩm có tên khớp với tên trong phiếu nhập
+                                if (in_array($matchName, $allowedNames)) {
+                                    $filteredMatches[] = $match;
+                                }
+                            } else {
+                                // Các mốc khác (>= 95% hoặc < 80%) giữ nguyên
+                                $filteredMatches[] = $match;
+                            }
+                        }
+                        $matches = $filteredMatches;
+                    }
+                    // ------------------------------------------------------------------
 
                     $itemData = [
                         "temp_image" => $tempImageName,
@@ -482,6 +507,7 @@ class ProductController
         }
         exit;
     }
+
 
     /**
      * Chức năng: API Phục vụ UI tự động điền Form.
@@ -751,7 +777,7 @@ class ProductController
         exit;
     }
 
-        /**
+    /**
      * Chức năng: Điều chuyển hàng hóa qua lại giữa các ô.
      * Hỗ trợ chia nhỏ số lượng sang nhiều ô đích cùng lúc.
      */
@@ -796,5 +822,4 @@ class ProductController
         }
         exit;
     }
-
 }
