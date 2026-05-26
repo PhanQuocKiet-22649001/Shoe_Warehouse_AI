@@ -200,6 +200,8 @@ class ImportModel
      * Chức năng: (Cũ) Nhảy số lượng + 1 liên tục khi AI quét trúng.
      * Tác dụng: Quét tới đâu cộng số lượng tới đó (đã được thay bằng phương pháp Submit Form).
      */
+
+    // 25-5-2026: HÀM NÀY CÓ THỂ KHÔNG CẦN NỮA, KIỂM TRA LẠI CÂN NHẮC KHI XÓA
     public function updateImportTemp($ticket_id, $variant_id, $image_url)
     {
         $sql = "UPDATE ticket_import_temp 
@@ -214,6 +216,7 @@ class ImportModel
      * Chức năng: Trừ bớt 1 số lượng nếu xóa nhầm ảnh quét AI.
      * Tác dụng: Hoàn trả số thực nhận nếu NV check tay lại thấy bị dư.
      */
+    // 25-5-2026: HÀM NÀY CÓ THỂ KHÔNG CẦN NỮA, KIỂM TRA LẠI CÂN NHẮC KHI XÓA
     public function decreaseImportTemp($ticket_id, $variant_id)
     {
         $sql = "UPDATE ticket_import_temp 
@@ -226,6 +229,7 @@ class ImportModel
      * Chức năng: Hàm Chốt phiếu gốc chưa chia Dư/Thiếu.
      * Tác dụng: Gọi dứt điểm phiên thao tác, cập nhật thời gian.
      */
+    // 25-5-2026: HÀM NÀY CÓ THỂ KHÔNG CẦN NỮA, KIỂM TRA LẠI CÂN NHẮC KHI XÓA
     public function finalizeImport($ticket_id, $user_id)
     {
         pg_query($this->conn, "BEGIN");
@@ -253,7 +257,7 @@ class ImportModel
      */
     public function getPutawayLocations($variant_id, $ticket_id = 0)
     {
-       $shelves = pg_query($this->conn, "SELECT shelf_id, shelf_name, layout, max_capacity_per_slot FROM shelves WHERE is_deleted = true AND status = true ORDER BY shelf_name ASC");
+        $shelves = pg_query($this->conn, "SELECT shelf_id, shelf_name, layout, max_capacity_per_slot FROM shelves WHERE is_deleted = true AND status = true ORDER BY shelf_name ASC");
 
 
 
