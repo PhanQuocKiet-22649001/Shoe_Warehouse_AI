@@ -319,3 +319,24 @@ function printVariantQR(sku, name, color, size, vid) {
     const modal = new bootstrap.Modal(document.getElementById('simpleQRModal'));
     modal.show();
 }
+
+
+
+// ==========================================
+// 4. THAY ĐỔI ẢNH ĐẠI DIỆN SẢN PHẨM & SINH VECTOR
+// ==========================================
+window.submitAvatarChange = function (productId) {
+    const form = document.getElementById(`form-update-avatar-${productId}`);
+    if (form) {
+        if (confirm("Bạn có chắc chắn muốn thay đổi ảnh đại diện cho sản phẩm này? Hệ thống sẽ gửi ảnh mới đến AI để sinh trích xuất đặc trưng đại diện và cập nhật dữ liệu mới.")) {
+            form.submit(); // Thực hiện ấn lưu sau khi xác nhận
+        } else {
+            // Reset input file nếu người dùng hủy
+            const fileInput = document.getElementById(`input-avatar-${productId}`);
+            if (fileInput) {
+                fileInput.value = "";
+            }
+        }
+    }
+};
+

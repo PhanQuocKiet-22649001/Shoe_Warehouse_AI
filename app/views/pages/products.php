@@ -65,6 +65,23 @@ $cat = $cat ?? ['categoryName' => 'Chưa rõ'];
                                 <i class="fas <?= $isActive ? 'fa-check-circle' : 'fa-pause-circle' ?> me-1"></i>
                                 <?= $isActive ? 'Đang kinh doanh' : 'Tạm ngưng' ?>
                             </span>
+                            <?php if ($_SESSION['role'] === 'MANAGER'): ?>
+                                <!-- Form thay đổi ảnh đại diện (ẩn) -->
+                                <form id="form-update-avatar-<?= $pro['product_id'] ?>" action="index.php?page=products" method="POST" enctype="multipart/form-data" class="d-none">
+                                    <input type="hidden" name="product_id" value="<?= $pro['product_id'] ?>">
+                                    <input type="file" name="product_image" id="input-avatar-<?= $pro['product_id'] ?>" accept="image/*" onchange="submitAvatarChange(<?= $pro['product_id'] ?>)">
+                                    <input type="hidden" name="btn_update_avatar" value="1">
+                                </form>
+
+                                <!-- Nút sửa góc trên bên phải card ảnh -->
+                                <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 m-2 d-flex align-items-center justify-content-center shadow-sm"
+                                    style="width: 72px; height: 28px; border: 1px solid #000000; z-index: 10;  color: #000000; font-size: 11px; font-weight: 700; border-radius: 20px; letter-spacing: 0.5px; transition: all 0.2s;"
+                                    onclick="document.getElementById('input-avatar-<?= $pro['product_id'] ?>').click();"
+                                    title="Thay đổi ảnh đại diện (Gọi AI sinh Vector mới)">
+                                    SỬA ẢNH
+                                </button>
+
+                            <?php endif; ?>
 
                             <?php
                             $imageFile = !empty($pro['product_image']) ? $pro['product_image'] : 'default_shoe.png';
@@ -400,40 +417,40 @@ $cat = $cat ?? ['categoryName' => 'Chưa rõ'];
     </script>
 <?php endif; ?>
 <div class="modal fade" id="simpleQRModal" tabindex="-1" data-bs-backdrop="false" style="background: none;">
-        <div class="modal-dialog modal-sm modal-dialog-centered" style="box-shadow: 0 10px 50px rgba(0,0,0,0.2);">
-            <div class="modal-content" style="border: 2px solid #000;">
-                <div class="modal-header p-2 border-0">
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body pt-0" id="qrContentArea">
-                </div>
-                <div class="modal-footer p-2 border-0">
-                    <button type="button" class="btn btn-dark w-100 fw-bold" onclick="startPrint()">IN MÃ QR</button>
-                </div>
+    <div class="modal-dialog modal-sm modal-dialog-centered" style="box-shadow: 0 10px 50px rgba(0,0,0,0.2);">
+        <div class="modal-content" style="border: 2px solid #000;">
+            <div class="modal-header p-2 border-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-0" id="qrContentArea">
+            </div>
+            <div class="modal-footer p-2 border-0">
+                <button type="button" class="btn btn-dark w-100 fw-bold" onclick="startPrint()">IN MÃ QR</button>
             </div>
         </div>
     </div>
+</div>
 
-    <style>
-        /* CSS chỉ phục vụ việc in ấn, không ảnh hưởng giao diện lúc xem */
-        @media print {
-            body * {
-                visibility: hidden;
-            }
-
-            #qrContentArea,
-            #qrContentArea * {
-                visibility: visible;
-            }
-
-            #qrContentArea {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                text-align: center;
-            }
+<style>
+    /* CSS chỉ phục vụ việc in ấn, không ảnh hưởng giao diện lúc xem */
+    @media print {
+        body * {
+            visibility: hidden;
         }
-    </style>
+
+        #qrContentArea,
+        #qrContentArea * {
+            visibility: visible;
+        }
+
+        #qrContentArea {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            text-align: center;
+        }
+    }
+</style>
 
 <script src="assets/js/product.js"></script>

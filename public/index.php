@@ -289,6 +289,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $productController->add();
             exit;
         }
+        // Nút của Manager (Thay đổi ảnh đại diện sản phẩm & sinh lại Vector AI)
+        if (isset($_POST['btn_update_avatar'])) {
+            $productController->updateAvatar();
+            exit;
+        }
         // Nút của Manager (Khai báo mẫu mới)
         if (isset($_POST['btn_manager_add'])) {
             $productController->managerAddProduct();

@@ -202,6 +202,90 @@ class ProductController
     }
 
 
+
+    /**
+     * Chức năng: Thay đổi ảnh đại diện sản phẩm & sinh lại Vector AI.
+     * Tác dụng: Cho phép Manager tải lên ảnh mới cho sản phẩm có sẵn, gửi ảnh đến Flask AI để sinh Vector mới và cập nhật Database.
+     */
+    public function updateAvatar()
+    {
+        $this->checkManager();
+
+        if (isset($_POST['product_id']) && isset($_FILES['product_image'])) {
+            $db = $this->productModel->getConnection();
+            pg_query($db, "BEGIN");
+
+            try {
+                $product_id = intval($_POST['product_id']);
+                $imageFile = $_FILES['product_image'];
+
+                if ($imageFile['error'] !== UPLOAD_ERR_OK) {
+                    throw new Exception("Lỗi khi tải file ảnh lên!");
+                }
+
+                // Lấy thông tin sản phẩm cũ để xóa ảnh cũ (tránh rác bộ nhớ)
+                $sqlGet = "SELECT product_image, category_id FROM products WHERE product_id = $1";
+                $resGet = pg_query_params($db, $sqlGet, [$product_id]);
+                $pro = pg_fetch_assoc($resGet);
+                if (!$pro) {
+                    throw new Exception("Sản phẩm không tồn tại!");
+                }
+
+                $category_id = $pro['category_id'];
+                $oldImage = $pro['product_image'];
+
+                // 1. Lưu file ảnh mới vào assets/img_product/
+                $ext = pathinfo($imageFile['name'], PATHINFO_EXTENSION);
+                $imageName = time() . '_master_' . uniqid() . '.' . ($ext ?: 'jpg');
+                $targetPath = "assets/img_product/" . $imageName;
+
+                if (!move_uploaded_file($imageFile['tmp_name'], $targetPath)) {
+                    throw new Exception("Lỗi lưu file ảnh mới trên máy chủ.");
+                }
+
+                // 2. Gọi Flask AI Service sinh Vector mới từ ảnh mới
+                $vision = new VisionService();
+                $aiResponse = $vision->generateVector($targetPath);
+
+                if ($aiResponse['status'] !== 'success') {
+                    if (file_exists($targetPath)) unlink($targetPath);
+                    throw new Exception("AI không phân tích được ảnh mới: " . $aiResponse['message']);
+                }
+                $vectorArray = $aiResponse['vector'];
+
+                // 3. Cập nhật tên ảnh mới vào bảng products
+                $sqlUpdate = "UPDATE products SET product_image = $1 WHERE product_id = $2";
+                $resUpdate = pg_query_params($db, $sqlUpdate, [$imageName, $product_id]);
+                if (!$resUpdate) {
+                    throw new Exception("Lỗi cập nhật ảnh sản phẩm vào Database!");
+                }
+
+                // 4. Cập nhật Vector mới vào cột image_embedding
+                $this->productModel->updateImageEmbedding($product_id, $vectorArray);
+
+                // Xóa file ảnh cũ nếu không phải là ảnh mặc định để tiết kiệm bộ nhớ
+                if (!empty($oldImage) && $oldImage !== 'default_shoe.png') {
+                    $oldPath = "assets/img_product/" . $oldImage;
+                    if (file_exists($oldPath)) {
+                        unlink($oldPath);
+                    }
+                }
+
+                pg_query($db, "COMMIT");
+                $_SESSION['success'] = "Đã cập nhật ảnh đại diện và sinh lại Vector AI thành công!";
+            } catch (Exception $e) {
+                pg_query($db, "ROLLBACK");
+                $_SESSION['error'] = "Lỗi: " . $e->getMessage();
+            }
+
+            // Điều hướng quay lại trang hãng sản phẩm
+            header("Location: index.php?page=products&category_id=" . $category_id);
+            exit;
+        }
+    }
+
+
+
     /**
      * CHỨC NĂNG DÀNH RIÊNG CHO MANAGER: Khai báo Biến thể (Màu/Size) mới
      * Tác dụng: Tạo SKU chuẩn và ghi nhận danh mục Màu/Size, tồn kho khởi điểm = 0.
@@ -400,10 +484,11 @@ class ProductController
         }
         return $str;
     }
+
+
     /**
-     * Chức năng: So khớp hình ảnh thực tế với Database (Dành cho STAFF).
-     * Tác dụng: Nhân viên up ảnh lô hàng, AI trích xuất Vector tạm và dò tìm trong Database (Khoảng cách Cosine) để xem nó giống với mẫu nào mà Manager đã khai báo.
-     * KHÔNG LƯU LẠI Vector tạm này để bảo toàn tính nguyên gốc của AI.
+     * So khớp hình ảnh thực tế với Database (Dành cho STAFF).
+     * Nhân viên up ảnh lô hàng, AI trích xuất Vector tạm và dò tìm trong Database (Khoảng cách Cosine) để xem nó giống với mẫu nào mà Manager đã khai báo.
      */
     public function scanWithAI()
     {
@@ -413,6 +498,16 @@ class ProductController
         try {
             if (!isset($_FILES['images']) || empty($_FILES['images']['name'][0])) {
                 throw new Exception("Không tìm thấy tệp tin hình ảnh.");
+            }
+
+            // Tải cấu hình tỉ lệ phần trăm nhận diện AI từ file config
+            $configPath = __DIR__ . '/../../config/PercentMatching.php';
+            $minSim = 0.80;
+            $highSim = 0.95;
+            if (file_exists($configPath)) {
+                $matchingConfig = require $configPath;
+                $minSim = isset($matchingConfig['min_similarity']) ? (float)$matchingConfig['min_similarity'] : 0.80;
+                $highSim = isset($matchingConfig['high_similarity']) ? (float)$matchingConfig['high_similarity'] : 0.95;
             }
 
             $vision = new VisionService();
@@ -446,22 +541,22 @@ class ProductController
                     // 2. Tìm kiếm trong Database xem có giống mẫu Manager khai báo không
                     $matches = $this->productModel->findTopMatchesByAI($vectorArray, 3);
 
-                    // --- BỔ SUNG: BỘ LỌC THÔNG MINH GỢI Ý 80% - 95% THEO PHIẾU NHẬP ---
+                    // --- BỔ SUNG: BỘ LỌC THÔNG MINH THEO PHIẾU NHẬP ---
                     if ($ticket_id > 0 && !empty($matches)) {
                         $allowedNames = $this->productModel->getProductNamesInTicket($ticket_id);
 
                         $filteredMatches = [];
                         foreach ($matches as $match) {
                             $score = (float)$match['similarity_score'];
-                            // Nếu độ tin cậy từ 80% đến dưới 95%
-                            if ($score >= 0.80 && $score < 0.95) {
+                            // Nếu độ tin cậy từ ngưỡng tối thiểu đến dưới ngưỡng khớp cao (đọc từ cấu hình)
+                            if ($score >= $minSim && $score < $highSim) {
                                 $matchName = mb_strtolower(trim($match['product_name']), 'UTF-8');
                                 // Chỉ giữ lại nếu sản phẩm có tên khớp với tên trong phiếu nhập
                                 if (in_array($matchName, $allowedNames)) {
                                     $filteredMatches[] = $match;
                                 }
                             } else {
-                                // Các mốc khác (>= 95% hoặc < 80%) giữ nguyên
+                                // Các mốc khác (>= $highSim hoặc < $minSim) giữ nguyên
                                 $filteredMatches[] = $match;
                             }
                         }
@@ -481,7 +576,7 @@ class ProductController
                         $topScore = (float)$topMatch['similarity_score'];
                         $itemData["similarity"] = round($topScore * 100, 2);
 
-                        if ($topScore >= 0.95) {
+                        if ($topScore >= $highSim) { // Khớp hoàn toàn (ví dụ >= 95%)
                             $itemData["status"] = "match";
                             $itemData["colors"] = $this->productModel->getColorsByProduct($topMatch['product_id']);
                             $itemData["product"] = $topMatch;
@@ -572,8 +667,8 @@ class ProductController
     }
 
     /**
-     * Chức năng: Tắt trạng thái kinh doanh của riêng một biến thể (Màu/Size).
-     * Tác dụng: Manager ẩn biến thể này đi (Người dùng hoặc AI sẽ không thấy nữa).
+     * Chức năng: Bật/Tắt trạng thái kinh doanh của riêng một biến thể (Màu/Size).
+     * Tác dụng: Chặn kích hoạt lại (bật) nếu Sản phẩm hoặc Hãng giày cha đang bị tạm ngưng kinh doanh.
      */
     public function toggleVariantStatus()
     {
@@ -583,6 +678,37 @@ class ProductController
             $variant_id = $_POST['variant_id'];
             $currentStatus = $_POST['current_status'];
             $newStatus = ($currentStatus == 1 || $currentStatus == 't') ? 'false' : 'true';
+
+            // CHẶN KÍCH HOẠT BIẾN THỂ NẾU SẢN PHẨM HOẶC HÃNG ĐANG BỊ TẮT
+            if ($newStatus === 'true') {
+                $sqlCheck = "SELECT p.status AS product_status, c.status AS category_status, p.product_name, c.category_name
+                             FROM product_variants pv
+                             JOIN products p ON pv.product_id = p.product_id
+                             JOIN categories c ON p.category_id = c.category_id
+                             WHERE pv.variant_id = $1";
+
+                $resCheck = pg_query_params($this->productModel->getConnection(), $sqlCheck, [(int)$variant_id]);
+                $rowCheck = $resCheck ? pg_fetch_assoc($resCheck) : null;
+
+                if ($rowCheck) {
+                    $cStatus = ($rowCheck['category_status'] === 't' || $rowCheck['category_status'] == 1 || $rowCheck['category_status'] === true);
+                    $pStatus = ($rowCheck['product_status'] === 't' || $rowCheck['product_status'] == 1 || $rowCheck['product_status'] === true);
+
+                    // 1. Chặn nếu Hãng đang bị tạm ngưng
+                    if (!$cStatus) {
+                        $_SESSION['browser_alert'] = "Không thể kích hoạt! Hãng giày '" . htmlspecialchars($rowCheck['category_name']) . "' đang ngừng kinh doanh. Bạn phải kích hoạt Hãng trước!";
+                        header("Location: " . $_SERVER['HTTP_REFERER']);
+                        exit;
+                    }
+
+                    // 2. Chặn nếu Sản phẩm mẹ đang bị tạm ngưng
+                    if (!$pStatus) {
+                        $_SESSION['browser_alert'] = "Không thể kích hoạt! Sản phẩm '" . htmlspecialchars($rowCheck['product_name']) . "' đang ngừng kinh doanh. Bạn phải kích hoạt Sản phẩm mẹ trước!";
+                        header("Location: " . $_SERVER['HTTP_REFERER']);
+                        exit;
+                    }
+                }
+            }
 
             if ($this->productModel->updateVariantStatus($variant_id, $newStatus)) {
                 $_SESSION['success'] = "Đã thay đổi trạng thái biến thể!";

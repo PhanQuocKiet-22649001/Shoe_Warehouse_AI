@@ -60,12 +60,37 @@ class CategoryModel
         return pg_query_params($this->conn, $sql, [$new_status, $id]);
     }
 
-    //xóa hãng giày
+    // Xóa hãng giày (Soft Delete) và cascade xóa mềm toàn bộ sản phẩm & biến thể bên trong, giải phóng kệ kho
     public function delete($category_id)
     {
-        $sql = "UPDATE categories SET is_deleted = true WHERE category_id = $1";
-        return pg_query_params($this->conn, $sql, [$category_id]);
+        pg_query($this->conn, "BEGIN");
+        try {
+            // 1. Tìm toàn bộ sản phẩm chưa bị xóa thuộc hãng này
+            $sqlGetProducts = "SELECT product_id FROM products WHERE category_id = $1 AND is_deleted = false";
+            $resProducts = pg_query_params($this->conn, $sqlGetProducts, [(int)$category_id]);
+
+            if ($resProducts) {
+                // Tái sử dụng logic xóa cascade của ProductModel đã viết ở Bước 1
+                $productModel = new ProductModel();
+                while ($row = pg_fetch_assoc($resProducts)) {
+                    $product_id = (int)$row['product_id'];
+                    // Gọi hàm xóa để tự động cascade xóa biến thể con và dọn sạch kệ kho
+                    $productModel->delete($product_id);
+                }
+            }
+
+            // 2. Xóa mềm Hãng giày (đặt status = false)
+            $sqlDeleteCat = "UPDATE categories SET is_deleted = true, status = false WHERE category_id = $1";
+            pg_query_params($this->conn, $sqlDeleteCat, [(int)$category_id]);
+
+            pg_query($this->conn, "COMMIT");
+            return true;
+        } catch (Exception $e) {
+            pg_query($this->conn, "ROLLBACK");
+            return false;
+        }
     }
+
 
     /**
      * HÀM MỚI: Tự động dò tìm ID Hãng bằng Tên chữ. 
