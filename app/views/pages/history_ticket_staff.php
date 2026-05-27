@@ -18,7 +18,7 @@ $tickets = $tickets ?? [];
         <div class="card-body p-3">
             <form method="GET" action="index.php" class="row g-3 align-items-end">
                 <input type="hidden" name="page" value="staff_ticket_history">
-                
+
                 <div class="col-md-3">
                     <label class="form-label small fw-bold text-muted mb-1">Trạng thái phiếu</label>
                     <select name="filter_status" class="form-select form-select-sm fw-bold">
@@ -123,35 +123,43 @@ $tickets = $tickets ?? [];
 </div>
 
 <div class="modal fade" id="staffTicketDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-3">
-            <div class="modal-header border-bottom p-4">
-                <h5 class="modal-title fw-bold">Chi tiết phiếu: <span id="modalTicketCode" class="text-primary"></span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fw-bold text-primary">
+                    <i class="fas fa-file-invoice me-2"></i> Chi tiết phiếu: <span id="modalTicketCode" class="text-dark"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="bg-light text-muted" style="font-size: 0.85rem;">
+                    <table class="align-middle mb-0 text-center w-100 custom-table">
+                        <thead class="table-dark">
                             <tr>
-                                <th class="ps-4">Hãng</th>
-                                <th>Sản phẩm</th>
-                                <th>Màu sắc</th>
-                                <th class="text-center">Size</th>
-                                <th class="text-center pe-4">Số lượng yêu cầu</th>
+                                <th style="width: 10%">Hình ảnh</th>
+                                <th style="width: 10%">Hãng</th>
+                                <th style="width: 20%">Tên sản phẩm</th>
+                                <th style="width: 12%">Phân loại</th>
+                                <th style="width: 8%">Yêu cầu</th>
+                                <th style="width: 8%">Thực tế</th>
+                                <th style="width: 10%">Chênh lệch</th>
+                                <th style="width: 22%">Ghi chú</th>
                             </tr>
                         </thead>
                         <tbody id="ticketDetailBody">
-                            <tr><td colspan="5" class="text-center py-4 text-muted">Đang tải dữ liệu...</td></tr>
+                            <tr>
+                                <td colspan="8" class="text-center py-4 text-muted">Đang tải dữ liệu...</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
-            <div class="modal-footer border-top-0 p-4">
-                <button type="button" class="btn btn-dark rounded-1 px-4 fw-bold" data-bs-dismiss="modal">Đóng</button>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
             </div>
         </div>
     </div>
 </div>
+
 
 <script src="assets/js/staff_history.js"></script>

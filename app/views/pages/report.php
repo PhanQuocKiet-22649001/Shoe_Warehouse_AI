@@ -1,4 +1,16 @@
 <?php include __DIR__ . '/../layouts/topbar.php'; ?>
+<?php
+// Tự động khai báo dự phòng để IDE hết báo đỏ/báo lỗi Undefined Variable
+$filter = $filter ?? ['start' => date('Y-m-d'), 'end' => date('Y-m-d'), 'period' => 'day'];
+$all_stats = $all_stats ?? ['total_stock' => 0, 'period_imports' => 0, 'period_exports' => 0, 'shortage_count' => 0];
+$staff_perf = $staff_perf ?? [];
+$variant_flow = $variant_flow ?? [];
+$top_5_days = $top_5_days ?? [];
+$brand_dist = $brand_dist ?? [];
+$product_flow = $product_flow ?? [];
+$inventory = $inventory ?? [];
+$summary_data = $summary_data ?? [];
+?>
 
 <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -51,7 +63,7 @@
         </div>
     </div>
 
-    <<div class="card-custom mb-4">
+    <div class="card-custom mb-4">
         <h6 class="section-title">Lưu Lượng Giao Dịch Chi Tiết Theo Ngày</h6>
         <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
             <table class="table table-hover align-middle mb-0">
@@ -97,12 +109,41 @@
             </div>
         </div>
         <div class="col-lg-4 mb-4">
-            <div class="card-custom h-100">
+            <div class="card-custom h-100 position-relative">
                 <h6 class="section-title">Cơ Cấu Thương Hiệu</h6>
-                <div class="chart-container"><canvas id="brandChart"></canvas></div>
+                <div class="chart-container" style="padding-bottom: 40px;"><canvas id="brandChart"></canvas></div>
+                <!-- NÚT XEM THÊM Ở GÓC DƯỚI BÊN PHẢI -->
+                <div class="position-absolute" style="bottom: 15px; right: 20px; z-index: 5;">
+                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm fw-bold" id="btnShowBrandDetailCharts">
+                        Xem thêm <i class="fas fa-arrow-right ms-1"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
+
+    <!-- DÒNG BIỂU ĐỒ CHI TIẾT SẢN PHẨM THEO THƯƠNG HIỆU (ẨN MẶC ĐỊNH) -->
+    <div class="row d-none" id="brandDetailChartsRow">
+        <div class="col-lg-8 mb-4">
+            <div class="card-custom h-100">
+                <h6 class="section-title" id="brandDetailChartTitle">Sản Phẩm Theo Thương Hiệu</h6>
+                <div class="chart-container"><canvas id="brandProductsChart"></canvas></div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card-custom h-100">
+                <h6 class="section-title">Lọc Chi Tiết Thương Hiệu</h6>
+                <div class="p-3">
+                    <label for="brandDetailSelect" class="form-label text-muted small fw-bold mb-2">Chọn Thương Hiệu:</label>
+                    <select id="brandDetailSelect" class="form-select form-select-lg shadow-sm mb-3" style="border-radius: 8px; cursor: pointer;">
+                        <!-- JS sẽ tự động đổ danh sách thương hiệu vào đây -->
+                    </select>
+                    <p class="text-white-50 small mt-2">Chọn một thương hiệu để xem biểu đồ chi tiết số lượng tồn kho của các dòng sản phẩm mẹ tương ứng (được tự động tổng hợp từ tất cả các kích cỡ và màu sắc biến thể).</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <div class="row">
         <div class="col-lg-7 mb-4">
@@ -179,6 +220,8 @@
         </div>
     </div>
 
+
+    <!-- Phân Tích Tồn Kho -->
     <div class="card-custom">
         <?php
         $groupedInventory = [];
@@ -215,9 +258,10 @@
                     <div class="inv-body">
                         <?php foreach ($pData['variants'] as $var): ?>
                             <div class="stock-chip <?= $var['stock'] < 5 ? 'danger' : '' ?>">
-                                Sz <?= $var['size'] ?>: <b class="variant-stock"><?= $var['stock'] ?></b>
+                                Sz <?= $var['size'] ?> | <?= htmlspecialchars($var['color']) ?>: <b class="variant-stock"><?= $var['stock'] ?></b>
                             </div>
                         <?php endforeach; ?>
+
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -225,42 +269,53 @@
     </div>
 </div>
 
-<div class="modal fade" id="modalReportDetail" tabindex="-1">
+
+<div class="modal fade" id="modalReportDetail" tabindex="-1" aria-hidden="true">
+
     <div class="modal-dialog modal-xl">
-        <div class="modal-content border-0 shadow">
+        <div class="modal-content">
             <div class="modal-header bg-light">
-                <h5 class="modal-title fw-bold" id="reportDetailDate">Chi tiết giao dịch</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title fw-bold text-primary">
+                    <i class="fas fa-history me-2"></i> Chi tiết giao dịch ngày: <span id="reportDetailDate" class="text-dark"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-0">
-                <div class="p-3 bg-white border-bottom d-flex justify-content-between align-items-center">
-                    <span class="fw-bold text-primary" id="totalItemsCount"></span>
-                </div>
                 <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light sticky-top">
+                    <table class="align-middle mb-0 text-center w-100 custom-table">
+                        <thead class="table-dark sticky-top">
                             <tr>
-                                <th>Thời gian</th>
-                                <th>Loại</th>
-                                <th>Hãng</th>
-                                <th>Sản phẩm</th>
-                                <th>Biến thể</th>
-                                <th class="text-center">Số lượng</th>
-                                <th>Nhân viên</th>
+                                <th style="width: 10%">THỜI GIAN</th>
+                                <th style="width: 10%">LOẠI</th>
+                                <th style="width: 10%">HÃNG</th>
+                                <th style="width: 30%">SẢN PHẨM</th>
+                                <th style="width: 15%">BIẾN THỂ</th>
+                                <th style="width: 10%">SỐ LƯỢNG</th>
+                                <th style="width: 15%">NHÂN VIÊN</th>
                             </tr>
                         </thead>
                         <tbody id="reportDetailBody">
-                            </tbody>
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">Đang tải dữ liệu...</td>
+                            </tr>
+                        </tbody>
                     </table>
                 </div>
+            </div>
+            <div class="modal-footer bg-light d-flex justify-content-between align-items-center">
+                <span class="fw-bold text-primary" id="totalItemsCount" style="font-size: 0.95rem;"></span>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
             </div>
         </div>
     </div>
 </div>
 
+
 <script>
     window.dayData = <?= json_encode($top_5_days) ?>;
     window.brandData = <?= json_encode($brand_dist) ?>;
     window.flowData = <?= json_encode($product_flow) ?>;
+    window.inventoryData = <?= json_encode($inventory) ?>; // NẠP THÊM BIẾN NÀY ĐỂ JS XỬ LÝ GOM NHÓM
 </script>
+
 <script src="assets/js/report.js"></script>

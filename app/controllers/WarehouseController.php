@@ -52,7 +52,7 @@ class WarehouseController
                 sort($slotKeys);
 
                 foreach ($slotKeys as $slotKey) {
-                    $slotCode = "{$shelfName}{$tier}-{$slotKey}";
+                    $slotCode = "{$shelfName}_{$tier}-{$slotKey}";
                     $shoesInSlot = $slots[$slotKey] ?? [];
                     $occupancy = count($shoesInSlot);
 
@@ -110,7 +110,7 @@ class WarehouseController
                 }
             }
             $processedShelves[] = [
-                 'shelf_id' => $shelf['shelf_id'],
+                'shelf_id' => $shelf['shelf_id'],
                 'shelf_name' => $shelf['shelf_name'],
                 'status' => $shelf['status'], // <--- DÒNG BỔ SUNG MỚI
                 'layout' => $layout,
@@ -166,7 +166,7 @@ class WarehouseController
                         $arrInt = array_map('intval', $arr);
                         if (in_array($vid, $arrInt)) {
                             // Nếu tìm thấy, nạp tọa độ vào (Ví dụ: A1-01)
-                            $cells[] = "{$s['shelf_name']}{$tier}-{$slotKey}";
+                            $cells[] = "{$s['shelf_name']}_{$tier}-{$slotKey}";
                         }
                     }
                 }
@@ -192,11 +192,12 @@ class WarehouseController
 
 
 
-        // Chức năng: Cầu nối API nhận dữ liệu từ JS để Thêm kệ
-    public function addShelfAjax() {
+    // Chức năng: Cầu nối API nhận dữ liệu từ JS để Thêm kệ
+    public function addShelfAjax()
+    {
         if (ob_get_length()) ob_clean();
         header('Content-Type: application/json');
-         // Chặn quyền truy cập nếu không phải Manager
+        // Chặn quyền truy cập nếu không phải Manager
         if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'MANAGER') {
             echo json_encode(['status' => 'error', 'message' => 'Từ chối truy cập! Chỉ Quản lý mới được thao tác kệ hàng.']);
             exit;
@@ -221,8 +222,9 @@ class WarehouseController
     }
 
     // Chức năng: Xử lý request Xóa kệ. Chặn xóa nếu kệ còn hàng.
-    public function deleteShelfAjax() {
-        
+    public function deleteShelfAjax()
+    {
+
         if (ob_get_length()) ob_clean();
         header('Content-Type: application/json');
         // Chặn quyền truy cập nếu không phải Manager
@@ -232,7 +234,10 @@ class WarehouseController
         }
         $name = $_POST['shelf_name'] ?? '';
         $shelf = $this->warehouseModel->getShelfIdByName($name);
-        if (!$shelf) { echo json_encode(['status' => 'error', 'message' => 'Không tìm thấy kệ!']); exit; }
+        if (!$shelf) {
+            echo json_encode(['status' => 'error', 'message' => 'Không tìm thấy kệ!']);
+            exit;
+        }
 
         if (!$this->warehouseModel->isShelfEmpty($shelf['shelf_id'])) {
             echo json_encode(['status' => 'error', 'message' => 'Kệ đang chứa giày, KHÔNG THỂ xóa! Vui lòng dời hàng đi trước.']);
@@ -245,7 +250,8 @@ class WarehouseController
     }
 
     // Chức năng: Xử lý request chuyển Trạng thái. Tương tự, nếu muốn Tạm Ngưng thì kệ cũng phải trống.
-    public function toggleShelfAjax() {
+    public function toggleShelfAjax()
+    {
         if (ob_get_length()) ob_clean();
         header('Content-Type: application/json');
         // Chặn quyền truy cập nếu không phải Manager
@@ -255,7 +261,10 @@ class WarehouseController
         }
         $name = $_POST['shelf_name'] ?? '';
         $shelf = $this->warehouseModel->getShelfIdByName($name);
-        if (!$shelf) { echo json_encode(['status' => 'error', 'message' => 'Không tìm thấy kệ!']); exit; }
+        if (!$shelf) {
+            echo json_encode(['status' => 'error', 'message' => 'Không tìm thấy kệ!']);
+            exit;
+        }
 
         if ($shelf['status'] === 't') { // Nếu đang hoạt động, muốn tạm ngưng thì phải kiểm tra
             if (!$this->warehouseModel->isShelfEmpty($shelf['shelf_id'])) {
@@ -269,4 +278,56 @@ class WarehouseController
         exit;
     }
 
+
+    /**
+     * Chức năng: Điều chuyển hàng hóa qua lại giữa các ô kệ kho.
+     * Hỗ trợ chia nhỏ số lượng sang nhiều ô đích cùng lúc.
+     */
+    public function processMoveLocation()
+    {
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/json');
+
+        // Chặn quyền truy cập nếu không phải Manager
+        if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'MANAGER') {
+            echo json_encode(['status' => 'error', 'message' => 'Từ chối truy cập! Chỉ Quản lý mới được thao tác kệ hàng.']);
+            exit;
+        }
+
+        // Lấy kết nối CSDL toàn cục
+        $db = getConnection();
+
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $variant_id = $input['variant_id'] ?? 0;
+            $from_loc = $input['from_loc'] ?? '';
+            $destinations = $input['destinations'] ?? []; // mảng các object {loc, qty}
+
+            if (!$variant_id || !$from_loc || empty($destinations)) {
+                throw new Exception("Dữ liệu không hợp lệ.");
+            }
+
+            // Tính tổng số lượng
+            $totalQty = 0;
+            foreach ($destinations as $d) {
+                $totalQty += intval($d['qty']);
+            }
+
+            if ($totalQty <= 0) {
+                throw new Exception("Số lượng di chuyển phải lớn hơn 0.");
+            }
+
+            pg_query($db, "BEGIN");
+
+            // Gọi hàm xử lý di chuyển ở WarehouseModel đã được dời sang
+            $this->warehouseModel->movePutawayLocationsMulti($variant_id, $from_loc, $destinations);
+
+            pg_query($db, "COMMIT");
+            echo json_encode(["status" => "success", "message" => "Đã phân bổ thành công $totalQty đôi vào các ô đích."]);
+        } catch (Exception $e) {
+            pg_query($db, "ROLLBACK");
+            echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+        }
+        exit;
+    }
 }

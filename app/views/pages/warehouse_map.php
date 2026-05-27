@@ -70,17 +70,17 @@
                                     <span class="badge bg-danger ms-2" style="font-size: 0.75rem;">Đã tạm ngưng</span>
                                 <?php endif; ?>
                             </div>
-                            
+
                             <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'MANAGER'): ?>
-                            <!-- NÚT SỬA VÀ XÓA (CHỈ MANAGER MỚI THẤY) -->
-                            <div class="d-flex flex-wrap gap-2 mt-2 mb-2">
-                                <button class="btn btn-sm btn-outline-warning p-1 px-2" style="font-size: 11px;" onclick="toggleShelfStatus('<?= $shelfName ?>')">
-                                    <i class="fas fa-power-off"></i> Bật/Tắt
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger p-1 px-2" style="font-size: 11px;" onclick="deleteShelf('<?= $shelfName ?>')">
-                                    <i class="fas fa-trash"></i> Xóa
-                                </button>
-                            </div>
+                                <!-- NÚT SỬA VÀ XÓA (CHỈ MANAGER MỚI THẤY) -->
+                                <div class="d-flex flex-wrap gap-2 mt-2 mb-2">
+                                    <button class="btn btn-sm btn-outline-warning p-1 px-2" style="font-size: 11px;" onclick="toggleShelfStatus('<?= $shelfName ?>')">
+                                        <i class="fas fa-power-off"></i> Bật/Tắt
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger p-1 px-2" style="font-size: 11px;" onclick="deleteShelf('<?= $shelfName ?>')">
+                                        <i class="fas fa-trash"></i> Xóa
+                                    </button>
+                                </div>
                             <?php endif; ?>
 
                             <div class="d-flex flex-wrap gap-1 mt-1">
@@ -106,7 +106,7 @@
                             for ($i = 1; $i <= $localMaxSlots; $i++):
                                 $slotKey = str_pad($i, 2, '0', STR_PAD_LEFT);
                                 $shoesInSlot = $slotsInTier[$slotKey] ?? [];
-                                $slotCode = "{$shelfName}{$tier}-{$slotKey}";
+                                $slotCode = "{$shelfName}_{$tier}-{$slotKey}";
                                 $occupancy = count($shoesInSlot);
                                 $slotMax = (int)$shelf['slot_max'];
                                 $fillPercent = ($slotMax > 0) ? ($occupancy / $slotMax) * 100 : 0;
@@ -199,7 +199,7 @@
                 <div class="mb-3">
                     <label class="form-label text-info fw-bold small">Vẽ Kích Thước (Tầng x Ô)</label>
                     <div class="text-white-50 small mb-2">Rê chuột vào lưới để chọn kích thước. Đang chọn: <span id="grid_result" class="text-warning fw-bold">4 Tầng x 6 Ô</span></div>
-                    
+
                     <!-- Vùng Render lưới tự động JS -->
                     <div id="shelf_grid_container" style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; max-width: 100%; border: 1px solid #444; padding: 2px; background: #222;">
                     </div>

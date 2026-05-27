@@ -26,7 +26,8 @@ class ExportController
                 $payload['completed_at'] = $completed_at;
             }
             $pusher->trigger('warehouse-channel', 'ticket-status-changed', $payload);
-        } catch (Exception $e) {}
+        } catch (Exception $e) {
+        }
     }
 
     /** Chức năng: Đổ mảng Xuất kho cho Javascript */
@@ -75,9 +76,12 @@ class ExportController
         header('Content-Type: application/json; charset=utf-8');
 
         $ticket_id = $_REQUEST['ticket_id'] ?? 0;
+        // Lấy ID người dùng thực hiện xuất kho từ session
+        $user_id = $_SESSION['user_id'] ?? null;
 
         if ($ticket_id > 0) {
-            if ($this->model->completeExportTicket($ticket_id)) {
+            // Truyền thêm biến $user_id để ghi nhận lịch sử giao dịch
+            if ($this->model->completeExportTicket($ticket_id, $user_id)) {
                 $completed_at = date('d/m/Y H:i');
                 $this->triggerManagerSync($ticket_id, 'COMPLETED', $completed_at);
                 echo json_encode(['status' => 'success']);

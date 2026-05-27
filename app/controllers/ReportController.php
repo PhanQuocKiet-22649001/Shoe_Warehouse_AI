@@ -31,13 +31,14 @@ class ReportController
     {
         $role = strtoupper($_SESSION['role'] ?? '');
 
-        // 1. Lấy dữ liệu KPIs tổng quát từ ReportModel
+        // 1. Lấy dữ liệu KPIs tổng quát từ ReportModel (Đã bổ sung thương hiệu & hôm nay cho Dashboard)
         $data = [
             'stats'       => $this->reportModel->getGeneralStats(),
-            'shelvesData' => $this->reportModel->getAllShelvesLayout(),
-            'variantDict' => $this->reportModel->getVariantDictionary(),
+            'brand_dist'  => $this->reportModel->getBrandDistribution(), // Bổ sung thương hiệu
+            'today_stats' => $this->reportModel->getTodayStats(),        // Bổ sung thống kê hôm nay
             'top_selling' => [] // Khởi tạo rỗng để tránh lỗi Undefined variable ở View
         ];
+
 
         // 2. Nếu là Manager, lấy thêm dữ liệu phân tích
         if ($role === 'MANAGER') {

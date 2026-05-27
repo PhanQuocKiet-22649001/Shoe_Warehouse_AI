@@ -57,7 +57,10 @@ class ProductController
         $products = $this->productModel->getByCategory($category_id);
 
         if (!empty($products)) {
-            $allLocations = $this->productModel->getAllShelvesLocationsMap();
+            // Nạp WarehouseModel và gọi hàm đã được di chuyển sang đây
+            require_once __DIR__ . '/../models/WarehouseModel.php';
+            $warehouseModel = new WarehouseModel();
+            $allLocations = $warehouseModel->getAllShelvesLocationsMap();
 
             foreach ($products as &$pro) {
                 $pro['variants'] = $this->productModel->getVariantsByProductId($pro['product_id']);
@@ -308,8 +311,9 @@ class ProductController
                 $brand_name = $_POST['brand_name'];
                 $product_name = $_POST['product_name'];
 
-                $color = trim($this->normalizeColor($_POST['color']));
+                $color = $this->upperCaseColor($_POST['color']);
                 $size = trim($_POST['size']);
+
 
                 // Kiểm tra xem biến thể này đã tồn tại chưa
                 $existingVariant = $this->productModel->findVariant($product_id, $size, $color);
@@ -370,7 +374,7 @@ class ProductController
             try {
                 $brandName = isset($_POST['brand_name']) ? trim($_POST['brand_name']) : '';
                 $product_name = trim($_POST['product_name']);
-                $color = trim($this->normalizeColor($_POST['color']));
+                $color = trim($this->upperCaseColor($_POST['color']));
                 $size = trim($_POST['size']);
                 $stock_input = intval($_POST['stock']);
 
@@ -442,27 +446,13 @@ class ProductController
     }
 
     /**
-     * Chức năng: Helper dọn dẹp tên màu sắc.
-     * Tác dụng: Ép chuẩn tên màu từ tiếng Anh sang tiếng Việt để CSDL không bị rác (vd: White và Trắng sẽ cùng lưu là Trắng).
+     * Chức năng: Chuẩn hóa tên màu sắc thành chữ in hoa toàn bộ (Hỗ trợ Unicode tiếng Việt).
      */
-    private function normalizeColor($color)
+    private function upperCaseColor($color)
     {
-        $color = strtolower(trim($color));
-        $map = [
-            'black' => 'Đen',
-            'white' => 'Trắng',
-            'red' => 'Đỏ',
-            'blue' => 'Xanh dương',
-            'grey' => 'Xám',
-            'gray' => 'Xám',
-            'green' => 'Xanh lá',
-            'yellow' => 'Vàng',
-            'pink' => 'Hồng',
-            'brown' => 'Nâu',
-            'orange' => 'Cam'
-        ];
-        return $map[$color] ?? ucfirst($color);
+        return mb_strtoupper(trim($color), 'UTF-8');
     }
+
 
     /**
      * Chức năng: Helper xóa dấu tiếng Việt.
@@ -865,87 +855,5 @@ class ProductController
             }
             exit;
         }
-    }
-
-    /**
-     * Chức năng: Cung cấp vị trí dọn kho ưu tiên bằng thuật toán "Thác nước".
-     * Tác dụng: Trả về một mảng chứa ID của các ô trống trên hệ thống kệ để Front-end vẽ lên bản đồ Heatmap gợi ý cất giày.
-     */
-    public function getPutawaySuggestionsAjax()
-    {
-        ob_start();
-        header('Content-Type: application/json');
-        try {
-            $brandId = isset($_POST['category_id']) ? intval($_POST['category_id']) : 0;
-            $productName = isset($_POST['product_name']) ? trim($_POST['product_name']) : '';
-            $color = isset($_POST['color']) && $_POST['color'] !== 'new' ? trim($_POST['color']) : (isset($_POST['new_color']) ? trim($_POST['new_color']) : '');
-            $size = isset($_POST['size']) ? trim($_POST['size']) : '';
-            $qty = isset($_POST['stock']) ? intval($_POST['stock']) : 0;
-
-            $categoryName = $this->productModel->getCategoryName($brandId);
-            $existingProduct = $this->productModel->findExistingProduct($categoryName, $productName);
-
-            $productId = $existingProduct ? $existingProduct['product_id'] : null;
-            $variantId = null;
-            if ($productId) {
-                $existingVariant = $this->productModel->findVariant($productId, $size, $color);
-                if ($existingVariant) $variantId = $existingVariant['variant_id'];
-            }
-
-            $suggestedSlots = $this->productModel->findSuggestedPutawaySlots($productId, $brandId, $variantId, $qty);
-
-            ob_clean();
-            echo json_encode(["status" => "success", "is_new" => ($variantId === null), "suggestions" => $suggestedSlots]);
-        } catch (Exception $e) {
-            ob_clean();
-            echo json_encode(["status" => "error", "message" => $e->getMessage()]);
-        }
-        exit;
-    }
-
-    /**
-     * Chức năng: Điều chuyển hàng hóa qua lại giữa các ô.
-     * Hỗ trợ chia nhỏ số lượng sang nhiều ô đích cùng lúc.
-     */
-    public function processMoveLocation()
-    {
-        $this->checkManager();
-        if (ob_get_length()) ob_clean();
-        header('Content-Type: application/json');
-
-        $db = $this->productModel->getConnection();
-
-        try {
-            $input = json_decode(file_get_contents('php://input'), true);
-            $variant_id = $input['variant_id'] ?? 0;
-            $from_loc = $input['from_loc'] ?? '';
-            $destinations = $input['destinations'] ?? []; // mảng các object {loc, qty}
-
-            if (!$variant_id || !$from_loc || empty($destinations)) {
-                throw new Exception("Dữ liệu không hợp lệ.");
-            }
-
-            // Tính tổng số lượng
-            $totalQty = 0;
-            foreach ($destinations as $d) {
-                $totalQty += intval($d['qty']);
-            }
-
-            if ($totalQty <= 0) {
-                throw new Exception("Số lượng di chuyển phải lớn hơn 0.");
-            }
-
-            pg_query($db, "BEGIN");
-
-            // Gọi hàm xử lý nhiều đích đã viết ở Model
-            $this->productModel->movePutawayLocationsMulti($variant_id, $from_loc, $destinations);
-
-            pg_query($db, "COMMIT");
-            echo json_encode(["status" => "success", "message" => "Đã phân bổ thành công $totalQty đôi vào các ô đích."]);
-        } catch (Exception $e) {
-            pg_query($db, "ROLLBACK");
-            echo json_encode(["status" => "error", "message" => $e->getMessage()]);
-        }
-        exit;
     }
 }

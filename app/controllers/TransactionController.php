@@ -13,18 +13,21 @@ class TransactionController
 
     public function index()
     {
-        $fromDate = $_GET['from_date'] ?? null;
-        $toDate = $_GET['to_date'] ?? null;
+        // Tiếp nhận các tham số tìm kiếm & lọc ngày
+        $fromDate    = $_GET['from_date'] ?? null;
+        $toDate      = $_GET['to_date'] ?? null;
+        $searchQuery = $_GET['search'] ?? null; // Ô tìm kiếm chung duy nhất
 
-        // ĐỔI TÊN HÀM: Từ getTransactionsByType thành getSummary
-        $importHistory = $this->model->getSummary('IMPORT', $fromDate, $toDate);
-        $exportHistory = $this->model->getSummary('EXPORT', $fromDate, $toDate);
+        // Lấy danh sách giao dịch khớp với từ khóa tìm kiếm đa năng
+        $importHistory = $this->model->getSummary('IMPORT', $fromDate, $toDate, $searchQuery);
+        $exportHistory = $this->model->getSummary('EXPORT', $fromDate, $toDate, $searchQuery);
 
         return [
             'importHistory' => $importHistory,
             'exportHistory' => $exportHistory
         ];
     }
+
 
     // HÀM MỚI: Xử lý yêu cầu lấy chi tiết khi bấm nút "Xem"
     /**
@@ -40,11 +43,12 @@ class TransactionController
         header('Content-Type: application/json; charset=utf-8');
 
         try {
-            // 3. Tiếp nhận và làm sạch tham số
-            $date      = $_GET['date'] ?? null;
-            $productId = isset($_GET['product_id']) ? intval($_GET['product_id']) : null;
-            $userId    = isset($_GET['user_id']) ? intval($_GET['user_id']) : null;
-            $type      = isset($_GET['type']) ? strtoupper(trim($_GET['type'])) : null;
+            // 3. Tiếp nhận và làm sạch tham số (Đã bổ sung reference_id)
+            $date        = $_GET['date'] ?? null;
+            $productId   = isset($_GET['product_id']) ? intval($_GET['product_id']) : null;
+            $userId      = isset($_GET['user_id']) ? intval($_GET['user_id']) : null;
+            $type        = isset($_GET['type']) ? strtoupper(trim($_GET['type'])) : null;
+            $referenceId = $_GET['reference_id'] ?? null; // Tiếp nhận mã phiếu
 
             // 4. Kiểm tra điều kiện đầu vào
             if (!$date || !$productId || !$userId || !$type) {
@@ -55,8 +59,9 @@ class TransactionController
                 exit;
             }
 
-            // 5. Gọi Model truy vấn dữ liệu từ PostgreSQL
-            $details = $this->model->getGroupDetails($date, $productId, $userId, $type);
+            // 5. Gọi Model truy vấn dữ liệu từ PostgreSQL (Truyền thêm referenceId)
+            $details = $this->model->getGroupDetails($date, $productId, $userId, $type, $referenceId);
+
 
             // 6. Trả về kết quả (đảm bảo luôn là một mảng [] nếu không có dữ liệu)
             echo json_encode($details ?: []);

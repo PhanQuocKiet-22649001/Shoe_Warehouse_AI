@@ -152,10 +152,6 @@ if (isset($_GET['page'])) {
             $warehouseAjax->getMiniWarehouseMap();
             exit;
         }
-        if ($_GET['action'] === 'getPutawaySuggestions') {
-            $productControllerAjax->getPutawaySuggestionsAjax();
-            exit;
-        }
         if ($_GET['action'] === 'get_locations') {
             require_once '../app/models/ExportModel.php';
             require_once '../app/controllers/ExportController.php';
@@ -173,7 +169,10 @@ if (isset($_GET['page'])) {
             exit;
         }
         if ($_GET['action'] === 'move_location') {
-            $productControllerAjax->processMoveLocation();
+            require_once '../app/models/WarehouseModel.php';
+            require_once '../app/controllers/WarehouseController.php';
+            $warehouseAjax = new WarehouseController();
+            $warehouseAjax->processMoveLocation();
             exit;
         }
     }

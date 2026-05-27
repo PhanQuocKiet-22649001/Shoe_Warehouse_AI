@@ -149,4 +149,118 @@ document.addEventListener('DOMContentLoaded', function () {
             btn.innerHTML = 'Xem';
         }
     })
+
+
+    // ==========================================
+    // VẼ BIỂU ĐỒ TRÒN THỐNG KÊ THƯƠNG HIỆU CHO DASHBOARD
+    // ==========================================
+    if (typeof brandData !== 'undefined' && document.getElementById('dashboardBrandChart') && brandData.length > 0) {
+        new Chart(document.getElementById('dashboardBrandChart'), {
+            type: 'doughnut',
+            data: {
+                labels: brandData.map(d => d.brand),
+                datasets: [{
+                    data: brandData.map(d => d.total_stock),
+                    backgroundColor: [
+                        '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b',
+                        '#fd7e14', '#6f42c1', '#e83e8c', '#20c997', '#0d6efd',
+                        '#6610f2', '#17a2b8', '#28a745', '#ffc107', '#dc3545',
+                        '#5a5c69', '#858796', '#a5a6b4', '#d1d2dd'
+                    ]
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'right', // Hiển thị danh mục chú thích bên phải rất thoáng
+                        labels: {
+                            boxWidth: 12,
+                            padding: 12,
+                            font: {
+                                size: 11,
+                                weight: '500'
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+
+    // ==========================================
+    // LOGIC MỞ MODAL XEM CHI TIẾT GIAO DỊCH HÔM NAY (ĐỒNG BỘ DỮ LIỆU)
+    // ==========================================
+    const btnTodayDetail = document.querySelector('.btn-open-report-detail');
+    if (btnTodayDetail) {
+        btnTodayDetail.addEventListener('click', async function () {
+            const date = this.dataset.date;
+            const modalEl = document.getElementById('modalReportDetail');
+            if (!modalEl) return;
+
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            const tableBody = document.getElementById('reportDetailBody');
+            const totalCount = document.getElementById('totalItemsCount');
+
+            document.getElementById('reportDetailDate').innerText = new Date(date).toLocaleDateString('vi-VN');
+            totalCount.innerText = "Đang tải dữ liệu...";
+
+            // Đồng bộ spinner và khoảng cách Bootstrap
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><br><span class="d-block mt-2 text-muted">Đang tải dữ liệu...</span></td></tr>';
+
+            modal.show();
+
+            try {
+                const response = await fetch(`index.php?page=report-detail&date=${date}`);
+                const data = await response.json();
+
+                if (data.length > 0) {
+                    let html = '';
+                    // Giãn cách thead & tbody bằng Bootstrap pure class
+                    html += `<tr class="border-0"><td colspan="7" class="py-3 border-0"></td></tr>`;
+
+                    data.forEach(item => {
+                        const time = new Date(item.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+                        // Giữ nguyên lô-gích hiển thị màu sắc nguyên bản của bạn
+                        let badgeStyle = '';
+                        if (item.transaction_type === 'IMPORT') {
+                            badgeStyle = 'background-color: #000000 !important; color: #ffffff !important;';
+                        } else {
+                            badgeStyle = 'background-color: #ffffff !important; color: #000000 !important; border: 1px solid #000000 !important;';
+                        }
+
+                        html += `
+                        <tr>
+                            <td class="small py-3">${time}</td>
+                            <td class="py-3"><span class="badge" style="${badgeStyle}">${item.transaction_type}</span></td>
+                            <td class="fw-bold py-3">${item.brand}</td>
+                            <td class="py-3">${item.product_name}</td>
+                            <td class="py-3">Sz: ${item.size} | ${item.color}</td>
+                            <td class="text-center fw-bold py-3">${item.quantity} đôi</td>
+                            <td class="small py-3">${item.staff}</td>
+                        </tr>`;
+                    });
+
+                    tableBody.innerHTML = html;
+                    totalCount.innerText = "Tổng cộng: " + data.length + " lượt giao dịch";
+                    totalCount.style.color = "#4e73df";
+
+                } else {
+                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-5 text-muted"><i class="fas fa-box-open fa-3x mb-3 opacity-50 d-block mx-auto"></i>Không có giao dịch nào được ghi nhận.</td></tr>';
+                    totalCount.innerText = "0 lượt giao dịch";
+                }
+            } catch (error) {
+                console.error("Lỗi Fetch:", error);
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-danger fw-bold text-center py-4"><i class="fas fa-exclamation-triangle me-2"></i>Lỗi kết nối máy chủ.</td></tr>';
+                totalCount.innerText = "Lỗi tải dữ liệu";
+            }
+        });
+    }
+
 });
+
+

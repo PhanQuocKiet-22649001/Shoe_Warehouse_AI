@@ -129,21 +129,24 @@ class ImportModel
      */
     public function completeImportTicket($ticket_id, $user_id)
     {
+
         pg_query($this->conn, "BEGIN");
         try {
+            // 🥇 BỔ SUNG: Truy vấn lấy mã ticket_code từ bảng tickets
+            $resTicket = pg_query_params($this->conn, "SELECT ticket_code FROM tickets WHERE ticket_id = $1", [$ticket_id]);
+            $ticket_code = $resTicket ? pg_fetch_result($resTicket, 0, 'ticket_code') : "TICKET-$ticket_id";
             $sqlTemp = "SELECT variant_id, actual_qty, putaway_locations FROM ticket_import_temp WHERE ticket_id = $1";
             $resTemp = pg_query_params($this->conn, $sqlTemp, [$ticket_id]);
-
             if ($resTemp) {
                 while ($row = pg_fetch_assoc($resTemp)) {
                     $v_id = $row['variant_id'];
                     $qty = $row['actual_qty'];
                     $locations = json_decode($row['putaway_locations'], true);
-
                     // Cập nhật tồn kho bảng product_variants
                     pg_query_params($this->conn, "UPDATE product_variants SET stock = stock + $1 WHERE variant_id = $2", [$qty, $v_id]);
-                    pg_query_params($this->conn, "INSERT INTO transactions (transaction_type, variant_id, quantity, user_id, reference_id) VALUES ('IMPORT', $1, $2, $3, $4)", [$v_id, $qty, $user_id, "TICKET-$ticket_id"]);
 
+                    // 🚀 Thay thế "TICKET-$ticket_id" thành $ticket_code
+                    pg_query_params($this->conn, "INSERT INTO transactions (transaction_type, variant_id, quantity, user_id, reference_id) VALUES ('IMPORT', $1, $2, $3, $4)", [$v_id, $qty, $user_id, $ticket_code]);
                     // Đẩy giày vào các ô kệ đã chọn
                     if (is_array($locations) && count($locations) > 0) {
                         $this->addItemsToShelves($locations);
@@ -321,7 +324,7 @@ class ImportModel
                         'shelf_name' => $sName,
                         'tier' => $tier,
                         'slot' => $slotKey,
-                        'slot_code' => "{$sName}{$tier}-{$slotKey}",
+                        'slot_code' => "{$sName}_{$tier}-{$slotKey}",
                         'max' => $max,
                         'available' => $max - $occ,
                         'var_count' => $varCount

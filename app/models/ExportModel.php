@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/TicketModel.php'; 
+require_once __DIR__ . '/TicketModel.php';
 
 class ExportModel
 {
@@ -67,20 +67,27 @@ class ExportModel
      * Chức năng: Rà soát & kết thúc quy trình xuất kho.
      * Tác dụng: Xác nhận hàng đi. Khấu trừ cả lượng stock thực và lượng stock reserved. Giải phóng kệ chứa mảng JSON.
      */
-    public function completeExportTicket($ticket_id)
+    public function completeExportTicket($ticket_id, $user_id = null)
     {
+        // Nếu không truyền user_id vào, cố gắng lấy từ session hiện tại
+        if (!$user_id && isset($_SESSION['user_id'])) {
+            $user_id = $_SESSION['user_id'];
+        }
         pg_query($this->conn, "BEGIN");
         try {
+            // 🥇 BỔ SUNG: Truy vấn lấy mã ticket_code từ bảng tickets
+            $resTicket = pg_query_params($this->conn, "SELECT ticket_code FROM tickets WHERE ticket_id = $1", [$ticket_id]);
+            $ticket_code = $resTicket ? pg_fetch_result($resTicket, 0, 'ticket_code') : "TICKET-$ticket_id";
             $ticketModel = new TicketModel();
             $details = $ticketModel->getTicketDetails($ticket_id);
             foreach ($details as $item) {
                 $qty = (int)$item['quantity'];
                 $v_id = $item['variant_id'];
-
                 $sqlStock = "UPDATE product_variants SET stock = stock - $1, reserved_stock = reserved_stock - $1 WHERE variant_id = $2";
                 pg_query_params($this->conn, $sqlStock, [$qty, $v_id]);
-
                 $this->removeItemsFromShelves($v_id, $qty);
+                // 🚀 Thay thế "TICKET-$ticket_id" thành $ticket_code
+                pg_query_params($this->conn, "INSERT INTO transactions (transaction_type, variant_id, quantity, user_id, reference_id) VALUES ('EXPORT', $1, $2, $3, $4)", [$v_id, $qty, $user_id, $ticket_code]);
             }
 
             pg_query_params($this->conn, "UPDATE tickets SET status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP WHERE ticket_id = $1", [$ticket_id]);
@@ -92,6 +99,7 @@ class ExportModel
             return false;
         }
     }
+
 
     /**
      * Chức năng: Helper bóc tách mảng JSON của cấu trúc kho bãi.
@@ -113,7 +121,7 @@ class ExportModel
                     foreach ($items as $key => $val) {
                         if ($val == $variant_id && $total_to_remove > 0) {
                             unset($items[$key]);
-                            $items = array_values($items); 
+                            $items = array_values($items);
                             $total_to_remove--;
                             $changed = true;
                         }
