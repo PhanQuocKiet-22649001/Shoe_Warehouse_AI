@@ -123,7 +123,7 @@ $tickets = $tickets ?? [];
 </div>
 
 <div class="modal fade" id="staffTicketDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-xl" style="max-width: 90%;">
         <div class="modal-content">
             <div class="modal-header bg-light">
                 <h5 class="modal-title fw-bold text-primary">
@@ -143,22 +143,62 @@ $tickets = $tickets ?? [];
                                 <th style="width: 8%">Yêu cầu</th>
                                 <th style="width: 8%">Thực tế</th>
                                 <th style="width: 10%">Chênh lệch</th>
-                                <th style="width: 22%">Ghi chú</th>
+                                <th style="width: 14%">Ghi chú</th>
+                                <th style="width: 8%" class="text-center pe-4">Mã QR</th>
                             </tr>
                         </thead>
+
                         <tbody id="ticketDetailBody">
                             <tr>
-                                <td colspan="8" class="text-center py-4 text-muted">Đang tải dữ liệu...</td>
+                                <td colspan="9" class="text-center py-4 text-muted">Đang tải dữ liệu...</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+
             </div>
-            <div class="modal-footer bg-light">
+            <div class="modal-footer ">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
             </div>
         </div>
     </div>
+    <!-- Modal In Mã QR (simpleQRModal) -->
+    <div class="modal fade" id="simpleQRModal" tabindex="-1" data-bs-backdrop="false" style="background: none; z-index: 1060;">
+        <div class="modal-dialog modal-sm modal-dialog-centered" style="box-shadow: 0 10px 50px rgba(0,0,0,0.2);">
+            <div class="modal-content" style="border: 2px solid #000;">
+                <div class="modal-header p-2 border-0">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pt-0" id="qrContentArea">
+                </div>
+                <div class="modal-footer p-2 border-0">
+                    <button type="button" class="btn btn-dark w-100 fw-bold" onclick="startPrint()">IN MÃ QR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+
+            #qrContentArea,
+            #qrContentArea * {
+                visibility: visible;
+            }
+
+            #qrContentArea {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+
 </div>
 
 

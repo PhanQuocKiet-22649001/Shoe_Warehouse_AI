@@ -267,12 +267,18 @@ class TicketModel
                     td.qr_code,  
                     pv.color, 
                     pv.size, 
+                    pv.sku,
                     p.product_id,       
                     p.product_name, 
                     p.product_image, 
                     c.category_name as brand,
-                    tit.putaway_locations 
+                    tit.putaway_locations,
+                    t.completed_at as import_date,
+                    t.staff_id as staff_id,
+                    u.full_name as staff_name
                 FROM ticket_details td
+                JOIN tickets t ON td.ticket_id = t.ticket_id
+                LEFT JOIN users u ON t.staff_id = u.user_id
                 JOIN product_variants pv ON td.variant_id = pv.variant_id
                 JOIN products p ON pv.product_id = p.product_id
                 JOIN categories c ON p.category_id = c.category_id
@@ -293,6 +299,7 @@ class TicketModel
 
         return $items;
     }
+
 
     /**
      * Chức năng: Đếm tổng số lượng phiếu đang chờ xử lý của một nhân viên.

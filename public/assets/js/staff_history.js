@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Cập nhật mã phiếu lên UI
         document.getElementById('modalTicketCode').innerText = ticketCode;
         const tbody = document.getElementById('ticketDetailBody');
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><br>Đang tải dữ liệu...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><br>Đang tải dữ liệu...</td></tr>';
 
         // Mở Modal
         const modal = new bootstrap.Modal(document.getElementById('staffTicketDetailModal'));
@@ -16,12 +16,12 @@ document.addEventListener('DOMContentLoaded', function () {
             tbody.innerHTML = '';
 
             if (data.status === 'error') {
-                tbody.innerHTML = `<tr><td colspan="8" class="text-danger fw-bold">${data.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="text-danger fw-bold">${data.message}</td></tr>`;
                 return;
             }
 
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-muted fst-italic">Phiếu này không có sản phẩm nào!</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="text-muted fst-italic">Phiếu này không có sản phẩm nào!</td></tr>';
                 return;
             }
 
@@ -66,9 +66,18 @@ document.addEventListener('DOMContentLoaded', function () {
                                 ${noteHtml}
                             </div>
                         </td>
+                        <td class="text-center pe-4">
+                            <button type="button" class="btn btn-sm btn-outline-dark"
+                                onclick="printImportTicketQR('${item.sku || ''}', '${item.product_name.replace(/'/g, "\\'").replace(/"/g, '\\"')}', '${item.color}', '${item.size}', '${item.variant_id}', '${item.import_date || ''}', '${item.staff_id || ''}', '${(item.staff_name || '').replace(/'/g, "\\'").replace(/"/g, '\\"')}')"
+                                title="In mã QR Nhập Kho">
+                                <i class="fas fa-qrcode"></i>
+                            </button>
+                        </td>
+
                     </tr>
                 `;
             });
+
             tbody.innerHTML = rows;
 
         } catch (error) {
@@ -76,4 +85,49 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error(error);
         }
     };
+
+    // Các hàm in mã QR cho Chi Tiết Phiếu Nhập
+    window.printImportTicketQR = function (sku, name, color, size, vid, importDate, staffId, staffName) {
+        if (!vid || vid === 'undefined') {
+            alert("Lỗi: Không tìm thấy ID biến thể!");
+            return;
+        }
+
+        const baseUrl = "https://countless-henna-obtain.ngrok-free.dev/Shoe_Warehouse/";
+        const targetUrl = `${baseUrl}check_QR.php?vid=${vid}&import_date=${encodeURIComponent(importDate)}&staff_id=${staffId}&staff_name=${encodeURIComponent(staffName)}`;
+        const qrImageUrl = `https://quickchart.io/qr?text=${encodeURIComponent(targetUrl)}&size=250`;
+
+        const formatDate = (dateStr) => {
+            if (!dateStr) return 'Chờ xử lý';
+            try {
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) return dateStr;
+                return d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+            } catch (e) { return dateStr; }
+        };
+
+        const html = `
+        <div class="text-center">
+            <p class="mb-1"><strong>${name}</strong></p>
+            <p class="small text-muted mb-2">${color} - Size ${size}</p>
+            <img src="${qrImageUrl}" style="width: 250px; height: 250px;" class="border p-2 shadow-sm rounded">
+            <p class="mt-3 mb-0 small text-secondary">MÃ TRUY XUẤT NHẬP KHO</p>
+            <p class="fw-bold text-dark mb-1">SKU: ${sku}</p>
+            <hr class="my-2">
+            <div class="text-start small p-2  rounded text-dark" style="font-size: 0.8rem; line-height: 1.4;">
+                <div><strong>Ngày nhập:</strong> ${formatDate(importDate)}</div>
+                <div><strong>NV nhập:</strong> [#${staffId || ''}] ${staffName || 'Chưa rõ'}</div>
+            </div>
+        </div>
+    `;
+
+        document.getElementById('qrContentArea').innerHTML = html;
+        const modal = new bootstrap.Modal(document.getElementById('simpleQRModal'));
+        modal.show();
+    };
+
+    window.startPrint = function () {
+        window.print();
+    };
+
 });

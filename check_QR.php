@@ -40,6 +40,11 @@ if (!$item) {
 
 $imgName = trim($item['product_image']);
 $imgSrc = $imgName ? "/Shoe_Warehouse/public/assets/img_product/" . rawurlencode($imgName) : "/Shoe_Warehouse/public/assets/images/placeholder.png";
+// Nhận các thông số nhập kho bổ sung từ QR URL
+$import_date = $_GET['import_date'] ?? null;
+$staff_id = $_GET['staff_id'] ?? null;
+$staff_name = $_GET['staff_name'] ?? null;
+
 ?>
 
 <!DOCTYPE html>
@@ -158,7 +163,34 @@ $imgSrc = $imgName ? "/Shoe_Warehouse/public/assets/img_product/" . rawurlencode
                                     </div>
                                 </div>
                             </div>
+                            <div class="col-12">
+                                <div class="spec-badge w-100 justify-content-center">
+                                    <i class="fas fa-barcode text-secondary"></i>
+                                    <div>
+                                        <span class="spec-label d-block text-start">Mã QR</span>
+                                        <strong><?= htmlspecialchars($vid) ?></strong>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+
+                        <?php if ($import_date): ?>
+                            <hr class="my-4 text-muted">
+
+                            <div class="text-center">
+                                <h5 class="fw-bold text-success mb-3">
+                                    <i class="fas fa-check-circle me-2"></i>ĐÃ NHẬP KHO
+                                </h5>
+                                <p class="mb-2"><strong class="text-dark">Ngày nhập:</strong> <span class="text-secondary"><?= htmlspecialchars(date('d/m/Y H:i', strtotime($import_date))) ?></span></p>
+                                <?php if ($staff_id): ?>
+                                    <p class="mb-2"><strong class="text-dark">Mã nhân viên nhập:</strong> <span class="text-secondary">#<?= htmlspecialchars($staff_id) ?></span></p>
+                                <?php endif; ?>
+                                <?php if ($staff_name): ?>
+                                    <p><strong class="text-dark">Nhân viên thực hiện:</strong> <span class="text-secondary"><?= htmlspecialchars($staff_name) ?></span></p>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
+
                     </div>
                     <div class="card-footer bg-white border-0 text-center pb-4">
                         <a href="javascript:history.back()" class="btn btn-outline-secondary btn-sm px-4 rounded-pill">
