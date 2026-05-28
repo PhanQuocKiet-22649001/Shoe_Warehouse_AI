@@ -31,7 +31,7 @@ $allCategories = $cModel->getAll();
             </button>
 
             <button class="btn me-3 fw-bold position-relative" data-bs-toggle="modal" data-bs-target="#exportAIModal" style="border-radius: 7px; border: 1px solid #000000;">
-                Xuất Kho (AI)
+                Xuất Kho
                 <!-- Badge Xuất -->
                 <span id="badge-export" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none">0</span>
             </button>

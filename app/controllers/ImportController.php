@@ -44,7 +44,7 @@ class ImportController
         exit;
     }
 
-   /**
+    /**
      * Chức năng: Truy xuất danh sách các vị trí ô kệ phù hợp để thực hiện việc cất hàng (Putaway).
      * Tác dụng: Trả về dữ liệu JSON bao gồm các ô đang chứa sản phẩm này và các ô còn trống để nhân viên kho chọn vị trí nhập hàng trên giao diện.
      */
@@ -52,12 +52,12 @@ class ImportController
     {
         if (ob_get_length()) ob_clean();
         header('Content-Type: application/json; charset=utf-8');
-        
+
         $variant_id = $_GET['variant_id'] ?? 0;
         $ticket_id = $_GET['ticket_id'] ?? 0; // ĐÃ FIX: Nhận thêm mã phiếu để loại trừ
-        
+
         $data = $this->model->getPutawayLocations($variant_id, $ticket_id);
-        
+
         echo json_encode($data);
         exit;
     }
@@ -96,7 +96,7 @@ class ImportController
         // 3. Xử lý kết quả mảng trả về từ Model (Chứa qr_code)
         if (is_array($result) && $result['status'] === 'success') {
             echo json_encode([
-                'status' => 'success', 
+                'status' => 'success',
                 'qr_code' => $result['qr_code'] // Đẩy QR code về cho import.js hiển thị
             ]);
         } else {
@@ -134,10 +134,14 @@ class ImportController
 
             $this->triggerManagerSync($ticket_id, $final_status, date('d/m/Y H:i'));
         } else {
-            echo json_encode(['status' => 'error', 'message' => 'Lỗi chốt sổ kho.']);
+            // Lấy thông báo đối soát không khớp chi tiết từ Model
+            $msg = $_SESSION['import_error'] ?? 'Lỗi chốt sổ kho.';
+            unset($_SESSION['import_error']);
+            echo json_encode(['status' => 'error', 'message' => $msg]);
         }
         exit;
     }
+
 
     /**
      * Chức năng: Endpoint mở luồng AI mới.

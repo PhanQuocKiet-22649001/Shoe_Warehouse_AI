@@ -600,19 +600,37 @@ function validatePutawayTotal() {
     }
 }
 
-// KIỂM TRA DƯ/THIẾU
+// KIỂM TRA DƯ/THIẾU & TỰ ĐỘNG ĐIỀN GHI CHÚ
 function checkImportDiscrepancy() {
     const exp = parseInt(document.getElementById('import_expected_qty').value) || 0;
     const act = parseInt(document.getElementById('import_actual_qty').value) || 0;
     const badge = document.getElementById('import_status_badge');
+    const noteField = document.getElementById('import_note');
+    const shoeName = document.getElementById('import_name').value || '';
 
     if (act === exp) {
         badge.className = 'badge bg-success w-100 p-2';
         badge.innerText = 'KHỚP SỐ LƯỢNG';
+        if (noteField) {
+            // Nếu đủ hàng, xóa ghi chú tự động đã tạo trước đó để giao diện gọn gàng
+            if (noteField.value.startsWith('thiếu ') || noteField.value.startsWith('dư ')) {
+                noteField.value = '';
+            }
+        }
     } else {
         badge.className = 'badge bg-warning text-dark w-100 p-2';
         let diff = act - exp;
         badge.innerText = `CÓ LỆCH: ${diff > 0 ? '+' : ''}${diff} ĐÔI`;
+
+        if (noteField) {
+            if (act < exp) {
+                // Tự động điền ghi chú nếu thiếu hàng
+                noteField.value = `thiếu ${exp - act} ${shoeName}`;
+            } else {
+                // Tự động điền ghi chú nếu dư hàng
+                noteField.value = `dư ${act - exp} ${shoeName}`;
+            }
+        }
     }
     validatePutawayTotal();
 }

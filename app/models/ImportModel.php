@@ -129,7 +129,6 @@ class ImportModel
      */
     public function completeImportTicket($ticket_id, $user_id)
     {
-
         pg_query($this->conn, "BEGIN");
         try {
             // 🥇 BỔ SUNG: Truy vấn lấy mã ticket_code từ bảng tickets
@@ -140,15 +139,32 @@ class ImportModel
             if ($resTemp) {
                 while ($row = pg_fetch_assoc($resTemp)) {
                     $v_id = $row['variant_id'];
-                    $qty = $row['actual_qty'];
-                    $locations = json_decode($row['putaway_locations'], true);
-                    // Cập nhật tồn kho bảng product_variants
+                    $qty = (int)$row['actual_qty'];
+                    $locations = json_decode($row['putaway_locations'], true) ?: [];
+
+                    // Tính tổng số lượng phân bổ thực tế trên các kệ cho biến thể này
+                    $shelves_qty = 0;
+                    if (is_array($locations)) {
+                        foreach ($locations as $loc) {
+                            if ($loc['variant_id'] == $v_id) {
+                                $shelves_qty += (int)$loc['qty'];
+                            }
+                        }
+                    }
+
+                    // Đối soát: Số lượng thực tế nhập kho phải khớp hoàn toàn với số lượng xếp lên kệ
+                    if ($qty !== $shelves_qty) {
+                        throw new Exception("Số lượng thực tế nhập của biến thể ID $v_id ($qty đôi) không khớp với tổng số lượng xếp lên kệ ($shelves_qty đôi)!");
+                    }
+
+                    // Cập nhật tồn kho bảng product_variants bằng SỐ LƯỢNG THỰC TẾ
                     pg_query_params($this->conn, "UPDATE product_variants SET stock = stock + $1 WHERE variant_id = $2", [$qty, $v_id]);
 
                     // 🚀 Thay thế "TICKET-$ticket_id" thành $ticket_code
                     pg_query_params($this->conn, "INSERT INTO transactions (transaction_type, variant_id, quantity, user_id, reference_id) VALUES ('IMPORT', $1, $2, $3, $4)", [$v_id, $qty, $user_id, $ticket_code]);
+
                     // Đẩy giày vào các ô kệ đã chọn
-                    if (is_array($locations) && count($locations) > 0) {
+                    if (count($locations) > 0) {
                         $this->addItemsToShelves($locations);
                     }
                 }
@@ -171,9 +187,11 @@ class ImportModel
             return $final_status;
         } catch (Exception $e) {
             pg_query($this->conn, "ROLLBACK");
+            $_SESSION['import_error'] = $e->getMessage(); // Lưu thông báo lỗi đối soát chi tiết
             return false;
         }
     }
+
 
     /**
      * Chức năng: Thiết lập bảng tạm ban đầu trước khi quét hàng.

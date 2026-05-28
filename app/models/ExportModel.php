@@ -83,9 +83,17 @@ class ExportModel
             foreach ($details as $item) {
                 $qty = (int)$item['quantity'];
                 $v_id = $item['variant_id'];
+
+                // Khấu trừ lượng stock trong bảng product_variants
                 $sqlStock = "UPDATE product_variants SET stock = stock - $1, reserved_stock = reserved_stock - $1 WHERE variant_id = $2";
                 pg_query_params($this->conn, $sqlStock, [$qty, $v_id]);
-                $this->removeItemsFromShelves($v_id, $qty);
+
+                // Gỡ khỏi kệ kho bãi và đối soát số lượng thực tế rút được
+                $removed_from_shelves = $this->removeItemsFromShelves($v_id, $qty);
+                if ($removed_from_shelves !== $qty) {
+                    throw new Exception("Số lượng xuất của biến thể ID $v_id ($qty đôi) không khớp với số lượng thực tế rút được trên các kệ ($removed_from_shelves đôi)!");
+                }
+
                 // 🚀 Thay thế "TICKET-$ticket_id" thành $ticket_code
                 pg_query_params($this->conn, "INSERT INTO transactions (transaction_type, variant_id, quantity, user_id, reference_id) VALUES ('EXPORT', $1, $2, $3, $4)", [$v_id, $qty, $user_id, $ticket_code]);
             }
@@ -107,6 +115,7 @@ class ExportModel
      */
     private function removeItemsFromShelves($variant_id, $total_to_remove)
     {
+        $original_to_remove = $total_to_remove;
         $sql = "SELECT shelf_id, layout FROM shelves WHERE layout::text LIKE '%" . $variant_id . "%'";
         $res = pg_query($this->conn, $sql);
 
@@ -118,13 +127,17 @@ class ExportModel
             foreach ($layout as $tier => &$slots) {
                 foreach ($slots as $slot_code => &$items) {
                     if ($total_to_remove <= 0) break;
+                    $slotChanged = false;
                     foreach ($items as $key => $val) {
                         if ($val == $variant_id && $total_to_remove > 0) {
                             unset($items[$key]);
-                            $items = array_values($items);
                             $total_to_remove--;
+                            $slotChanged = true;
                             $changed = true;
                         }
+                    }
+                    if ($slotChanged) {
+                        $items = array_values($items);
                     }
                 }
             }
@@ -132,5 +145,8 @@ class ExportModel
                 pg_query_params($this->conn, "UPDATE shelves SET layout = $1 WHERE shelf_id = $2", [json_encode($layout), $row['shelf_id']]);
             }
         }
+
+        // Trả về số lượng thực tế đã gỡ thành công khỏi các ô kệ
+        return $original_to_remove - $total_to_remove;
     }
 }
