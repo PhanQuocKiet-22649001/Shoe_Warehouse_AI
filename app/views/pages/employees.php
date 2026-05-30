@@ -82,7 +82,7 @@ $error = $error ?? '';
                         </td>
                         <td>
                             <?php if ($user['user_id'] == $_SESSION['user_id']): ?>
-                                <a href="index.php?page=profile" class="btn-profile" style="text-decoration: none; color: black;">Cập nhật thông tin</a>
+                                <button type="button" class="btn-action btn-edit text-dark fw-bold border border-dark bg-light px-3 py-1" data-bs-toggle="modal" data-bs-target="#updateProfileModal" style="border-radius: 4px; font-size: 12px;">Cập nhật thông tin (Bạn)</button>
                             <?php else: ?>
                                 <?php if ($_SESSION['role'] === 'ADMIN'): ?>
                                     <button class="btn-action btn-edit btn-edit-user"
@@ -126,7 +126,11 @@ $error = $error ?? '';
                     <input type="text" name="full_name" placeholder="Nhập họ tên" required>
 
                     <label>Mật khẩu</label>
-                    <input type="password" name="password" placeholder="Mật khẩu" required>
+                    <input type="password" name="password" value="12345" placeholder="Mật khẩu" required>
+                    <div class="form-text mt-1 text-muted" style="font-size: 12px;">
+                        <i class="fas fa-info-circle me-1"></i> Mật khẩu ban đầu mặc định là <strong>12345</strong>.
+                    </div>
+
 
                     <label>Vai trò</label>
                     <select name="role">

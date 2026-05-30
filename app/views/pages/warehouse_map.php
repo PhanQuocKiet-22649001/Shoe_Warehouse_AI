@@ -81,11 +81,15 @@
                                     <button class="btn btn-sm btn-outline-dark p-1 px-2" style="font-size: 11px;" onclick="toggleShelfStatus('<?= $shelfName ?>')">
                                         <i class="fas fa-power-off"></i> Bật/Tắt
                                     </button>
+                                    <button class="btn btn-sm btn-outline-dark p-1 px-2" style="font-size: 11px;" onclick="renameShelf(<?= $shelf['shelf_id'] ?>, '<?= htmlspecialchars($shelfName) ?>')">
+                                        <i class="fas fa-edit"></i> Đổi tên
+                                    </button>
                                     <button class="btn btn-sm btn-outline-dark p-1 px-2" style="font-size: 11px;" onclick="deleteShelf('<?= $shelfName ?>')">
                                         <i class="fas fa-trash"></i> Xóa
                                     </button>
                                 </div>
                             <?php endif; ?>
+
 
                             <div class="d-flex flex-wrap gap-1 mt-1">
                                 <?php foreach ($shelf['brand_counts'] as $bName => $bQty): ?>

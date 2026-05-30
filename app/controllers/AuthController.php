@@ -23,7 +23,14 @@ class AuthController
                 return "Mã nhân viên (ID) không tồn tại!";
             }
 
+            // Kiểm tra trạng thái hoạt động của tài khoản (status = false)
+            $isActive = ($user['status'] === 't' || $user['status'] === true || $user['status'] == 1);
+            if (!$isActive) {
+                return "Tài khoản của bạn đã bị tạm ngưng hoạt động!";
+            }
+
             if (password_verify($password, $user['password_hash'])) {
+
 
                 session_start();
                 $_SESSION['user_id'] = $user['user_id'];

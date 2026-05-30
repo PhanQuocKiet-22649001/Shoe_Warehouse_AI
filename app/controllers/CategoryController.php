@@ -127,4 +127,69 @@ class CategoryController
             exit;
         }
     }
+
+
+    /**
+     * Thay đổi logo danh mục (Hãng giày)
+     */
+    public function updateLogo()
+    {
+        $this->checkManager();
+
+        if (isset($_POST['category_id']) && isset($_FILES['category_logo'])) {
+            try {
+                $category_id = intval($_POST['category_id']);
+                $imageFile = $_FILES['category_logo'];
+
+                if ($imageFile['error'] !== UPLOAD_ERR_OK) {
+                    throw new Exception("Lỗi khi tải file ảnh lên!");
+                }
+
+                // Lấy thông tin hãng cũ để xóa ảnh logo cũ tránh chiếm bộ nhớ
+                $cat = $this->categoryModel->getById($category_id);
+                if (!$cat) {
+                    throw new Exception("Hãng giày không tồn tại!");
+                }
+
+                $oldLogo = $cat['logo'];
+                $name = $cat['category_name'];
+
+                // 1. Lưu file logo mới vào assets/img_logo/
+                $extension = strtolower(pathinfo($imageFile['name'], PATHINFO_EXTENSION));
+                $allowed_extensions = ['jpg', 'jpeg', 'png', 'webp'];
+
+                if (!in_array($extension, $allowed_extensions)) {
+                    throw new Exception("Chỉ chấp nhận định dạng JPG, JPEG, PNG hoặc WEBP!");
+                }
+
+                // Tạo tên logo duy nhất theo chuẩn
+                $new_logo_name = strtolower(str_replace(' ', '_', $name)) . '_' . time() . '.' . $extension;
+                $target_path = "assets/img_logo/" . $new_logo_name;
+
+                if (!move_uploaded_file($imageFile['tmp_name'], $target_path)) {
+                    throw new Exception("Lỗi lưu file logo mới trên máy chủ.");
+                }
+
+                // 2. Cập nhật vào CSDL
+                if ($this->categoryModel->updateLogo($category_id, $new_logo_name)) {
+                    // Xóa file ảnh cũ nếu không phải là ảnh mặc định
+                    if (!empty($oldLogo) && $oldLogo !== 'default_brand.png' && $oldLogo !== 'default_brand.jpg') {
+                        $oldPath = "assets/img_logo/" . $oldLogo;
+                        if (file_exists($oldPath)) {
+                            unlink($oldPath);
+                        }
+                    }
+                    $_SESSION['success'] = "Đã cập nhật ảnh đại diện danh mục thành công!";
+                } else {
+                    if (file_exists($target_path)) unlink($target_path);
+                    throw new Exception("Lỗi cập nhật ảnh danh mục vào Database!");
+                }
+            } catch (Exception $e) {
+                $_SESSION['error'] = "Lỗi: " . $e->getMessage();
+            }
+
+            header("Location: index.php?page=categories");
+            exit;
+        }
+    }
 }

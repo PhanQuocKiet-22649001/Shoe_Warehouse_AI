@@ -81,11 +81,11 @@ $page = $page ?? 'dashboard';
                 </li>
             <?php endif; ?>
 
-            <?php if (isset($_SESSION['role']) && strtoupper($_SESSION['role']) !== 'ADMIN'): ?>
+            <!-- <?php if (isset($_SESSION['role']) && strtoupper($_SESSION['role']) !== 'ADMIN'): ?>
                 <li>
                     <a href="#" id="btn-open-ai" class="<?= $page === 'ai-prediction' ? 'active' : '' ?>">Trợ lý AI</a>
                 </li>
-            <?php endif; ?>
+            <?php endif; ?> -->
         </ul>
     </div>
 

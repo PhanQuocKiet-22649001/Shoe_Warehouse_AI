@@ -330,4 +330,41 @@ class WarehouseController
         }
         exit;
     }
+
+
+
+    // Chức năng: Xử lý request Đổi tên kệ
+    public function renameShelfAjax()
+    {
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/json');
+        // Chặn quyền truy cập nếu không phải Manager
+        if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'MANAGER') {
+            echo json_encode(['status' => 'error', 'message' => 'Từ chối truy cập! Chỉ Quản lý mới được thao tác kệ hàng.']);
+            exit;
+        }
+
+        $shelf_id = isset($_POST['shelf_id']) ? intval($_POST['shelf_id']) : 0;
+        $new_name = isset($_POST['new_name']) ? trim($_POST['new_name']) : '';
+
+        if ($shelf_id <= 0 || empty($new_name)) {
+            echo json_encode(['status' => 'error', 'message' => 'Dữ liệu không hợp lệ!']);
+            exit;
+        }
+
+        // Kiểm tra xem tên kệ mới đã được dùng chưa (chỉ xét các kệ chưa bị xóa mềm)
+        $existing = $this->warehouseModel->getShelfIdByName($new_name);
+        if ($existing && intval($existing['shelf_id']) !== $shelf_id) {
+            echo json_encode(['status' => 'error', 'message' => 'Tên kệ "' . htmlspecialchars($new_name) . '" đã tồn tại trên hệ thống!']);
+            exit;
+        }
+
+        $result = $this->warehouseModel->renameShelf($shelf_id, $new_name);
+        if ($result) {
+            echo json_encode(['status' => 'success', 'message' => 'Đổi tên kệ thành công!']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Lỗi kết nối cơ sở dữ liệu!']);
+        }
+        exit;
+    }
 }

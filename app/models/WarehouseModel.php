@@ -127,6 +127,16 @@ class WarehouseModel
     }
 
 
+
+
+    // Đổi tên kệ hàng
+    public function renameShelf($shelf_id, $new_name)
+    {
+        $sql = "UPDATE shelves SET shelf_name = $1 WHERE shelf_id = $2";
+        return pg_query_params($this->conn, $sql, [trim($new_name), $shelf_id]);
+    }
+
+
     // Chức năng: Helper tìm ID kệ và trạng thái thông qua tên kệ
     public function getShelfIdByName($shelf_name)
     {

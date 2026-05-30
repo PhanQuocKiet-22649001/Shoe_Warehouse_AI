@@ -57,7 +57,7 @@ class UserController
             $random_id = $this->userModel->addUser($data);
 
             if ($random_id !== false) {
-                $_SESSION['success'] = "Thêm nhân viên thành công! Mã ID nhân viên mới của bồ là: " . $random_id;
+                $_SESSION['success'] = "Thêm nhân viên thành công! Mã ID nhân viên mới là: " . $random_id . ". Mật khẩu mặc định ban đầu là: 12345";
                 header("Location: index.php?page=employees");
                 exit;
             } else {
@@ -149,10 +149,12 @@ class UserController
             }
 
             $data = [
+                'full_name' => $_POST['full_name'],
                 'phone_number' => $_POST['phone_number'],
                 'address' => $_POST['address'],
                 'new_password' => $_POST['new_password']
             ];
+
 
             // 2. Cập nhật
             if ($this->userModel->updateProfile($user_id, $data)) {

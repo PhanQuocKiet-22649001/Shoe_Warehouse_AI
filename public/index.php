@@ -196,6 +196,10 @@ if (isset($_GET['page'])) {
             $warehouseAjax->toggleShelfAjax();
             exit;
         }
+        if ($_GET['action'] === 'rename_shelf') {
+            $warehouseAjax->renameShelfAjax();
+            exit;
+        }
     }
 }
 
@@ -280,6 +284,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         } elseif (isset($_POST['toggle_status'])) {
             $categoryController->toggleStatus();
+            exit;
+        } elseif (isset($_POST['btn_update_logo'])) {
+            $categoryController->updateLogo();
             exit;
         }
     } elseif ($page === 'products') {

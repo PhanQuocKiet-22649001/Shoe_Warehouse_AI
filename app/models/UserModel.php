@@ -17,7 +17,7 @@ class UserModel
     {
         $sql = "SELECT user_id, password_hash, full_name, role, status 
                 FROM users 
-                WHERE user_id = $1 AND is_deleted = false AND status = true";
+                WHERE user_id = $1 AND is_deleted = false";
 
         // Chuẩn bị query
         pg_prepare($this->conn, "find_user", $sql);
@@ -150,21 +150,26 @@ class UserModel
         // 1. Lấy thông tin hiện tại để giữ lại nếu không nhập mới
         $current = $this->getUserById($user_id);
 
+        $fullName = !empty($data['full_name']) ? trim($data['full_name']) : $current['full_name'];
         $phone = !empty($data['phone_number']) ? trim($data['phone_number']) : $current['phone_number'];
         $address = !empty($data['address']) ? trim($data['address']) : $current['address'];
 
         // 2. Xử lý mật khẩu
         if (!empty($data['new_password'])) {
             $password_hash = password_hash($data['new_password'], PASSWORD_BCRYPT);
-            $sql = "UPDATE users SET phone_number = $1, address = $2, password_hash = $3 WHERE user_id = $4";
-            $params = [$phone, $address, $password_hash, $user_id];
+            $sql = "UPDATE users SET full_name = $1, phone_number = $2, address = $3, password_hash = $4 WHERE user_id = $5";
+            $params = [$fullName, $phone, $address, $password_hash, $user_id];
         } else {
-            $sql = "UPDATE users SET phone_number = $1, address = $2 WHERE user_id = $3";
-            $params = [$phone, $address, $user_id];
+            $sql = "UPDATE users SET full_name = $1, phone_number = $2, address = $3 WHERE user_id = $4";
+            $params = [$fullName, $phone, $address, $user_id];
         }
+
+        // Cập nhật lại session full_name để hiển thị chính xác ngay trên UI
+        $_SESSION['full_name'] = $fullName;
 
         return pg_query_params($this->conn, $sql, $params);
     }
+
 
     // Hàm kiểm tra mật khẩu cũ
     public function verifyOldPassword($user_id, $old_password)

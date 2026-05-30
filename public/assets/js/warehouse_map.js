@@ -184,3 +184,25 @@ function toggleShelfStatus(name) {
             }
         }).catch(err => alert("Lỗi kết nối mạng!"));
 }
+
+
+//đổi tên kệ
+function renameShelf(id, currentName) {
+    let newName = prompt(`Nhập tên mới cho kệ "${currentName}":`, currentName);
+    if (newName === null) return; // Người dùng ấn Hủy
+
+    newName = newName.trim();
+    if (!newName) return alert("Tên kệ không được để trống!");
+    if (newName === currentName) return; // Không thay đổi gì
+
+    let fd = new FormData();
+    fd.append('shelf_id', id);
+    fd.append('new_name', newName);
+
+    fetch('index.php?page=warehouse_map&action=rename_shelf', { method: 'POST', body: fd })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            if (data.status === 'success') window.location.reload();
+        }).catch(err => alert("Lỗi kết nối mạng!"));
+}

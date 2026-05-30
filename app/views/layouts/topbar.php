@@ -378,9 +378,14 @@ $allCategories = $cModel->getAll();
                         <div class="col-md-7 ps-4">
                             <h6 class="fw-bold mb-3 text-dark pb-2">Biểu mẫu thay đổi dữ liệu</h6>
                             <div class="mb-3">
+                                <label class="form-label fw-bold text-secondary">Họ và tên mới</label>
+                                <input type="text" name="full_name" class="form-control rounded-1" value="<?= htmlspecialchars($uData['full_name']) ?>" required>
+                            </div>
+                            <div class="mb-3">
                                 <label class="form-label fw-bold text-secondary">Số điện thoại mới</label>
                                 <input type="text" name="phone_number" class="form-control rounded-1">
                             </div>
+
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-secondary">Địa chỉ mới</label>
                                 <textarea name="address" class="form-control rounded-1" rows="2"></textarea>

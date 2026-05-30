@@ -60,6 +60,15 @@ class CategoryModel
         return pg_query_params($this->conn, $sql, [$new_status, $id]);
     }
 
+
+    // Cập nhật logo của hãng
+    public function updateLogo($id, $logo)
+    {
+        $sql = "UPDATE categories SET logo = $1 WHERE category_id = $2";
+        return pg_query_params($this->conn, $sql, [$logo, $id]);
+    }
+
+
     // Xóa hãng giày (Soft Delete) và cascade xóa mềm toàn bộ sản phẩm & biến thể bên trong, giải phóng kệ kho
     public function delete($category_id)
     {
