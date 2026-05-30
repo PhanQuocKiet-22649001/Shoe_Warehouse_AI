@@ -11,21 +11,22 @@ class TransactionModel
 
     // 1. Lấy danh sách đã GOM NHÓM theo Ngày + Sản phẩm + Người thực hiện + Mã phiếu (reference_id)
     // Đã nâng cấp: Hỗ trợ ô tìm kiếm tích hợp searchQuery (Tìm theo Mã phiếu HOẶC Tên nhân viên)
-    public function getSummary($type, $fromDate = null, $toDate = null, $searchQuery = null)
+    public function getSummary($type, $fromDate = null, $toDate = null, $searchQuery = null, $manager_id = null)
     {
         $sql = "SELECT 
-                    DATE(t.created_at) as log_date,
-                    p.product_name,
-                    p.product_id,
-                    u.full_name as user_name,
-                    u.user_id,
-                    t.reference_id,
-                    SUM(t.quantity) as total_qty
-                FROM transactions t
-                JOIN users u ON t.user_id = u.user_id
-                JOIN product_variants pv ON t.variant_id = pv.variant_id
-                JOIN products p ON pv.product_id = p.product_id
-                WHERE t.transaction_type = $1";
+                DATE(t.created_at) as log_date,
+                p.product_name,
+                p.product_id,
+                u.full_name as user_name,
+                u.user_id,
+                t.reference_id,
+                SUM(t.quantity) as total_qty
+            FROM transactions t
+            JOIN users u ON t.user_id = u.user_id
+            JOIN product_variants pv ON t.variant_id = pv.variant_id
+            JOIN products p ON pv.product_id = p.product_id
+            LEFT JOIN tickets tk ON t.reference_id = tk.ticket_code
+            WHERE t.transaction_type = $1";
 
         $params = [strtoupper($type)];
         $pCount = 2;
@@ -45,14 +46,19 @@ class TransactionModel
             $pCount++;
             $params[] = $keyword;
         }
-
+        // Chỉ hiện phiếu do manager đang đăng nhập tạo
+        if ($manager_id) {
+            $sql .= " AND tk.manager_id = $" . $pCount++;
+            $params[] = $manager_id;
+        }
 
         $sql .= " GROUP BY log_date, p.product_name, p.product_id, user_name, u.user_id, t.reference_id
-                  ORDER BY log_date DESC, p.product_name ASC";
+              ORDER BY log_date DESC, p.product_name ASC";
 
         $res = pg_query_params($this->conn, $sql, $params);
         return pg_fetch_all($res) ?: [];
     }
+
 
     // 2. Lấy CHI TIẾT các biến thể (Thêm p.product_image và lọc theo reference_id)
     public function getGroupDetails($date, $productId, $userId, $type, $referenceId = null)

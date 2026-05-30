@@ -72,6 +72,29 @@ class TicketModel
         return $prefix . str_pad($row['next_id'], 4, '0', STR_PAD_LEFT);
     }
 
+
+
+
+    /**
+     * Chức năng: Sinh tự động mã Lô hàng cho phiếu Xuất kho.
+     * Cấu trúc: LH-YYMMDD-XXX (LH - 6 số ngày tạo - 3 số tự tăng)
+     */
+    public function generateExportBatchCode()
+    {
+        $dateStr = date('ymd');
+        $prefix = 'LH-' . $dateStr . '-';
+
+        $sql = "SELECT COALESCE(MAX(REPLACE(batch_code, $1, '')::integer), 0) + 1 AS next_id 
+                FROM tickets 
+                WHERE batch_code LIKE $2";
+
+        $result = pg_query_params($this->conn, $sql, [$prefix, $prefix . '%']);
+        $row = pg_fetch_assoc($result);
+
+        return $prefix . str_pad($row['next_id'], 3, '0', STR_PAD_LEFT);
+    }
+
+
     /**
      * Chức năng: Tìm kiếm các sản phẩm sắp hết hàng.
      * Tác dụng: Hiển thị gợi ý nhắc nhở nhập kho nếu số lượng tồn kho dưới 5 đôi.
@@ -165,12 +188,12 @@ class TicketModel
      * Chức năng: Truy xuất toàn bộ lịch sử Phiếu dành cho giao diện Quản lý.
      * Tác dụng: Trả về danh sách phiếu kèm bộ lọc trạng thái và khoảng thời gian tạo.
      */
-    public function getAllTickets($type, $status = '', $start_date = '', $end_date = '')
+    public function getAllTickets($type, $status = '', $start_date = '', $end_date = '', $manager_id = null)
     {
         $sql = "SELECT t.*, u.full_name as staff_name 
-                FROM tickets t 
-                LEFT JOIN users u ON t.staff_id = u.user_id 
-                WHERE t.ticket_type = $1 AND t.is_deleted = false";
+            FROM tickets t 
+            LEFT JOIN users u ON t.staff_id = u.user_id 
+            WHERE t.ticket_type = $1 AND t.is_deleted = false";
 
         $params = [$type];
         $pIdx = 2;
@@ -187,12 +210,18 @@ class TicketModel
             $sql .= " AND DATE(t.created_at) <= $" . $pIdx++;
             $params[] = $end_date;
         }
+        // Lọc theo manager tạo phiếu nếu có truyền vào
+        if (!empty($manager_id)) {
+            $sql .= " AND t.manager_id = $" . $pIdx++;
+            $params[] = $manager_id;
+        }
 
         $sql .= " ORDER BY t.created_at DESC";
 
         $result = pg_query_params($this->conn, $sql, $params);
         return $result ? (pg_fetch_all($result) ?: []) : [];
     }
+
 
     /**
      * Chức năng: Thay đổi nhân viên phụ trách phiếu (Bàn giao).

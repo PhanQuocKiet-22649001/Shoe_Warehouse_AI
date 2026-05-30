@@ -218,7 +218,7 @@ $allCategories = $cModel->getAll();
                                     <i class="fas fa-arrow-left me-1"></i>Đổi phiếu
                                 </button>
                             </div>
-                            <p class="text-white-50 small mb-2">Vui lòng bấm <strong class="text-white">CHỌN</strong> để xem vị trí và xuất kho:</p>
+                            <p class="text-white-50 small mb-2">Vui lòng nhấn vào biến thể để xem vị trí và xuất kho:</p>
                             <div id="export_ticket_items" class="d-flex flex-column gap-2 mb-3">
                                 <!-- Trống -->
                             </div>

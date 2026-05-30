@@ -128,6 +128,12 @@ class TicketController
         $brands = $this->model->getBrands();
         $auto_code = $this->model->generateTicketCode($type);
 
+        // Sinh mã lô hàng tự động cho phiếu Xuất kho
+        $auto_batch = '';
+        if ($type === 'EXPORT') {
+            $auto_batch = $this->model->generateExportBatchCode();
+        }
+
         $suggestions = [];
         if ($type === 'IMPORT') {
             $suggestions = $this->model->getLowStockSuggestions();
@@ -137,13 +143,18 @@ class TicketController
         $start_date = !empty($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d');
         $end_date = !empty($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
 
-        $tickets = $this->model->getAllTickets($type, $status, $start_date, $end_date);
+        $manager_id = null;
+        if (isset($_SESSION['role']) && $_SESSION['role'] === 'MANAGER') {
+            $manager_id = $_SESSION['user_id'];
+        }
+        $tickets = $this->model->getAllTickets($type, $status, $start_date, $end_date, $manager_id);
 
         return [
             'staffs' => $staffs,
             'brands' => $brands,
             'type' => $type,
             'auto_code' => $auto_code,
+            'auto_batch' => $auto_batch, // Chuyển biến sang View
             'suggestions' => $suggestions,
             'tickets' => $tickets,
             'filter_status' => $status,
@@ -151,6 +162,7 @@ class TicketController
             'end_date' => $end_date
         ];
     }
+
 
     /**
      * Chức năng: Lưu phiếu mới vào CSDL khi bấm Submit Form.

@@ -7,7 +7,7 @@
         <div class="d-flex align-items-center">
             <h3 class="text-dark mb-0 fw-bold"><i class="fas fa-map-marked-alt text-dark me-2"></i> Sơ Đồ Kho</h3>
             <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'MANAGER'): ?>
-                <button class="btn btn-sm btn-success fw-bold ms-3" onclick="showAddShelfModal()">
+                <button class="btn btn-sm btn-dark fw-bold ms-3" onclick="showAddShelfModal()">
                     <i class="fas fa-plus"></i> Thêm Kệ Mới
                 </button>
             <?php endif; ?>
@@ -22,8 +22,8 @@
             <span class="badge bg-secondary border border-secondary" style="padding: 10px 15px;">
                 SỨC CHỨA TỔNG: <span class="text-warning fs-6"><?= $total_load ?? 0 ?></span> / <?= $total_capacity ?? 0 ?>
             </span>
-            <span class="badge text-dark border border-white" style="background: rgba(255, 255, 255, 0.95); padding: 8px 12px;">Đầy</span>
-            <span class="badge text-white border border-white" style="background: rgba(0, 0, 0, 0.7); padding: 8px 12px;">Trống</span>
+            <span class="badge text-dark" style="background: rgba(255, 255, 255, 0.95); padding: 8px 12px; border: 1px solid black">Đầy</span>
+            <span class="badge text-white" style="background: rgba(0, 0, 0, 0.7); padding: 8px 12px; border: 1px solid black">Trống</span>
         </div>
     </div>
 
@@ -58,26 +58,30 @@
             if ($localMaxTiers === 0) $localMaxTiers = 4;
             if ($localMaxSlots === 0) $localMaxSlots = 6;
         ?>
+            <?php
+            $is_active = (isset($shelf['status']) && ($shelf['status'] === 't' || $shelf['status'] === true));
+            ?>
             <div class="col-12 col-xl-6">
-                <div class="shelf-wrapper p-3">
+                <div class="shelf-wrapper p-3" style="<?= !$is_active ? 'opacity: 0.4; filter: grayscale(35%); transition: all 0.3s ease;' : 'transition: all 0.3s ease;' ?>">
                     <div class="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2">
                         <div>
                             <div class="d-flex align-items-center mb-1">
                                 <h4 class="text-white fw-bold mb-0">KỆ <?= $shelfName ?></h4>
                                 <?php if (isset($shelf['status']) && ($shelf['status'] === 't' || $shelf['status'] === true)): ?>
-                                    <span class="badge bg-primary ms-2" style="font-size: 0.75rem;">Đang hoạt động</span>
+                                    <span class="badge text-white ms-2" style="background: #000000; font-size: 0.75rem; border: 1px solid #000000;">Đang hoạt động</span>
                                 <?php else: ?>
-                                    <span class="badge bg-danger ms-2" style="font-size: 0.75rem;">Đã tạm ngưng</span>
+                                    <span class="badge text-dark ms-2" style="background: #ffffff; font-size: 0.75rem; border: 1px solid #000000;">Đã tạm ngưng</span>
                                 <?php endif; ?>
+
                             </div>
 
                             <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'MANAGER'): ?>
                                 <!-- NÚT SỬA VÀ XÓA (CHỈ MANAGER MỚI THẤY) -->
                                 <div class="d-flex flex-wrap gap-2 mt-2 mb-2">
-                                    <button class="btn btn-sm btn-outline-warning p-1 px-2" style="font-size: 11px;" onclick="toggleShelfStatus('<?= $shelfName ?>')">
+                                    <button class="btn btn-sm btn-outline-dark p-1 px-2" style="font-size: 11px;" onclick="toggleShelfStatus('<?= $shelfName ?>')">
                                         <i class="fas fa-power-off"></i> Bật/Tắt
                                     </button>
-                                    <button class="btn btn-sm btn-outline-danger p-1 px-2" style="font-size: 11px;" onclick="deleteShelf('<?= $shelfName ?>')">
+                                    <button class="btn btn-sm btn-outline-dark p-1 px-2" style="font-size: 11px;" onclick="deleteShelf('<?= $shelfName ?>')">
                                         <i class="fas fa-trash"></i> Xóa
                                     </button>
                                 </div>

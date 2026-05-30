@@ -80,7 +80,7 @@
 
                 <!-- NÚT XEM THÊM Ở GÓC DƯỚI BÊN PHẢI -->
                 <div class="position-absolute" style="bottom: 15px; right: 20px; z-index: 5;">
-                    <a href="index.php?page=report" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm fw-bold">
+                    <a href="index.php?page=report" class="btn btn-sm btn-outline-dark rounded-pill px-3 shadow-sm fw-bold">
                         Xem thêm <i class="fas fa-arrow-right ms-1"></i>
                     </a>
                 </div>
@@ -97,7 +97,7 @@
 
                 <!-- NÚT XEM THÊM Ở GÓC DƯỚI BÊN PHẢI (LINK SANG REPORT & TỰ ĐỘNG MỞ CHI TIẾT) -->
                 <div class="position-absolute" style="bottom: 15px; right: 20px; z-index: 5;">
-                    <a href="index.php?page=report&show_brand_detail=1" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm fw-bold">
+                    <a href="index.php?page=report&show_brand_detail=1" class="btn btn-sm btn-outline-dark rounded-pill px-3 shadow-sm fw-bold">
                         Xem thêm <i class="fas fa-arrow-right ms-1"></i>
                     </a>
                 </div>
@@ -132,14 +132,14 @@
 
         <div class="mt-4 text-center">
             <!-- NÚT MỞ MODAL XEM CHI TIẾT GIAO DỊCH HÔM NAY -->
-            <button class="btn btn-primary rounded-pill px-4 fw-bold btn-open-report-detail shadow-sm" data-date="<?= date('Y-m-d') ?>">
+            <button class="btn btn-outline-dark rounded-pill px-4 fw-bold btn-open-report-detail shadow-sm" data-date="<?= date('Y-m-d') ?>">
                 <i class="fas fa-eye me-2"></i>Xem chi tiết giao dịch hôm nay
             </button>
         </div>
 
         <!-- NÚT XEM THÊM LỊCH SỬ Ở GÓC DƯỚI BÊN PHẢI -->
         <div class="position-absolute" style="bottom: 15px; right: 20px; z-index: 5;">
-            <a href="index.php?page=report" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm fw-bold">
+            <a href="index.php?page=report" class="btn btn-sm btn-outline-dark rounded-pill px-3 shadow-sm fw-bold">
                 Xem thêm lịch sử <i class="fas fa-arrow-right ms-1"></i>
             </a>
         </div>

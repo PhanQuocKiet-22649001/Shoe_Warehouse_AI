@@ -18,15 +18,21 @@ class TransactionController
         $toDate      = $_GET['to_date'] ?? null;
         $searchQuery = $_GET['search'] ?? null; // Ô tìm kiếm chung duy nhất
 
+        $manager_id = null;
+        if (isset($_SESSION['role']) && $_SESSION['role'] === 'MANAGER') {
+            $manager_id = $_SESSION['user_id'];
+        }
+
         // Lấy danh sách giao dịch khớp với từ khóa tìm kiếm đa năng
-        $importHistory = $this->model->getSummary('IMPORT', $fromDate, $toDate, $searchQuery);
-        $exportHistory = $this->model->getSummary('EXPORT', $fromDate, $toDate, $searchQuery);
+        $importHistory = $this->model->getSummary('IMPORT', $fromDate, $toDate, $searchQuery, $manager_id);
+        $exportHistory = $this->model->getSummary('EXPORT', $fromDate, $toDate, $searchQuery, $manager_id);
 
         return [
             'importHistory' => $importHistory,
             'exportHistory' => $exportHistory
         ];
     }
+
 
 
     // HÀM MỚI: Xử lý yêu cầu lấy chi tiết khi bấm nút "Xem"

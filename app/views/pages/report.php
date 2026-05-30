@@ -28,11 +28,11 @@ $summary_data = $summary_data ?? [];
                 <input type="hidden" name="page" value="report">
                 <input type="date" name="start_date" class="form-control form-control-sm" value="<?= $filter['start'] ?>">
                 <input type="date" name="end_date" class="form-control form-control-sm" value="<?= $filter['end'] ?>">
-                <button type="submit" class="btn btn-primary btn-sm px-3">Lọc</button>
+                <button type="submit" class="btn btn-outline-dark btn-sm px-3">Lọc</button>
             </form>
-            <button class="btn btn-sm btn-white border shadow-sm" onclick="window.print()">
+            <!-- <button class="btn btn-sm btn-white border shadow-sm" onclick="window.print()">
                 <i class="fas fa-print me-1"></i> In báo cáo
-            </button>
+            </button> -->
         </div>
     </div>
 

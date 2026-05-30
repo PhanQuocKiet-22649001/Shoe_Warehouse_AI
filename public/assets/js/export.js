@@ -89,7 +89,8 @@ function renderExportItems() {
         if (!isDone) allDone = false;
 
         return `
-            <div class="p-3 rounded border ${isDone ? 'bg-success bg-opacity-25 border-success' : 'bg-dark border-secondary'}">
+            <div class="p-3 rounded border ${isDone ? 'bg-success bg-opacity-25 border-success' : 'bg-dark border-secondary cursor-pointer'}"
+                 ${!isDone ? `onclick="autoFillExportForm(${item.detail_id})"` : ''}>
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <span class="fw-bold small ${isDone ? 'text-success' : 'text-white'}">${item.product_name}</span>
                     <span class="badge ${isDone ? 'bg-success' : 'bg-danger'}">${processed} / ${qty}</span>
@@ -98,12 +99,7 @@ function renderExportItems() {
                     <div class="small text-white-50">
                         Size: <strong class="text-white">${item.size}</strong> | Màu: <strong class="text-white">${item.color}</strong>
                     </div>
-                    ${!isDone ? `
-                        <button class="btn btn-sm btn-info fw-bold py-0 px-3" 
-                            onclick="autoFillExportForm(${item.detail_id})">
-                            CHỌN
-                        </button>
-                    ` : '<span class="text-success small fw-bold"><i class="fas fa-check-circle me-1"></i>Đã xong</span>'}
+                    ${isDone ? '<span class="text-success small fw-bold"><i class="fas fa-check-circle me-1"></i>Đã xong</span>' : ''}
                 </div>
             </div>
         `;
@@ -117,6 +113,8 @@ function renderExportItems() {
         document.getElementById('btn_complete_export').classList.add('d-none');
     }
 }
+
+
 
 /**
  * Chức năng: Thoát khỏi chi tiết phiếu hiện tại quay về danh sách phiếu gốc.
@@ -135,10 +133,10 @@ let currentRequiredQty = 0;
  */
 async function autoFillExportForm(detailId) {
     const item = currentTicketItems.find(i => i.detail_id == detailId);
-    if(!item) return;
+    if (!item) return;
 
     const remainingQty = parseInt(item.quantity) - parseInt(item.processed_qty || 0);
-    currentRequiredQty = remainingQty; 
+    currentRequiredQty = remainingQty;
 
     document.getElementById('export_right_default').classList.add('d-none');
     document.getElementById('export_right_action').classList.remove('d-none');
@@ -156,7 +154,7 @@ async function autoFillExportForm(detailId) {
 
     const inputQty = document.getElementById('pick_qty_input');
     inputQty.value = 0;
-    inputQty.readOnly = true; 
+    inputQty.readOnly = true;
     document.getElementById('pick_qty_max').innerText = `/ ${remainingQty}`;
 
     const othersArea = document.getElementById('other_variants_area');
@@ -193,7 +191,7 @@ async function autoFillExportForm(detailId) {
             </div>`;
         });
         locContainer.innerHTML = html;
-        validatePickTotal(); 
+        validatePickTotal();
     } catch (e) {
         locContainer.innerHTML = '<span class="text-danger small">Lỗi truy xuất sơ đồ kho.</span>';
     }
@@ -206,20 +204,20 @@ async function autoFillExportForm(detailId) {
 function validatePickTotal() {
     let totalPicked = 0;
     const inputs = document.querySelectorAll('.pick-input');
-    
+
     inputs.forEach(input => {
         let max = parseInt(input.max) || 0;
         let val = parseInt(input.value) || 0;
-        
+
         if (val < 0) { val = 0; input.value = 0; }
         if (val > max) { val = max; input.value = max; }
-        
+
         totalPicked += val;
     });
 
     const totalInput = document.getElementById('pick_qty_input');
     totalInput.value = totalPicked;
-    
+
     const btnConfirm = document.querySelector('#export_right_action button');
 
     let warningMsg = document.getElementById('pick_warning_msg');
@@ -234,13 +232,13 @@ function validatePickTotal() {
         totalInput.classList.replace('text-white', 'text-success');
         btnConfirm.disabled = false;
         warningMsg.innerHTML = '<span class="text-success"><i class="fas fa-check-circle me-1"></i> Đã chọn đủ số lượng yêu cầu!</span>';
-    } 
+    }
     else if (totalPicked < currentRequiredQty) {
         totalInput.classList.replace('text-success', 'text-white');
         btnConfirm.disabled = true;
         let thieu = currentRequiredQty - totalPicked;
         warningMsg.innerHTML = `<span class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i> Bạn đang lấy THIẾU ${thieu} đôi. Vui lòng chọn thêm ở kệ khác!</span>`;
-    } 
+    }
     else {
         totalInput.classList.replace('text-success', 'text-white');
         btnConfirm.disabled = true;
@@ -289,7 +287,7 @@ async function confirmPickItem() {
             const item = currentTicketItems.find(i => i.detail_id == detailId);
             if (item) item.processed_qty = parseInt(item.processed_qty || 0) + totalPicked;
 
-            renderExportItems(); 
+            renderExportItems();
             document.getElementById('export_right_default').classList.remove('d-none');
             document.getElementById('export_right_action').classList.add('d-none');
             document.getElementById('export_right_action').classList.remove('d-flex');

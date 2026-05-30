@@ -274,14 +274,39 @@ document.addEventListener('DOMContentLoaded', function () {
                 const btnChange = row.querySelector('.btn-change-staff');
                 const formDelete = row.querySelector('.form-delete-ticket');
 
-                // Trạng thái không phải PENDING thì "Tàng hình" 2 nút này
-                if (data.status !== 'PENDING') {
+                // Xác định ô chứa các nút thao tác (ô cuối cùng của hàng)
+                const actionCell = row.cells[row.cells.length - 1];
+
+                if (data.status !== 'PENDING' && data.status !== 'PAUSED') {
+                    // Ẩn cả nút chỉ định nhân viên và nút xóa
                     if (btnChange) btnChange.classList.add('d-none');
                     if (formDelete) formDelete.classList.add('d-none');
+
+                    // Hiển thị nhãn "Khóa sửa" nếu chưa có sẵn trên giao diện
+                    if (actionCell && !actionCell.querySelector('.lock-span')) {
+                        const lockSpan = document.createElement('span');
+                        lockSpan.className = 'text-muted small ms-1 lock-span';
+                        lockSpan.innerHTML = '<i class="fas fa-lock"></i> Khóa sửa';
+                        actionCell.appendChild(lockSpan);
+                    }
                 } else {
+                    // Đang ở trạng thái PENDING hoặc PAUSED -> Cho phép sửa nhân viên
                     if (btnChange) btnChange.classList.remove('d-none');
-                    if (formDelete) formDelete.classList.remove('d-none');
+
+                    // Chỉ hiện nút xóa khi trạng thái thực sự là PENDING
+                    if (data.status === 'PENDING') {
+                        if (formDelete) formDelete.classList.remove('d-none');
+                    } else {
+                        if (formDelete) formDelete.classList.add('d-none');
+                    }
+
+                    // Dọn dẹp nhãn "Khóa sửa" nếu có
+                    const lockSpan = row.querySelector('.lock-span');
+                    if (lockSpan) {
+                        lockSpan.remove();
+                    }
                 }
+
             }
         });
     }

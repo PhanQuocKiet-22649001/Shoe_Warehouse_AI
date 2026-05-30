@@ -138,11 +138,15 @@ function renderImportItemsUI() {
         `;
     }).join('');
 
-    if (importTicketItems.length > 0) {
+    // Chỉ hiện nút Hoàn Tất khi tất cả các dòng biến thể đều đã được Lưu tạm ít nhất 1 lần (processed_qty > 0)
+    const allSavedTemp = importTicketItems.length > 0 && importTicketItems.every(item => (parseInt(item.processed_qty) || 0) > 0);
+
+    if (allSavedTemp) {
         document.getElementById('btn_complete_import').classList.remove('d-none');
     } else {
         document.getElementById('btn_complete_import').classList.add('d-none');
     }
+
 }
 
 // 3. XỬ LÝ ẢNH & QUÉT AI
@@ -806,4 +810,13 @@ function editImportItem(variantId) {
 
     // Mở bảng cho phép xếp kệ lại từ đầu nếu sửa số lượng
     loadPutawayLocations(variantId);
+}
+
+/**
+ * Chức năng: Thoát khỏi chi tiết phiếu nhập hiện tại quay về danh sách phiếu nhập gốc.
+ * Tác dụng: Trả trạng thái phiếu từ PROCESSING về lại PAUSED để treo tiến trình cho lần sau và tải lại danh sách.
+ */
+function backToImportTickets() {
+    fetch(`index.php?page=tickets&action=update_status&ticket_id=${currentImportTicketId}&status=PAUSED`, { method: 'POST' });
+    loadMyImportTickets();
 }

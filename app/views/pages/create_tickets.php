@@ -5,6 +5,7 @@ $staffs = $staffs ?? [];
 $brands = $brands ?? [];
 $suggestions = $suggestions ?? [];
 $auto_code = $auto_code ?? '';
+$auto_batch = $auto_batch ?? '';
 $tickets = $tickets ?? [];
 $filter_status = $filter_status ?? '';
 $start_date = $start_date ?? '';
@@ -107,7 +108,7 @@ foreach ($suggestions as $s) {
     <!-- KHU VỰC 2: FORM TẠO PHIẾU -->
     <div class="card shadow-sm border-0 mb-5">
         <div class="card-header bg-white border-bottom">
-            <h4 class="mb-0 text-primary fw-bold">TẠO PHIẾU <?= $type === 'IMPORT' ? 'NHẬP KHO' : 'XUẤT KHO' ?></h4>
+            <h4 class="mb-0 fw-bold">TẠO PHIẾU <?= $type === 'IMPORT' ? 'NHẬP KHO' : 'XUẤT KHO' ?></h4>
         </div>
         <div class="card-body">
             <form id="ticketForm" method="POST" action="index.php?page=ticket_create">
@@ -115,13 +116,19 @@ foreach ($suggestions as $s) {
 
                 <div class="row mb-4">
                     <div class="col-md-4">
-                        <label class="form-label fw-bold text-success">Mã Phiếu (Tự sinh)</label>
-                        <input type="text" name="ticket_code" class="form-control bg-light fw-bold text-success" value="<?= $auto_code ?>" readonly required>
+                        <label class="form-label fw-bold ">Mã Phiếu (Tự sinh)</label>
+                        <input type="text" name="ticket_code" class="form-control bg-light fw-bold " value="<?= $auto_code ?>" readonly required>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label fw-bold">Mã Lô hàng *</label>
-                        <input type="text" name="batch_code" class="form-control" placeholder="Bắt buộc nhập mã lô..." required>
+                        <?php if ($type === 'EXPORT'): ?>
+                            <label class="form-label fw-bold ">Mã Lô hàng (Tự sinh)</label>
+                            <input type="text" name="batch_code" class="form-control bg-light fw-bold " value="<?= htmlspecialchars($auto_batch) ?>" readonly required>
+                        <?php else: ?>
+                            <label class="form-label fw-bold">Mã Lô hàng *</label>
+                            <input type="text" name="batch_code" class="form-control" placeholder="Bắt buộc nhập mã lô..." required>
+                        <?php endif; ?>
                     </div>
+
                     <div class="col-md-4">
                         <label class="form-label fw-bold">Nhân viên thực hiện *</label>
                         <select name="staff_id" class="form-select" required>
@@ -136,7 +143,7 @@ foreach ($suggestions as $s) {
                 <hr>
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="fw-bold mb-0">Chi tiết Hàng hóa</h5>
-                    <button type="button" id="addRow" class="btn btn-outline-success btn-sm">
+                    <button type="button" id="addRow" class="btn btn-outline-dark btn-sm">
                         <i class="fas fa-plus"></i> Thêm dòng mới
                     </button>
                 </div>
@@ -192,7 +199,7 @@ foreach ($suggestions as $s) {
                 </div>
 
                 <div class="text-end mt-4">
-                    <button type="submit" name="save_ticket" class="btn btn-primary px-5 fw-bold shadow">
+                    <button type="submit" name="save_ticket" class="btn btn-outline-dark px-5 fw-bold shadow">
                         <i class="fas fa-save me-2"></i>LƯU PHIẾU KHO
                     </button>
                 </div>
@@ -310,7 +317,7 @@ foreach ($suggestions as $s) {
                                             </button>
 
                                             <?php if ($t['status'] === 'PENDING'): ?>
-                                                <form action="index.php?page=ticket_create" method="POST" class="d-inline" onsubmit="return confirm('Chắc chắn xóa phiếu này?');">
+                                                <form action="index.php?page=ticket_create" method="POST" class="d-inline form-delete-ticket" onsubmit="return confirm('Chắc chắn xóa phiếu này?');">
                                                     <input type="hidden" name="ticket_id" value="<?= $t['ticket_id'] ?>">
                                                     <input type="hidden" name="return_type" value="<?= $type ?>">
                                                     <button type="submit" name="delete_ticket" class="btn btn-sm btn-outline-danger" title="Xóa phiếu">
@@ -320,7 +327,7 @@ foreach ($suggestions as $s) {
                                             <?php endif; ?>
 
                                         <?php else: ?>
-                                            <span class="text-muted small ms-1"><i class="fas fa-lock"></i> Khóa sửa</span>
+                                            <span class="text-muted small ms-1 lock-span"><i class="fas fa-lock"></i> Khóa sửa</span>
                                         <?php endif; ?>
                                     </td>
                                 </tr>

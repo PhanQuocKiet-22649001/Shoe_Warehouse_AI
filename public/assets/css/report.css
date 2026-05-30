@@ -101,14 +101,16 @@
 
     .top-p-card {
         background: #fff;
-        border: 1px solid #e3e6f0;
+        border: 1px solid #000000;
         border-radius: 8px;
         overflow: hidden;
     }
 
     .top-p-header {
-        background: #4e73df;
-        color: #fff;
+        background: #5c5c5c66;
+        color: #ffffff;
+        /* Thủ thuật giúp chữ tự đổi màu tương phản theo nền phía sau */
+        mix-blend-mode: difference;
         padding: 12px 15px;
         font-weight: 600;
         display: flex;
@@ -117,11 +119,15 @@
     }
 
     .top-p-header .badge-vol {
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.25);
+        color: #ffffff;
         padding: 4px 10px;
         border-radius: 20px;
         font-size: 0.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.4);
     }
+
+
 
     .top-p-body {
         padding: 0;
@@ -183,7 +189,7 @@
     }
 
     .inv-product-card {
-        border: 1px solid #e3e6f0;
+        border: 1px solid #000000;
         border-radius: 8px;
         background: #fff;
         display: flex;
@@ -197,7 +203,7 @@
     }
 
     .inv-header {
-        background: #f8f9fc;
+        background: #5c5c5c66;
         padding: 10px 15px;
         border-bottom: 1px solid #e3e6f0;
         display: flex;
