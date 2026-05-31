@@ -51,7 +51,7 @@ class CategoryController
                 $file_name = $_FILES['logo']['name'];
                 $extension = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
 
-                $allowed_extensions = ['jpg', 'jpeg', 'png', 'webp'];
+                $allowed_extensions = ['jpg', 'jpeg', 'png'];
 
                 if (in_array($extension, $allowed_extensions)) {
                     // Tạo tên file duy nhất
@@ -156,10 +156,10 @@ class CategoryController
 
                 // 1. Lưu file logo mới vào assets/img_logo/
                 $extension = strtolower(pathinfo($imageFile['name'], PATHINFO_EXTENSION));
-                $allowed_extensions = ['jpg', 'jpeg', 'png', 'webp'];
+                $allowed_extensions = ['jpg', 'jpeg', 'png'];
 
                 if (!in_array($extension, $allowed_extensions)) {
-                    throw new Exception("Chỉ chấp nhận định dạng JPG, JPEG, PNG hoặc WEBP!");
+                    throw new Exception("Chỉ chấp nhận định dạng JPG, JPEG, PNG!");
                 }
 
                 // Tạo tên logo duy nhất theo chuẩn

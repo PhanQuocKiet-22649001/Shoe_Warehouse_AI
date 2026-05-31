@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // 1. Kiểm tra sự tồn tại của element để tránh lỗi "null" làm sập script
     const userContext = document.getElementById('user-context');
     const badgeImport = document.getElementById('badge-import');
@@ -39,21 +39,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 3. Cấu hình Pusher
     // Bật log để soi lỗi ngay trên Console trình duyệt
-    Pusher.logToConsole = true; 
+    Pusher.logToConsole = true;
 
-    const pusher = new Pusher('24a79cb74cfa666e1831', { 
-        cluster: 'ap1',
-        forceTLS: true 
+    const pusher = new Pusher(PUSHER_CONFIG.key, {
+        cluster: PUSHER_CONFIG.cluster,
+        forceTLS: true
     });
 
     const channel = pusher.subscribe('warehouse-channel');
 
     // 4. Lắng nghe sự kiện
-    channel.bind('new-ticket-' + userId, function(data) {
+    channel.bind('new-ticket-' + userId, function (data) {
         console.log('%c [Pusher] Nhận tín hiệu mới: ', 'background: #222; color: #bada55', data.message);
-        
+
         // Gọi hàm cập nhật số mà không cần F5
-        updateBadges(); 
+        updateBadges();
 
         // THÊM HIỆU ỨNG THÔNG BÁO CHO ĐỒ ÁN THÊM ĐIỂM
         // Cách 1: Dùng trình duyệt thông báo (Browser Notification)
@@ -71,10 +71,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 5. Lắng nghe sự kiện cập nhật ngầm (Silent Refresh)
     // Tác dụng: Khi Manager đổi NV hoặc Xóa phiếu, NV cũ nhận tín hiệu này để tự trừ số Badge
-    channel.bind('refresh-badge-' + userId, function(data) {
+    channel.bind('refresh-badge-' + userId, function (data) {
         console.log('%c [Pusher] Quản lý đã thu hồi hoặc xóa phiếu. Đang cập nhật lại số lượng... ', 'color: #ff9800');
-        
+
         // Chỉ cập nhật con số, không hiện thông báo Alert/Notification
-        updateBadges(); 
+        updateBadges();
     });
 });

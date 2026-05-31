@@ -7,10 +7,15 @@ $cModel = new CategoryModel();
 // Lấy tất cả các hãng đang kinh doanh (status = true)
 $allCategories = $cModel->getAll();
 ?>
+
 <script>
     // Chuyển mảng PHP sang JSON để JavaScript sử dụng
     const categoriesList = <?= json_encode($allCategories) ?>;
+    const QR_BASE_URL = "<?= (require __DIR__ . '/../../../config/QRconfig.php')['BASE_URL'] ?>";
+    const PUSHER_CONFIG = <?= json_encode(require __DIR__ . '/../../../config/pusherconfig.php') ?>;
+    const STOCK_CONFIG = <?= json_encode(require __DIR__ . '/../../../config/stockconfig.php') ?>;
 </script>
+
 
 <div class="topbar mb-4 d-flex justify-content-between align-items-center p-3 rounded shadow-sm ">
 

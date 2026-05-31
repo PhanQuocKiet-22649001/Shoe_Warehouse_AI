@@ -69,9 +69,11 @@ $cat = $cat ?? ['categoryName' => 'Chưa rõ'];
                                 <!-- Form thay đổi ảnh đại diện (ẩn) -->
                                 <form id="form-update-avatar-<?= $pro['product_id'] ?>" action="index.php?page=products" method="POST" enctype="multipart/form-data" class="d-none">
                                     <input type="hidden" name="product_id" value="<?= $pro['product_id'] ?>">
-                                    <input type="file" name="product_image" id="input-avatar-<?= $pro['product_id'] ?>" accept="image/*" onchange="submitAvatarChange(<?= $pro['product_id'] ?>)">
+                                    <input type="file" name="product_image" id="input-avatar-<?= $pro['product_id'] ?>" accept=".png, .jpg, .jpeg" onchange="submitAvatarChange(<?= $pro['product_id'] ?>)">
+                                    <!-- BỔ SUNG LẠI DÒNG DƯỚI ĐÂY -->
                                     <input type="hidden" name="btn_update_avatar" value="1">
                                 </form>
+
 
                                 <!-- Nút sửa góc trên bên phải card ảnh -->
                                 <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 m-2 d-flex align-items-center justify-content-center shadow-sm"
@@ -291,7 +293,7 @@ $cat = $cat ?? ['categoryName' => 'Chưa rõ'];
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                             </div>
                             <form action="index.php?page=products&action=manager_add_variant" method="POST"
-                                onsubmit="return confirm('Bạn có chắc chắn muốn khai báo thêm biến thể Màu/Size mới cho mẫu giày này không?');">
+                                onsubmit="return validateAddVariant(this);">
                                 <div class="modal-body p-4">
                                     <p class="text-muted small mb-3">Thêm biến thể cho mẫu: <strong class="text-dark"><?= htmlspecialchars($pro['product_name']) ?></strong></p>
 
@@ -307,7 +309,8 @@ $cat = $cat ?? ['categoryName' => 'Chưa rõ'];
                                         </div>
                                         <div class="col-6 mb-3">
                                             <label class="fw-bold mb-1 small">Size *</label>
-                                            <input type="number" name="size" class="form-control text-center" placeholder="VD: 40" required>
+                                            <!-- THAY ĐỔI MIN="1" Ở ĐÂY -->
+                                            <input type="number" name="size" class="form-control text-center" placeholder="VD: 40" min="1" required>
                                         </div>
                                     </div>
                                     <div class="alert alert-warning py-2 mb-0 small">
@@ -315,10 +318,11 @@ $cat = $cat ?? ['categoryName' => 'Chưa rõ'];
                                     </div>
                                 </div>
                                 <div class="modal-footer p-3 pt-0 border-top-0">
-                                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#detailModal<?= $pro['product_id'] ?>">Hủy</button>
                                     <button type="submit" name="btn_add_variant" class="btn btn-success rounded-pill px-4 fw-bold">Xác nhận tạo</button>
                                 </div>
                             </form>
+
                         </div>
                     </div>
                 </div>
@@ -356,19 +360,11 @@ $cat = $cat ?? ['categoryName' => 'Chưa rõ'];
                     <div class="modal-body p-4">
 
                         <div class="mb-3">
-                            <label class="fw-bold mb-1 small">Hãng sản xuất (Brand) *</label>
-                            <select name="category_id" class="form-select fw-bold shadow-sm" required>
-                                <option value="">-- Chọn hãng --</option>
-                                <?php if (!empty($allCategories)): ?>
-                                    <?php foreach ($allCategories as $catItem): ?>
-                                        <option value="<?= $catItem['category_id'] ?>"
-                                            <?= (isset($_GET['category_id']) && $_GET['category_id'] == $catItem['category_id']) ? 'selected' : '' ?>>
-                                            <?= strtoupper($catItem['category_name']) ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </select>
+                            <label class="fw-bold mb-1 small">Hãng sản xuất (Brand)</label>
+                            <input type="text" class="form-control fw-bold bg-light" value="<?= htmlspecialchars(strtoupper($categoryName)) ?>" readonly disabled>
+                            <input type="hidden" name="category_id" value="<?= htmlspecialchars($_GET['category_id'] ?? '') ?>">
                         </div>
+
 
                         <div class="mb-3">
                             <label class="fw-bold mb-1 small">Tên dòng sản phẩm (Model Name) *</label>
@@ -377,8 +373,7 @@ $cat = $cat ?? ['categoryName' => 'Chưa rõ'];
 
                         <div class="mb-3">
                             <label class="fw-bold mb-1 small">Hình ảnh chuẩn của Hãng (Gốc) *</label>
-                            <input type="file" name="master_image" id="master_image_input" class="form-control" accept="image/*" required
-                                onchange="previewManagerImage(this)">
+                            <input type="file" name="master_image" id="master_image_input" class="form-control" accept=".png, .jpg, .jpeg" required onchange="previewManagerImage(this)">
 
                             <div class="mt-3 text-center p-2 border rounded bg-light d-none" id="manager_preview_container">
                                 <p class="small text-muted mb-1">Ảnh đã chọn:</p>

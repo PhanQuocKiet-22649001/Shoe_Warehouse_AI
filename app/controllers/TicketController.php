@@ -42,26 +42,27 @@ class TicketController
         }
     }
 
-    // ======================================================
+        // ======================================================
     // 0. CÁC HÀM GỌI BỘ ĐÀM (PUSHER) - REALTIME
     // ======================================================
 
     /**
      * Chức năng: Gửi thông báo Push Notification (Alert) trên giao diện nhân viên.
-     * Tác dụng: Báo cho nhân viên biết khi có công việc mới vừa được Quản lý phân công.
      */
     private function triggerPusherNotification($staff_id, $message)
     {
+        // NẠP CẤU HÌNH PUSHER ĐỘNG
+        $pusherConfig = require __DIR__ . '/../../config/pusherconfig.php';
         try {
             $options = array(
-                'cluster' => 'ap1',
+                'cluster' => $pusherConfig['cluster'],
                 'useTLS' => true
             );
 
             $pusher = new Pusher\Pusher(
-                '24a79cb74cfa666e1831',
-                '4cb0f10dc4e59d30d062',
-                '2150978',
+                $pusherConfig['key'],
+                $pusherConfig['secret'],
+                $pusherConfig['app_id'],
                 $options
             );
 
@@ -75,13 +76,23 @@ class TicketController
 
     /**
      * Chức năng: Đồng bộ màu sắc trạng thái thẻ Phiếu về máy Quản lý không cần F5.
-     * Tác dụng: Đổi màu từ Pending -> Processing, cập nhật giờ hoàn tất khi nhân viên thao tác ở dưới kho.
      */
     private function triggerManagerSync($ticket_id, $status, $completed_at = null)
     {
+        // NẠP CẤU HÌNH PUSHER ĐỘNG
+        $pusherConfig = require __DIR__ . '/../../config/pusherconfig.php';
         try {
-            $options = ['cluster' => 'ap1', 'useTLS' => true];
-            $pusher = new Pusher\Pusher('24a79cb74cfa666e1831', '4cb0f10dc4e59d30d062', '2150978', $options);
+            $options = array(
+                'cluster' => $pusherConfig['cluster'],
+                'useTLS' => true
+            );
+
+            $pusher = new Pusher\Pusher(
+                $pusherConfig['key'],
+                $pusherConfig['secret'],
+                $pusherConfig['app_id'],
+                $options
+            );
 
             $payload = [
                 'ticket_id' => $ticket_id,
@@ -100,19 +111,30 @@ class TicketController
 
     /**
      * Chức năng: Phát yêu cầu Reset lại số lượng Badge Đỏ ngầm không làm phiền màn hình.
-     * Tác dụng: Khi Manager thu hồi công việc, badge đỏ của nhân viên bị giảm đi lập tức.
      */
     private function triggerPusherSilentUpdate($staff_id)
     {
+        // NẠP CẤU HÌNH PUSHER ĐỘNG
+        $pusherConfig = require __DIR__ . '/../../config/pusherconfig.php';
         try {
             if (!$staff_id) return;
-            $options = ['cluster' => 'ap1', 'useTLS' => true];
-            $pusher = new Pusher\Pusher('24a79cb74cfa666e1831', '4cb0f10dc4e59d30d062', '2150978', $options);
+            $options = array(
+                'cluster' => $pusherConfig['cluster'],
+                'useTLS' => true
+            );
+
+            $pusher = new Pusher\Pusher(
+                $pusherConfig['key'],
+                $pusherConfig['secret'],
+                $pusherConfig['app_id'],
+                $options
+            );
 
             $pusher->trigger('warehouse-channel', 'refresh-badge-' . $staff_id, ['refresh' => true]);
         } catch (Exception $e) {
         }
     }
+
 
     // ======================================================
     // 1. CÁC HÀM XỬ LÝ GIAO DIỆN & SUBMIT FORM (TRUYỀN THỐNG)

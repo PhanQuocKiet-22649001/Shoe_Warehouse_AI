@@ -57,7 +57,7 @@
                             <!-- Form thay đổi logo ẩn (Tương tự sản phẩm) -->
                             <form id="form-update-logo-<?= $cat['category_id'] ?>" action="index.php?page=categories" method="POST" enctype="multipart/form-data" class="d-none">
                                 <input type="hidden" name="category_id" value="<?= $cat['category_id'] ?>">
-                                <input type="file" name="category_logo" id="input-logo-<?= $cat['category_id'] ?>" accept="image/*" onchange="submitLogoChange(<?= $cat['category_id'] ?>)">
+                                <input type="file" name="category_logo" id="input-logo-<?= $cat['category_id'] ?>" accept=".png, .jpg, .jpeg" onchange="submitLogoChange(<?= $cat['category_id'] ?>)">
                                 <input type="hidden" name="btn_update_logo" value="1">
                             </form>
 
@@ -143,7 +143,7 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold text-white">Logo thương hiệu (Tùy chọn)</label>
 
-                        <input type="file" name="logo" class="form-control input-glass border-2" accept="image/*">
+                        <input type="file" name="logo" class="form-control input-glass border-2" accept=".png, .jpg, .jpeg">
 
                         <div class="form-text mt-2 text-white">
                             <i class="fas fa-info-circle me-1"></i> Để trống để dùng logo mặc định.

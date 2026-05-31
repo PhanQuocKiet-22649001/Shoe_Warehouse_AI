@@ -297,7 +297,8 @@ function printVariantQR(sku, name, color, size, vid) {
     }
 
     // 2. Tạo link truy xuất chuẩn (Link Ngrok)
-    const baseUrl = "https://countless-henna-obtain.ngrok-free.dev/Shoe_Warehouse/";
+    const baseUrl = window.QR_BASE_URL || "https://countless-henna-obtain.ngrok-free.dev/Shoe_Warehouse/";
+
     const targetUrl = `${baseUrl}check_QR.php?vid=${vid}`;
 
     // 3. Dùng QuickChart tạo link ảnh
@@ -339,4 +340,18 @@ window.submitAvatarChange = function (productId) {
         }
     }
 };
+
+
+function validateAddVariant(form) {
+    const size = parseFloat(form.size.value);
+
+    // Nếu size nhỏ hơn hoặc bằng 0 thì báo lỗi Alert ngay lập tức
+    if (isNaN(size) || size <= 0) {
+        alert("⚠️ Lỗi: Size giày bắt buộc phải lớn hơn 0!");
+        form.size.focus();
+        return false;
+    }
+
+    return confirm('Bạn có chắc chắn muốn khai báo thêm biến thể Màu/Size mới cho mẫu giày này không?');
+}
 

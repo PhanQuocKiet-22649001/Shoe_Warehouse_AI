@@ -240,7 +240,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // 6. XỬ LÝ REAL-TIME PUSHER: TỰ ĐỘNG CẬP NHẬT BẢNG LỊCH SỬ
     // =========================================================
     if (typeof Pusher !== 'undefined') {
-        const pusherManager = new Pusher('24a79cb74cfa666e1831', { cluster: 'ap1', forceTLS: true });
+        const pusherManager = new Pusher(PUSHER_CONFIG.key, { cluster: PUSHER_CONFIG.cluster, forceTLS: true });
+
         const channelManager = pusherManager.subscribe('warehouse-channel');
 
         channelManager.bind('ticket-status-changed', function (data) {
@@ -318,7 +319,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const baseUrl = "https://countless-henna-obtain.ngrok-free.dev/Shoe_Warehouse/";
+        const baseUrl = window.QR_BASE_URL || "https://countless-henna-obtain.ngrok-free.dev/Shoe_Warehouse/";
         const targetUrl = `${baseUrl}check_QR.php?vid=${vid}&import_date=${encodeURIComponent(importDate)}&staff_id=${staffId}&staff_name=${encodeURIComponent(staffName)}`;
         const qrImageUrl = `https://quickchart.io/qr?text=${encodeURIComponent(targetUrl)}&size=250`;
 

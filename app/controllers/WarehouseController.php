@@ -202,7 +202,7 @@ class WarehouseController
             echo json_encode(['status' => 'error', 'message' => 'Từ chối truy cập! Chỉ Quản lý mới được thao tác kệ hàng.']);
             exit;
         }
-        $name = $_POST['shelf_name'] ?? '';
+        $name = isset($_POST['shelf_name']) ? trim($_POST['shelf_name']) : '';
         $capacity = $_POST['max_capacity'] ?? 4;
         $tiers = $_POST['tiers'] ?? 4;
         $slots = $_POST['slots'] ?? 6;
@@ -212,11 +212,19 @@ class WarehouseController
             exit;
         }
 
+        //RÀNG BUỘC KIỂM TRA TRÙNG TÊN KỆ CHỦ ĐỘNG
+
+        $existing = $this->warehouseModel->getShelfIdByName($name);
+        if ($existing) {
+            echo json_encode(['status' => 'error', 'message' => 'Tên kệ "' . htmlspecialchars($name) . '" đã tồn tại trên hệ thống!']);
+            exit;
+        }
+
         $result = $this->warehouseModel->addShelf($name, $capacity, $tiers, $slots);
         if ($result) {
             echo json_encode(['status' => 'success', 'message' => 'Thêm kệ thành công!']);
         } else {
-            echo json_encode(['status' => 'error', 'message' => 'Lỗi kết nối hoặc tên kệ đã tồn tại!']);
+            echo json_encode(['status' => 'error', 'message' => 'Lỗi kết nối cơ sở dữ liệu!']);
         }
         exit;
     }

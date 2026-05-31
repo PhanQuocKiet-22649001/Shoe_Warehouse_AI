@@ -14,19 +14,31 @@ class ImportController
 
     /**
      * Chức năng: Đồng bộ màu sắc Phiếu (Sync Realtime).
-     * Tác dụng: Trigger tín hiệu để thay đổi giao diện Quản lý sau khi Nhập kho thành công.
      */
     private function triggerManagerSync($ticket_id, $status, $completed_at = null)
     {
+        // NẠP CẤU HÌNH PUSHER ĐỘNG
+        $pusherConfig = require __DIR__ . '/../../config/pusherconfig.php';
         try {
-            $options = ['cluster' => 'ap1', 'useTLS' => true];
-            $pusher = new Pusher\Pusher('24a79cb74cfa666e1831', '4cb0f10dc4e59d30d062', '2150978', $options);
+            $options = [
+                'cluster' => $pusherConfig['cluster'],
+                'useTLS' => true
+            ];
+
+            $pusher = new Pusher\Pusher(
+                $pusherConfig['key'],
+                $pusherConfig['secret'],
+                $pusherConfig['app_id'],
+                $options
+            );
+
             $payload = ['ticket_id' => $ticket_id, 'status' => $status];
             if ($completed_at) $payload['completed_at'] = $completed_at;
             $pusher->trigger('warehouse-channel', 'ticket-status-changed', $payload);
         } catch (Exception $e) {
         }
     }
+
 
     /**
      * Chức năng: Route trả JSON list phiếu Nhập cho AI.

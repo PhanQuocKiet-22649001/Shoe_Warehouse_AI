@@ -1,8 +1,8 @@
 
 <?php
 // URL tạo QR ngrok
-define('BASE_URL', 'https://countless-henna-obtain.ngrok-free.dev/Shoe_Warehouse/');
-require_once __DIR__ . '/../../config/database.php';
+$qrConfig = require __DIR__ . '/../../config/QRconfig.php';
+define('BASE_URL', $qrConfig['BASE_URL']);
 
 class ImportModel
 {

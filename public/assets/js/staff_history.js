@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const baseUrl = "https://countless-henna-obtain.ngrok-free.dev/Shoe_Warehouse/";
+        const baseUrl = window.QR_BASE_URL || "https://countless-henna-obtain.ngrok-free.dev/Shoe_Warehouse/";
         const targetUrl = `${baseUrl}check_QR.php?vid=${vid}&import_date=${encodeURIComponent(importDate)}&staff_id=${staffId}&staff_name=${encodeURIComponent(staffName)}`;
         const qrImageUrl = `https://quickchart.io/qr?text=${encodeURIComponent(targetUrl)}&size=250`;
 

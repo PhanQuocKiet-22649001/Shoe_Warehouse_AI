@@ -101,16 +101,21 @@ class TicketModel
      */
     public function getLowStockSuggestions()
     {
+        // NẠP ĐỘNG STOCK CONFIG
+        $stockConfig = require __DIR__ . '/../../config/stockconfig.php';
+        $threshold = (int)$stockConfig['low_stock_threshold'];
+
         $sql = "SELECT pv.variant_id, c.category_name as brand, p.product_name, p.product_image, pv.color, pv.size, pv.stock
-                FROM product_variants pv
-                JOIN products p ON pv.product_id = p.product_id
-                JOIN categories c ON p.category_id = c.category_id
-                WHERE pv.stock < 5 AND pv.is_deleted = false AND p.is_deleted = false
-                ORDER BY pv.stock ASC";
+            FROM product_variants pv
+            JOIN products p ON pv.product_id = p.product_id
+            JOIN categories c ON p.category_id = c.category_id
+            WHERE pv.stock < $threshold AND pv.is_deleted = false AND p.is_deleted = false
+            ORDER BY pv.stock ASC";
 
         $result = pg_query($this->conn, $sql);
         return $result ? (pg_fetch_all($result) ?: []) : [];
     }
+
 
     /**
      * Chức năng: Lấy danh sách Biến thể (Màu, Size) của một Mẫu giày.
@@ -225,21 +230,34 @@ class TicketModel
 
     /**
      * Chức năng: Thay đổi nhân viên phụ trách phiếu (Bàn giao).
-     * Tác dụng: Cập nhật DB và trả về mã ID của nhân viên cũ để tiến hành bắn thông báo thu hồi.
+     * Tác dụng: Cho phép bàn giao phiếu ở trạng thái PENDING hoặc PAUSED.
      */
     public function updateStaffInTicket($ticket_id, $new_staff_id)
     {
-        $sqlGet = "SELECT staff_id FROM tickets WHERE ticket_id = $1";
+        // 1. Lấy staff_id và status hiện tại để kiểm tra an toàn
+        $sqlGet = "SELECT staff_id, status FROM tickets WHERE ticket_id = $1 AND is_deleted = false";
         $resGet = pg_query_params($this->conn, $sqlGet, [$ticket_id]);
-        $old_staff_id = pg_fetch_result($resGet, 0, 'staff_id');
+        $row = $resGet ? pg_fetch_assoc($resGet) : null;
+        if (!$row) return false;
 
+        $old_staff_id = $row['staff_id'];
+        $status = $row['status'];
+
+        // Quy trình: Chỉ cho phép bàn giao khi phiếu chưa bắt đầu (PENDING) hoặc đang tạm dừng (PAUSED)
+        if ($status !== 'PENDING' && $status !== 'PAUSED') {
+            return false;
+        }
+
+        // 2. Tiến hành cập nhật staff_id mới
         $sql = "UPDATE tickets 
-            SET staff_id = $1 
-            WHERE ticket_id = $2 AND status = 'PENDING' AND is_deleted = false";
+                SET staff_id = $1 
+                WHERE ticket_id = $2 AND status IN ('PENDING', 'PAUSED') AND is_deleted = false";
         $result = pg_query_params($this->conn, $sql, [$new_staff_id, $ticket_id]);
 
-        return $result ? $old_staff_id : false;
+        // Trả về staff_id cũ CHỈ KHI thực sự có dòng trong CSDL được cập nhật thành công
+        return ($result && pg_affected_rows($result) > 0) ? $old_staff_id : false;
     }
+
 
     /**
      * Chức năng: Xóa một tờ phiếu bằng phương pháp Xóa Mềm.

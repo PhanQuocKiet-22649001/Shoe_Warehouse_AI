@@ -10,6 +10,8 @@ $brand_dist = $brand_dist ?? [];
 $product_flow = $product_flow ?? [];
 $inventory = $inventory ?? [];
 $summary_data = $summary_data ?? [];
+$stockConfig = require __DIR__ . '/../../../config/stockconfig.php';
+$threshold = (int)$stockConfig['low_stock_threshold'];
 ?>
 
 <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
@@ -257,7 +259,7 @@ $summary_data = $summary_data ?? [];
                     </div>
                     <div class="inv-body">
                         <?php foreach ($pData['variants'] as $var): ?>
-                            <div class="stock-chip <?= $var['stock'] < 5 ? 'danger' : '' ?>">
+                            <div class="stock-chip <?= $var['stock'] < $threshold ? 'danger' : '' ?>">
                                 Sz <?= $var['size'] ?> | <?= htmlspecialchars($var['color']) ?>: <b class="variant-stock"><?= $var['stock'] ?></b>
                             </div>
                         <?php endforeach; ?>

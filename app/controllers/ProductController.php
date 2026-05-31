@@ -167,6 +167,11 @@ class ProductController
                 // 1. Lưu file ảnh chuẩn vào kho lưu trữ
                 $imageFile = $_FILES['master_image'];
                 $ext = pathinfo($imageFile['name'], PATHINFO_EXTENSION);
+                // KIỂM TRA ĐỊNH DẠNG FILE CHỈ PHẢI LÀ JPG, PNG
+                $allowed_extensions = ['jpg', 'jpeg', 'png'];
+                if (!in_array($ext, $allowed_extensions)) {
+                    throw new Exception("Định dạng file không hợp lệ! Chỉ chấp nhận ảnh .png hoặc .jpg");
+                }
                 $imageName = time() . '_master_' . uniqid() . '.' . ($ext ?: 'jpg');
                 $targetPath = "assets/img_product/" . $imageName;
 
@@ -239,6 +244,13 @@ class ProductController
 
                 // 1. Lưu file ảnh mới vào assets/img_product/
                 $ext = pathinfo($imageFile['name'], PATHINFO_EXTENSION);
+
+                //  KIỂM TRA ĐỊNH DẠNG FILE CHỈ PHẢI LÀ JPG, PNG
+
+                $allowed_extensions = ['jpg', 'jpeg', 'png'];
+                if (!in_array($ext, $allowed_extensions)) {
+                    throw new Exception("Định dạng file không hợp lệ! Chỉ chấp nhận ảnh .png hoặc .jpg");
+                }
                 $imageName = time() . '_master_' . uniqid() . '.' . ($ext ?: 'jpg');
                 $targetPath = "assets/img_product/" . $imageName;
 
@@ -300,21 +312,22 @@ class ProductController
     public function managerAddVariant()
     {
         $this->checkManager();
-
         if (isset($_POST['btn_add_variant'])) {
             $db = $this->productModel->getConnection();
             pg_query($db, "BEGIN");
-
             try {
                 $product_id = $_POST['product_id'];
                 $category_id = $_POST['category_id'];
                 $brand_name = $_POST['brand_name'];
                 $product_name = $_POST['product_name'];
-
                 $color = $this->upperCaseColor($_POST['color']);
                 $size = trim($_POST['size']);
 
+                // RÀNG BUỘC SIZE GIÀY PHẢI LỚN HƠN 0 Ở BACKEND
 
+                if (floatval($size) <= 0) {
+                    throw new Exception("Size giày bắt buộc phải lớn hơn 0!");
+                }
                 // Kiểm tra xem biến thể này đã tồn tại chưa
                 $existingVariant = $this->productModel->findVariant($product_id, $size, $color);
                 if ($existingVariant) {
