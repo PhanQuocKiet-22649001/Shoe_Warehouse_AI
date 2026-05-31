@@ -313,13 +313,13 @@ $cat = $cat ?? ['categoryName' => 'Chưa rõ'];
                                             <input type="number" name="size" class="form-control text-center" placeholder="VD: 40" min="1" required>
                                         </div>
                                     </div>
-                                    <div class="alert alert-warning py-2 mb-0 small">
-                                        <i class="fas fa-exclamation-triangle me-1"></i> Tồn kho ban đầu sẽ là 0. Staff sẽ là người quét ảnh để nhập số lượng thực tế.
+                                    <div class="alert  py-2 mb-0 small">
+                                        <i class="fas fa-exclamation-triangle me-1"></i> Tồn kho ban đầu sẽ là 0.
                                     </div>
                                 </div>
                                 <div class="modal-footer p-3 pt-0 border-top-0">
-                                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#detailModal<?= $pro['product_id'] ?>">Hủy</button>
-                                    <button type="submit" name="btn_add_variant" class="btn btn-success rounded-pill px-4 fw-bold">Xác nhận tạo</button>
+                                    <button type="button" class="btn btn-outline-dark rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#detailModal<?= $pro['product_id'] ?>">Hủy</button>
+                                    <button type="submit" name="btn_add_variant" class="btn btn-outline-dark rounded-pill px-4 fw-bold">Xác nhận tạo</button>
                                 </div>
                             </form>
 
