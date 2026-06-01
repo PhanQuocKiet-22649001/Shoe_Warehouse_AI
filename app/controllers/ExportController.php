@@ -61,14 +61,16 @@ class ExportController
 
         $detail_id = $_POST['detail_id'];
         $picked_qty = (int)$_POST['picked_qty'];
+        $picked_locations = $_POST['picked_locations'] ?? null; // Chuỗi JSON vị trí đã chọn
 
-        if ($this->model->updateExportProgress($detail_id, $picked_qty)) {
+        if ($this->model->updateExportProgress($detail_id, $picked_qty, $picked_locations)) {
             echo json_encode(['status' => 'success']);
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Lỗi cập nhật CSDL']);
         }
         exit;
     }
+
 
     /** Chức năng: Dò map Layout Kệ theo mã Giày */
     public function getLocationsAjax()

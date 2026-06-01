@@ -314,6 +314,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $productController->toggleStatus();
             exit;
         }
+        if (isset($_POST['delete_product'])) {
+            $productController->softDelete();
+            exit;
+        }
         if (isset($_POST['export_stock'])) {
             $productController->exportStock();
             exit;

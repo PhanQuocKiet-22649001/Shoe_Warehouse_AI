@@ -27,13 +27,14 @@ class ExportModel
 
     /**
      * Chức năng: Cập nhật biến số lượng nhặt được vào CSDL.
-     * Tác dụng: Cộng dồn biến processed_qty cho tới khi hoàn tất chỉ tiêu đề ra.
+     * Tác dụng: Lưu trực tiếp số lượng đã chọn và vị trí lấy hàng dưới dạng JSON vào cột note.
      */
-    public function updateExportProgress($detail_id, $picked_qty)
+    public function updateExportProgress($detail_id, $picked_qty, $picked_locations = null)
     {
-        $sql = "UPDATE ticket_details SET processed_qty = processed_qty + $1 WHERE detail_id = $2";
-        return pg_query_params($this->conn, $sql, [$picked_qty, $detail_id]);
+        $sql = "UPDATE ticket_details SET processed_qty = $1, note = $2 WHERE detail_id = $3";
+        return pg_query_params($this->conn, $sql, [$picked_qty, $picked_locations, $detail_id]);
     }
+
 
     /**
      * Chức năng: Tìm các Ô, Kệ chứa dòng JSONB mã hàng.
@@ -69,13 +70,11 @@ class ExportModel
      */
     public function completeExportTicket($ticket_id, $user_id = null)
     {
-        // Nếu không truyền user_id vào, cố gắng lấy từ session hiện tại
         if (!$user_id && isset($_SESSION['user_id'])) {
             $user_id = $_SESSION['user_id'];
         }
         pg_query($this->conn, "BEGIN");
         try {
-            // 🥇 BỔ SUNG: Truy vấn lấy mã ticket_code từ bảng tickets
             $resTicket = pg_query_params($this->conn, "SELECT ticket_code FROM tickets WHERE ticket_id = $1", [$ticket_id]);
             $ticket_code = $resTicket ? pg_fetch_result($resTicket, 0, 'ticket_code') : "TICKET-$ticket_id";
             $ticketModel = new TicketModel();
@@ -83,18 +82,24 @@ class ExportModel
             foreach ($details as $item) {
                 $qty = (int)$item['quantity'];
                 $v_id = $item['variant_id'];
+                $note = $item['note']; // Chứa vị trí kệ đã tạm lưu dưới dạng JSON
 
                 // Khấu trừ lượng stock trong bảng product_variants
                 $sqlStock = "UPDATE product_variants SET stock = stock - $1, reserved_stock = reserved_stock - $1 WHERE variant_id = $2";
                 pg_query_params($this->conn, $sqlStock, [$qty, $v_id]);
 
-                // Gỡ khỏi kệ kho bãi và đối soát số lượng thực tế rút được
-                $removed_from_shelves = $this->removeItemsFromShelves($v_id, $qty);
+                // Gỡ khỏi kệ kho bãi: Kiểm tra nếu có dữ liệu lưu tạm thì trừ kho chính xác, nếu không thì dùng thuật toán cũ
+                $picked_locations = json_decode($note, true);
+                if (empty($picked_locations) || !is_array($picked_locations)) {
+                    $removed_from_shelves = $this->removeItemsFromShelves($v_id, $qty);
+                } else {
+                    $removed_from_shelves = $this->removePreciseItemsFromShelves($v_id, $note);
+                }
+
                 if ($removed_from_shelves !== $qty) {
                     throw new Exception("Số lượng xuất của biến thể ID $v_id ($qty đôi) không khớp với số lượng thực tế rút được trên các kệ ($removed_from_shelves đôi)!");
                 }
 
-                // 🚀 Thay thế "TICKET-$ticket_id" thành $ticket_code
                 pg_query_params($this->conn, "INSERT INTO transactions (transaction_type, variant_id, quantity, user_id, reference_id) VALUES ('EXPORT', $1, $2, $3, $4)", [$v_id, $qty, $user_id, $ticket_code]);
             }
 
@@ -107,6 +112,59 @@ class ExportModel
             return false;
         }
     }
+
+    /**
+     * Chức năng: Helper trừ kho chính xác theo các kệ/ô mà thủ kho đã chọn và lưu tạm
+     */
+    private function removePreciseItemsFromShelves($variant_id, $note)
+    {
+        $picked_locations = json_decode($note, true);
+        if (empty($picked_locations) || !is_array($picked_locations)) {
+            return 0;
+        }
+
+        $total_removed = 0;
+        foreach ($picked_locations as $loc) {
+            $shelf_id = (int)$loc['shelf_id'];
+            $slot_code = $loc['slot_code']; // Dạng "1-01" hoặc "tier-slot"
+            $qty_to_remove = (int)$loc['qty'];
+
+            if ($qty_to_remove <= 0) continue;
+
+            $sql = "SELECT layout FROM shelves WHERE shelf_id = $1";
+            $res = pg_query_params($this->conn, $sql, [$shelf_id]);
+            if ($row = pg_fetch_assoc($res)) {
+                $layout = json_decode($row['layout'], true);
+
+                $parts = explode('-', $slot_code);
+                if (count($parts) === 2) {
+                    $tier = $parts[0];
+                    $slot = $parts[1];
+
+                    if (isset($layout[$tier][$slot]) && is_array($layout[$tier][$slot])) {
+                        $items = &$layout[$tier][$slot];
+                        $removed_in_slot = 0;
+
+                        foreach ($items as $key => $val) {
+                            if ($val == $variant_id && $removed_in_slot < $qty_to_remove) {
+                                unset($items[$key]);
+                                $removed_in_slot++;
+                                $total_removed++;
+                            }
+                        }
+
+                        if ($removed_in_slot > 0) {
+                            $layout[$tier][$slot] = array_values($items);
+                            $jsonb_str = json_encode($layout);
+                            pg_query_params($this->conn, "UPDATE shelves SET layout = $1 WHERE shelf_id = $2", [$jsonb_str, $shelf_id]);
+                        }
+                    }
+                }
+            }
+        }
+        return $total_removed;
+    }
+
 
 
     /**

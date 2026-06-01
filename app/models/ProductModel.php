@@ -41,6 +41,22 @@ class ProductModel
         return $row ? $row['category_name'] : 'Sản phẩm';
     }
 
+
+    /**
+     * Kiểm tra sản phẩm có chứa biến thể hoạt động nào không
+     */
+    public function hasVariants($product_id)
+    {
+        $sql = "SELECT COUNT(*) as cnt FROM product_variants WHERE product_id = $1 AND is_deleted = false";
+        $result = pg_query_params($this->conn, $sql, [(int)$product_id]);
+        if ($result) {
+            $row = pg_fetch_assoc($result);
+            return (int)$row['cnt'] > 0;
+        }
+        return false;
+    }
+
+
     /**
      * Xóa mềm sản phẩm và cascade xóa mềm toàn bộ biến thể bên trong, đồng thời giải phóng vị trí kệ kho
      */

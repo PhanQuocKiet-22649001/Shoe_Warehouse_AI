@@ -120,10 +120,23 @@ class ProductController
     {
         $this->checkManager();
         $id = $_POST['product_id'];
-        $this->productModel->delete($id);
+
+        // RÀNG BUỘC: Kiểm tra nếu sản phẩm còn biến thể hoạt động thì không cho xóa
+        if ($this->productModel->hasVariants($id)) {
+            $_SESSION['error'] = "Không thể xóa sản phẩm này vì vẫn còn biến thể đang tồn tại!";
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+
+        if ($this->productModel->delete($id)) {
+            $_SESSION['success'] = "Đã dọn dẹp sản phẩm thành công!";
+        } else {
+            $_SESSION['error'] = "Xóa sản phẩm thất bại!";
+        }
         header("Location: " . $_SERVER['HTTP_REFERER']);
         exit;
     }
+
 
     /**
      * Chức năng: Tìm kiếm trực tiếp sản phẩm (Giao tiếp qua AJAX).

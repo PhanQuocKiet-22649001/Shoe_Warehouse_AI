@@ -43,6 +43,19 @@ class CategoryModel
 
 
 
+    // Kiểm tra hãng giày có chứa sản phẩm hoạt động nào không
+    public function hasProducts($category_id)
+    {
+        $sql = "SELECT COUNT(*) as cnt FROM products WHERE category_id = $1 AND is_deleted = false";
+        $result = pg_query_params($this->conn, $sql, [(int)$category_id]);
+        if ($result) {
+            $row = pg_fetch_assoc($result);
+            return (int)$row['cnt'] > 0;
+        }
+        return false;
+    }
+
+
 
     // thêm hãng mới
     public function create($category_name, $logo, $created_by) // Thêm tham số $created_by

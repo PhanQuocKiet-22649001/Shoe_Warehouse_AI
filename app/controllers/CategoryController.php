@@ -95,6 +95,14 @@ class CategoryController
     public function delete($id)
     {
         $this->checkManager();
+
+        // RÀNG BUỘC: Kiểm tra nếu hãng còn sản phẩm hoạt động thì không cho xóa
+        if ($this->categoryModel->hasProducts($id)) {
+            $_SESSION['error'] = "Không thể xóa hãng giày này vì vẫn còn sản phẩm đang tồn tại!";
+            header("Location: index.php?page=categories");
+            exit;
+        }
+
         if ($this->categoryModel->delete($id)) {
             $_SESSION['success'] = "Đã dọn dẹp hãng giày thành công!";
         } else {
@@ -103,6 +111,7 @@ class CategoryController
         header("Location: index.php?page=categories");
         exit;
     }
+
 
     // bật tắt trạng thái kinh doanh
     public function toggleStatus()

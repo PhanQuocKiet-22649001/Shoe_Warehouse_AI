@@ -88,9 +88,10 @@ function renderExportItems() {
 
         if (!isDone) allDone = false;
 
+        // Luôn luôn cho phép nhấp vào dòng biến thể để chỉnh sửa giống nhập kho
         return `
-            <div class="p-3 rounded border ${isDone ? 'bg-success bg-opacity-25 border-success' : 'bg-dark border-secondary cursor-pointer'}"
-                 ${!isDone ? `onclick="autoFillExportForm(${item.detail_id})"` : ''}>
+            <div class="p-3 rounded border cursor-pointer ${isDone ? 'bg-success bg-opacity-25 border-success' : 'bg-dark border-secondary'}"
+                 onclick="autoFillExportForm(${item.detail_id})">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <span class="fw-bold small ${isDone ? 'text-success' : 'text-white'}">${item.product_name}</span>
                     <span class="badge ${isDone ? 'bg-success' : 'bg-danger'}">${processed} / ${qty}</span>
@@ -135,8 +136,9 @@ async function autoFillExportForm(detailId) {
     const item = currentTicketItems.find(i => i.detail_id == detailId);
     if (!item) return;
 
-    const remainingQty = parseInt(item.quantity) - parseInt(item.processed_qty || 0);
-    currentRequiredQty = remainingQty;
+    // Khi mở bảng chọn, yêu cầu phân bổ đủ tổng số lượng của biến thể đó
+    const totalQty = parseInt(item.quantity);
+    currentRequiredQty = totalQty;
 
     document.getElementById('export_right_default').classList.add('d-none');
     document.getElementById('export_right_action').classList.remove('d-none');
@@ -155,7 +157,7 @@ async function autoFillExportForm(detailId) {
     const inputQty = document.getElementById('pick_qty_input');
     inputQty.value = 0;
     inputQty.readOnly = true;
-    document.getElementById('pick_qty_max').innerText = `/ ${remainingQty}`;
+    document.getElementById('pick_qty_max').innerText = `/ ${totalQty}`;
 
     const othersArea = document.getElementById('other_variants_area');
     const othersList = document.getElementById('other_variants_list');
@@ -178,8 +180,22 @@ async function autoFillExportForm(detailId) {
             return;
         }
 
+        // Đọc các vị trí đã tạm lưu trước đó (nếu có) từ trường note
+        let savedLocs = [];
+        if (item.note) {
+            try {
+                savedLocs = JSON.parse(item.note);
+            } catch (e) {
+                savedLocs = [];
+            }
+        }
+
         let html = '';
         locs.forEach(l => {
+            // Tìm số lượng đã tạm lưu trên kệ/ô này
+            const savedItem = Array.isArray(savedLocs) ? savedLocs.find(s => s.shelf_id == l.shelf_id && s.slot_code == l.slot_code) : null;
+            const savedQty = savedItem ? parseInt(savedItem.qty) : 0;
+
             html += `
             <div class="w-100 d-flex justify-content-between align-items-center bg-black bg-opacity-25 p-2 rounded mb-2 border border-secondary">
                 <span class="text-white fw-bold small">
@@ -187,7 +203,7 @@ async function autoFillExportForm(detailId) {
                 </span>
                 <input type="number" class="form-control form-control-sm text-center pick-input fw-bold bg-dark text-info border-info" 
                        style="width: 80px;" data-shelf-id="${l.shelf_id}" data-slot="${l.slot_code}"
-                       min="0" max="${l.qty_in_slot}" value="0" oninput="validatePickTotal()">
+                       min="0" max="${l.qty_in_slot + savedQty}" value="${savedQty}" oninput="validatePickTotal()">
             </div>`;
         });
         locContainer.innerHTML = html;
@@ -196,6 +212,7 @@ async function autoFillExportForm(detailId) {
         locContainer.innerHTML = '<span class="text-danger small">Lỗi truy xuất sơ đồ kho.</span>';
     }
 }
+
 
 /**
  * Chức năng: Kiểm tra liên tục tổng số lượng hàng đang lấy từ các kệ khác nhau.
@@ -285,7 +302,11 @@ async function confirmPickItem() {
 
         if (data.status === 'success') {
             const item = currentTicketItems.find(i => i.detail_id == detailId);
-            if (item) item.processed_qty = parseInt(item.processed_qty || 0) + totalPicked;
+            if (item) {
+                // Lưu trực tiếp số lượng và mảng vị trí vào dữ liệu local
+                item.processed_qty = totalPicked;
+                item.note = JSON.stringify(pickedLocations);
+            }
 
             renderExportItems();
             document.getElementById('export_right_default').classList.remove('d-none');
@@ -301,6 +322,7 @@ async function confirmPickItem() {
         btn.innerHTML = 'XÁC NHẬN ĐÃ LẤY HÀNG NÀY';
     }
 }
+
 
 /**
  * Chức năng: Chốt sổ phiếu xuất kho.
