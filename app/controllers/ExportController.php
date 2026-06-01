@@ -94,13 +94,18 @@ class ExportController
         $user_id = $_SESSION['user_id'] ?? null;
 
         if ($ticket_id > 0) {
-            // Truyền thêm biến $user_id để ghi nhận lịch sử giao dịch
-            if ($this->model->completeExportTicket($ticket_id, $user_id)) {
-                $completed_at = date('d/m/Y H:i');
-                $this->triggerManagerSync($ticket_id, 'COMPLETED', $completed_at);
-                echo json_encode(['status' => 'success']);
-            } else {
-                echo json_encode(['status' => 'error', 'message' => 'Lỗi trừ kho thực tế.']);
+            try {
+                // Truyền thêm biến $user_id để ghi nhận lịch sử giao dịch
+                if ($this->model->completeExportTicket($ticket_id, $user_id)) {
+                    $completed_at = date('d/m/Y H:i');
+                    $this->triggerManagerSync($ticket_id, 'COMPLETED', $completed_at);
+                    echo json_encode(['status' => 'success']);
+                } else {
+                    echo json_encode(['status' => 'error', 'message' => 'Lỗi trừ kho thực tế.']);
+                }
+            } catch (Exception $e) {
+                // Hiển thị thông báo lỗi thực tế cực kỳ chi tiết
+                echo json_encode(['status' => 'error', 'message' => 'Lỗi trừ kho thực tế: ' . $e->getMessage()]);
             }
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Mã phiếu không hợp lệ.']);

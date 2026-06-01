@@ -196,6 +196,7 @@ async function autoFillExportForm(detailId) {
             const savedItem = Array.isArray(savedLocs) ? savedLocs.find(s => s.shelf_id == l.shelf_id && s.slot_code == l.slot_code) : null;
             const savedQty = savedItem ? parseInt(savedItem.qty) : 0;
 
+            // ĐÃ SỬA: Ép kiểu parseInt(l.qty_in_slot) để tránh cộng chuỗi '4' + 0 = '40'
             html += `
             <div class="w-100 d-flex justify-content-between align-items-center bg-black bg-opacity-25 p-2 rounded mb-2 border border-secondary">
                 <span class="text-white fw-bold small">
@@ -203,11 +204,12 @@ async function autoFillExportForm(detailId) {
                 </span>
                 <input type="number" class="form-control form-control-sm text-center pick-input fw-bold bg-dark text-info border-info" 
                        style="width: 80px;" data-shelf-id="${l.shelf_id}" data-slot="${l.slot_code}"
-                       min="0" max="${l.qty_in_slot + savedQty}" value="${savedQty}" oninput="validatePickTotal()">
+                       min="0" max="${parseInt(l.qty_in_slot) + savedQty}" value="${savedQty}" oninput="validatePickTotal()">
             </div>`;
         });
         locContainer.innerHTML = html;
         validatePickTotal();
+
     } catch (e) {
         locContainer.innerHTML = '<span class="text-danger small">Lỗi truy xuất sơ đồ kho.</span>';
     }

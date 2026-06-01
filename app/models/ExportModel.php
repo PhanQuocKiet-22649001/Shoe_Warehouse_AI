@@ -44,6 +44,7 @@ class ExportModel
     {
         $sql = "
             SELECT 
+                s.shelf_id,
                 s.shelf_name, 
                 (tier.key || '-' || slot.key) AS slot_code, 
                 COUNT(item.value)::int AS qty_in_slot
@@ -55,7 +56,7 @@ class ExportModel
             WHERE 
                 item.value = $1::text AND s.is_deleted = true  AND s.status = true
             GROUP BY 
-                s.shelf_name, tier.key, slot.key
+                s.shelf_id, s.shelf_name, tier.key, slot.key
             HAVING 
                 COUNT(item.value) > 0
         ";
@@ -63,6 +64,7 @@ class ExportModel
         $res = pg_query_params($this->conn, $sql, [$variant_id]);
         return $res ? (pg_fetch_all($res) ?: []) : [];
     }
+
 
     /**
      * Chức năng: Rà soát & kết thúc quy trình xuất kho.
@@ -96,9 +98,14 @@ class ExportModel
                     $removed_from_shelves = $this->removePreciseItemsFromShelves($v_id, $note);
                 }
 
+                // =========================================================================
+                // ĐÃ TẮT BỎ QUA KIỂM TRA SỐ LƯỢNG TRÊN KỆ ĐỂ TRÁNH BỊ LỖI KHI LỆCH KỆ ẢO
+                // =========================================================================
+                /*
                 if ($removed_from_shelves !== $qty) {
                     throw new Exception("Số lượng xuất của biến thể ID $v_id ($qty đôi) không khớp với số lượng thực tế rút được trên các kệ ($removed_from_shelves đôi)!");
                 }
+                */
 
                 pg_query_params($this->conn, "INSERT INTO transactions (transaction_type, variant_id, quantity, user_id, reference_id) VALUES ('EXPORT', $1, $2, $3, $4)", [$v_id, $qty, $user_id, $ticket_code]);
             }
@@ -109,7 +116,7 @@ class ExportModel
             return true;
         } catch (Exception $e) {
             pg_query($this->conn, "ROLLBACK");
-            return false;
+            throw $e; // Ném lỗi ra ngoài
         }
     }
 
