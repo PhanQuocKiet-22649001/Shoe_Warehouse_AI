@@ -349,7 +349,7 @@ foreach ($suggestions as $s) {
                 <h5 class="modal-title fw-bold">Chỉ định lại Nhân viên</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="index.php?page=ticket_reassign" method="POST">
+            <form action="index.php?page=ticket_reassign" method="POST" onsubmit="return confirm('⚠️ Bạn có chắc chắn muốn đổi nhân viên thực hiện cho phiếu này?');">
                 <div class="modal-body">
                     <!-- Đã sửa lại câu thông báo -->
                     <p class="small text-danger">Phiếu này đang ở trạng thái <strong>Đang chờ</strong> hoặc <strong>Tạm ngừng</strong>. Bạn có thể chỉ định lại nhân viên thực hiện.</p>

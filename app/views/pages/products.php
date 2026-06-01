@@ -129,7 +129,7 @@ $cat = $cat ?? ['categoryName' => 'Chưa rõ'];
                                         </button>
                                     </form>
 
-                                    <form action="index.php?page=products&category_id=<?= $pro['category_id'] ?>" method="POST" class="m-0 d-flex align-items-center" onsubmit="return confirm('Bồ chắc chắn muốn xóa đôi này không?')">
+                                    <form action="index.php?page=products&category_id=<?= $pro['category_id'] ?>" method="POST" class="m-0 d-flex align-items-center" onsubmit="return confirm('Bạn có chắc chắn muốn xóa đôi này không?')">
                                         <input type="hidden" name="product_id" value="<?= $pro['product_id'] ?>">
                                         <button type="submit" name="delete_product" class="btn btn-link p-0 shadow-none" style="color: grey;" title="Xóa sản phẩm">
                                             <i class="fas fa-trash-alt fa-lg"></i>
