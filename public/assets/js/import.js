@@ -250,13 +250,14 @@ function processAIResult(index) {
         return;
     }
 
-    // Từ 95% trở lên -> Khớp 100%
-    if (topScore >= 95) {
+    // ĐÃ SỬA ĐỘNG: Nhận diện khớp dựa trên status 'match' do Server kiểm tra từ file cấu hình PercentMatching.php
+    if (aiItem.status === 'match') {
         let isSuccess = autoProcessMatch(topMatch, aiItem.temp_image);
         if (isSuccess) alert(`Thành công! Khớp ảnh kho (Gốc: ${topScore.toFixed(1)}%)`);
     } else {
         renderSuggestionDropdown(matches, aiItem.temp_image);
     }
+
 }
 
 // 4.1 Hàm điền dữ liệu (Có chặn hàng ngoài phiếu)
